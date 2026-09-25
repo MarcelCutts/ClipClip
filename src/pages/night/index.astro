@@ -1,0 +1,374 @@
+---
+/**
+ * The crew's tool for the night itself, set like a quick reference handbook. It opens on its tabs, in
+ * the order the night runs: C1 Doors, C2 Changeover, F Something's wrong, C3 After. Then what the crew
+ * know by heart, and the checklists and drills in that order. Every card is linkable from the group
+ * chat (/night/#changeover, /night/#fix-howler-red). Why any of it works is in the guide.
+ */
+import DrillCard from '../../components/DrillCard.astro';
+import KnowByHeart from '../../components/KnowByHeart.astro';
+import Term from '../../components/Term.astro';
+import Checklist from '../../islands/Checklist.svelte';
+import Base from '../../layouts/Base.astro';
+import { CHECKLISTS } from '../../lib/checklists';
+import { drillAnchor, FIXES } from '../../lib/fixes';
+import { CHANGEOVER_LINE } from '../../lib/messages';
+import { CREW_RULES } from '../../lib/rules';
+import { href } from '../../lib/url';
+
+const { doors, changeover, after } = CHECKLISTS;
+// Trouble comes during the sets, so the drills sit between the changeovers and the end of the night.
+const tabs = [
+  { id: doors.anchor, code: doors.code, label: 'Doors' },
+  { id: changeover.anchor, code: changeover.code, label: 'Changeover' },
+  { id: 'fixes', code: 'F', label: 'Something’s wrong', warning: true },
+  { id: after.anchor, code: after.code, label: 'After' },
+];
+const groups = [
+  { id: 'booth', title: 'In the booth, now', drills: FIXES.filter((f) => f.where === 'booth') },
+  { id: 'recording', title: 'In the recording, afterwards', drills: FIXES.filter((f) => f.where === 'recording') },
+];
+---
+
+<Base
+  title="On the night"
+  description="For crew on the night: the doors, changeover and after-the-night checklists, and the drills for when a light goes red or a recording sounds wrong."
+>
+  <header class="head flow">
+    <h1>On the night</h1>
+  </header>
+
+  <!-- Thumb tabs, as on the edge of a printed handbook: they stay at the top of the screen, and the one
+       for the part of the night on screen is filled. Plain links without JavaScript. -->
+  <nav class="tabs flow" aria-label="Checklists and drills" data-night-tabs>
+    <ol>
+      {tabs.map((t) => (
+  <li>
+    <a class:list={['tab', { warning: t.warning }]} href={`#${t.id}`} data-target={t.id}>
+      <span class="tab-code">{t.code}</span> <span class="tab-label">{t.label}</span>
+    </a>
+  </li>
+))}
+    </ol>
+  </nav>
+
+  <div class="night flow">
+    <div class="block"><KnowByHeart title="Know by heart on crew" rules={CREW_RULES} start={4} /></div>
+
+    <div class="block stage"><Checklist list="doors" headingLevel={2} client:visible /></div>
+
+    <div class="block stage"><Checklist list="changeover" headingLevel={2} client:visible /></div>
+    <p class="say">Say it to the next DJ: <strong>“{CHANGEOVER_LINE}”</strong></p>
+
+    <section class="drills stage" id="fixes">
+      <h2 class="drills-title"><span class="mark">F</span> Something’s wrong</h2>
+      <p>Find what you can see, then work through its drill from step 1.</p>
+      <nav class="index" aria-label="Drills">
+        {groups.map((g) => (
+  <div class="index-group">
+    <p class="index-title" id={`index-${g.id}`}>{g.title}</p>
+    <ol aria-labelledby={`index-${g.id}`}>
+      {g.drills.map((f) => (
+      <li>
+        <a href={`#${drillAnchor(f.id)}`}><span class="index-code">{f.code}</span> <span class="index-label">{f.title}</span></a>
+      </li>
+    ))}
+    </ol>
+  </div>
+))}
+      </nav>
+      {groups.map((g) => (
+  <Fragment>
+    <h3 class="group-title">{g.title}</h3>
+    {g.drills.map((f) => <DrillCard fix={f} level={4} />)}
+  </Fragment>
+))}
+    </section>
+
+    <div class="block stage"><Checklist list="after" headingLevel={2} client:visible /></div>
+    <p class="note">
+      <strong>Note.</strong> A set that peaked around −12&nbsp;<Term of="dbfs">dBFS</Term> is healthy. <Term
+        of="normalise">Normalising</Term
+      > it costs nothing you’ll hear.
+    </p>
+
+    <p class="more">
+      If it’s your first night with this rig, or something has changed, start with the <a href={href('/setup/')}
+        >setup page</a
+      >. Cards and tape tags for the booth are on the <a href={href('/print/')}>print page</a>.
+    </p>
+  </div>
+</Base>
+
+<script>
+  // Fills the tab for the part of the night on screen: the last one whose top has passed a line just
+  // under the tabs.
+  const nav = document.querySelector<HTMLElement>('[data-night-tabs]');
+  if (nav) {
+    const tabs = [...nav.querySelectorAll<HTMLAnchorElement>('a[data-target]')];
+    const targets = tabs.map((tab) => document.getElementById(tab.dataset.target ?? ''));
+    let queued = false;
+
+    const update = () => {
+      queued = false;
+      const line = nav.getBoundingClientRect().bottom + window.innerHeight * 0.15;
+      let at = -1;
+      targets.forEach((target, i) => {
+        if (target && target.getBoundingClientRect().top <= line) at = i;
+      });
+      tabs.forEach((tab, i) => {
+        if (i === at) tab.setAttribute('aria-current', 'location');
+        else tab.removeAttribute('aria-current');
+      });
+    };
+
+    const queue = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(update);
+    };
+    window.addEventListener('scroll', queue, { passive: true });
+    window.addEventListener('resize', queue, { passive: true });
+    update();
+  }
+</script>
+
+<style>
+  /* A tool page's name: enough to know where you are, and out of the way of the tabs. */
+  .head {
+    padding-block: clamp(1.25rem, 0.9rem + 1.5vw, 2.25rem) 0.9rem;
+  }
+
+  h1 {
+    font-size: clamp(1.75rem, 1.45rem + 1.4vw, 2.5rem);
+    line-height: 1.1;
+  }
+
+  /* The tabs hang from a heavy rule, like thumb tabs cut into the edge of a handbook. */
+  .tabs {
+    position: sticky;
+    top: 0;
+    z-index: 12;
+    padding-block-end: 0.5rem;
+    background: var(--paper);
+  }
+
+  .tabs ol {
+    display: flex;
+    gap: 0.3rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 2px solid var(--ink);
+  }
+
+  /* Shared out evenly, as far as the longest words allow. */
+  .tabs li {
+    flex: 1 1 0;
+    display: flex;
+  }
+
+  .tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: 0.25rem 0.4rem 0.35rem;
+    border: 1.5px solid var(--ink);
+    border-top: 0;
+    font-size: var(--text-sm);
+    line-height: 1.2;
+    text-align: center;
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .tab-code {
+    font-weight: 700;
+  }
+
+  .tab:hover .tab-label {
+    text-decoration: underline;
+    text-underline-offset: 0.16em;
+  }
+
+  .tab[aria-current] {
+    background: var(--strip);
+    color: var(--on-strip);
+  }
+
+  /* Something's wrong: the one tab in the warning colour, filled whether or not you're there. */
+  .tab.warning {
+    border-color: var(--warning);
+    background: var(--warning);
+    color: var(--on-warning);
+  }
+
+  .tab.warning[aria-current] {
+    outline: 2px solid var(--on-warning);
+    outline-offset: -4px;
+  }
+
+  /* Its code sits beside its two-line name, so it's no taller than the others. */
+  .tab.warning {
+    flex-direction: row;
+    gap: 0.35em;
+  }
+
+  /* Narrow phones: tighter tabs, so all four still fit across. */
+  @media (max-width: 23.99rem) {
+    .tabs ol {
+      gap: 0.2rem;
+    }
+
+    .tab {
+      padding-inline: 0.2rem;
+    }
+  }
+
+  /* The narrowest: codes only, as on the guide's tabs. The names stay for screen readers. */
+  @media (max-width: 21.99rem) {
+    .tab-label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+
+  /* Wider: code and name on one line, each tab as wide as its name needs, then shared out. */
+  @media (min-width: 40rem) {
+    .tabs li {
+      flex-basis: auto;
+    }
+
+    .tab {
+      flex-direction: row;
+      gap: 0.45em;
+      padding-inline: 0.75rem;
+    }
+  }
+
+  /* Anchors land clear of the tabs. The cards and drills read this too. */
+  .night {
+    --anchor-offset: 4.5rem;
+    row-gap: 1.25rem;
+    padding-block-start: 1rem;
+  }
+
+  /* A little more air between the night's stages than inside them. */
+  .stage {
+    margin-block-start: 1.25rem;
+    scroll-margin-top: var(--anchor-offset);
+  }
+
+  .say {
+    font-size: var(--text-rule);
+    line-height: 1.4;
+  }
+
+  .drills {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  .drills-title {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  /* The F tab's marker, so the heading matches the tab that brought you here. */
+  .mark {
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    min-width: 2.25rem;
+    height: 2.25rem;
+    background: var(--warning);
+    color: var(--on-warning);
+    font-size: var(--text-rule);
+    line-height: 1;
+  }
+
+  .index {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .index-title {
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--ink-2);
+  }
+
+  .index ol {
+    margin: 0.35rem 0 0;
+    padding: 0;
+    list-style: none;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .index li {
+    border-top: 1px solid var(--rule);
+  }
+
+  .index a {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    align-items: baseline;
+    min-height: 2.75rem;
+    padding-block: 0.55rem;
+    line-height: 1.35;
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .index-code {
+    font-weight: 700;
+  }
+
+  .index a:hover .index-label {
+    text-decoration: underline;
+    text-underline-offset: 0.16em;
+  }
+
+  .group-title {
+    margin-block-start: 1rem;
+    font-size: var(--text-rule);
+  }
+
+  .note {
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+
+  .note strong {
+    color: var(--ink);
+  }
+
+  .more {
+    margin-block-start: 1.5rem;
+  }
+
+  @media (forced-colors: active) {
+    .tab[aria-current],
+    .tab.warning,
+    .mark {
+      forced-color-adjust: none;
+      background: CanvasText;
+      color: Canvas;
+    }
+  }
+
+  @media print {
+    .tabs {
+      display: none;
+    }
+  }
+</style>

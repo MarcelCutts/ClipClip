@@ -1,0 +1,260 @@
+---
+/**
+ * The guide's index, set like a quick reference handbook's: each part a row with its tab marker,
+ * number, title and reading time, and a last row, F, for the drills on the night page. On phones
+ * and laptops it's a list near the top; on wide screens it sits in the rail left of the text, stays
+ * in view, and opens the part you're in. The tab marker of the part you're in is filled.
+ *
+ * Without JavaScript it's a plain list of links. With it, the part and section you're in are
+ * marked here and on the phone's tab strip (Tabs.astro).
+ */
+import { href } from '../lib/url';
+
+export interface ContentsEntry {
+  id: string;
+  label: string;
+  /** Its place: a part number like 2, or a card's code like S1. */
+  number?: number | string;
+  minutes?: number;
+  subs?: { id: string; label: string }[];
+}
+
+interface Props {
+  entries: ContentsEntry[];
+  /** How many rows of the guide's grid the rail runs beside. */
+  rows: number;
+  /** A last row for the night page's drills. */
+  drills?: boolean;
+}
+
+const { entries, rows, drills = false } = Astro.props;
+---
+
+<nav class="toc" aria-labelledby="toc-title" data-toc style={`--toc-rows: ${rows}`}>
+  <p class="toc-title" id="toc-title">Index</p>
+  <ol class="parts">
+    {entries.map((e) => (
+  <li class="part" data-part={e.id}>
+    <a href={`#${e.id}`} data-target={e.id}>
+      <span class="marker" aria-hidden="true"></span>
+      <span class="no">{e.number ?? ''}</span>
+      <span class="label">{e.label}</span>
+      {e.minutes && <span class="time">{e.minutes}&nbsp;min</span>}
+    </a>
+    {e.subs && e.subs.length > 0 && (
+    <ol class="subs">
+      {e.subs.map((s) => (
+      <li>
+        <a href={`#${s.id}`} data-target={s.id}>
+          {s.label}
+        </a>
+      </li>
+    ))}
+    </ol>
+  )}
+  </li>
+))}
+    {drills && (
+  <li class="part drills">
+    <a href={href('/night/#fixes')}>
+      <span class="marker" aria-hidden="true"></span>
+      <span class="no">F</span>
+      <span class="label">Drills: something’s wrong</span>
+      <span class="time">On the night</span>
+    </a>
+  </li>
+)}
+  </ol>
+</nav>
+
+<script>
+  const nav = document.querySelector<HTMLElement>('[data-toc]');
+  if (nav) {
+    const links = [...nav.querySelectorAll<HTMLAnchorElement>('a[data-target]')];
+    const targets = links.map((a) => document.getElementById(a.dataset.target ?? ''));
+    const parts = [...nav.querySelectorAll<HTMLElement>('li[data-part]')];
+    const tabs = [...document.querySelectorAll<HTMLAnchorElement>('[data-tabs] a[data-target]')];
+    let queued = false;
+
+    const update = () => {
+      queued = false;
+      // The section you're in is the last one whose top has passed a quarter of the way down.
+      const line = window.innerHeight * 0.25;
+      let at = -1;
+      targets.forEach((t, i) => {
+        if (t && t.getBoundingClientRect().top <= line) at = i;
+      });
+      links.forEach((a, i) => {
+        if (i === at) a.setAttribute('aria-current', 'location');
+        else a.removeAttribute('aria-current');
+      });
+      const open = at >= 0 ? links[at]?.closest<HTMLElement>('li[data-part]') : null;
+      for (const p of parts) p.toggleAttribute('data-open', p === open);
+      const part = open?.dataset.part;
+      for (const t of tabs) {
+        if (t.dataset.target === part) t.setAttribute('aria-current', 'location');
+        else t.removeAttribute('aria-current');
+      }
+    };
+
+    const queue = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(update);
+    };
+    window.addEventListener('scroll', queue, { passive: true });
+    window.addEventListener('resize', queue, { passive: true });
+    update();
+  }
+</script>
+
+<style>
+  .toc {
+    display: grid;
+    gap: 0.5rem;
+    align-content: start;
+  }
+
+  .toc-title {
+    font-weight: 700;
+  }
+
+  .parts,
+  .subs {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .part {
+    border-top: 1px solid var(--rule);
+  }
+
+  .part:last-child {
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .part > a {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 3rem;
+    padding-block: 0.5rem;
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .label {
+    flex: 1;
+    line-height: 1.3;
+  }
+
+  /* A thumb tab, as on the edge of a printed handbook: filled for the part you're in. */
+  .marker {
+    flex: none;
+    width: 0.75rem;
+    height: 1.75rem;
+    border: 1.5px solid var(--ink);
+  }
+
+  .drills .marker {
+    background: var(--warning);
+    border-color: var(--warning);
+  }
+
+  .part[data-open] .marker {
+    background: var(--ink);
+  }
+
+  .no {
+    flex: none;
+    min-width: 1.5rem;
+    font-weight: 700;
+  }
+
+  .drills .label,
+  .part[data-open] .label {
+    font-weight: 700;
+  }
+
+  .part > a:hover .label {
+    text-decoration: underline;
+    text-underline-offset: 0.16em;
+  }
+
+  .time {
+    flex: none;
+    font-size: var(--text-sm);
+    color: var(--ink-3);
+  }
+
+  .subs {
+    display: none;
+  }
+
+  /* Wide screens: the index in a rail beside the text that stays in view, opening the part
+     you're in. */
+  @media (min-width: 80rem) {
+    .toc {
+      grid-column: rail;
+      grid-row: 1 / span var(--toc-rows);
+      position: sticky;
+      top: 1.5rem;
+      align-self: start;
+      max-height: calc(100dvh - 3rem);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      margin-block-start: clamp(1.75rem, 1.2rem + 2vw, 2.75rem);
+      padding-block-end: 1rem;
+    }
+
+    .part > a {
+      min-height: 2.5rem;
+      gap: 0.55rem;
+      font-size: var(--text-sm);
+    }
+
+    .time {
+      display: none;
+    }
+
+    .part[data-open] > .subs {
+      display: grid;
+      padding-block-end: 0.4rem;
+    }
+
+    .subs a {
+      display: block;
+      padding-block: 0.3rem;
+      padding-inline-start: 3.35rem;
+      font-size: var(--text-sm);
+      line-height: 1.3;
+      color: var(--ink-2);
+      text-decoration: none;
+    }
+
+    .subs a:hover {
+      color: var(--ink-bright);
+      text-decoration: underline;
+    }
+
+    .subs a[aria-current] {
+      color: var(--ink-bright);
+      font-weight: 700;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .drills .marker,
+    .part[data-open] .marker {
+      forced-color-adjust: none;
+      background: CanvasText;
+    }
+  }
+
+  @media print {
+    .toc {
+      display: none;
+    }
+  }
+</style>

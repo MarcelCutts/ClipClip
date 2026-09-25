@@ -1,0 +1,16 @@
+---
+// The long version is Part 4 of the guide now, with the words and sources after it. Its section
+// ids live on there.
+import Moved from '../../layouts/Moved.astro';
+---
+
+<Moved
+  title="The long version"
+  to="/#hood"
+  keepIdsOn="/"
+  map={{ photo: '/#hood' }}
+  links={[
+    { path: '/#hood', label: 'Under the hood, in the guide' },
+    { path: '/#sources', label: 'Sources' },
+  ]}
+/>

@@ -1,0 +1,795 @@
+---
+/**
+ * The guide: everything on the site that teaches, on one page, set like a quick reference
+ * handbook and getting deeper as it goes. It opens with what to know by heart, then four parts:
+ * why it matters, playing a set, the rig and the recording, under the hood. DJs and crew are often
+ * the same people, so nothing is split by role. The tools for doing the job live on /night/ and
+ * /setup/.
+ */
+import ColourCode from '../components/ColourCode.astro';
+import Contents, { type ContentsEntry } from '../components/Contents.astro';
+import Hero from '../components/Hero.astro';
+import KnowByHeart from '../components/KnowByHeart.astro';
+import MeterAnatomy from '../components/MeterAnatomy.astro';
+import Myths from '../components/Myths.astro';
+import Part from '../components/Part.astro';
+import Procedure from '../components/Procedure.astro';
+import Tabs from '../components/Tabs.astro';
+import Term from '../components/Term.astro';
+import BlendLab from '../islands/BlendLab.svelte';
+import Headroom from '../islands/Headroom.svelte';
+import HearIt from '../islands/HearIt.svelte';
+import HomeVsClub from '../islands/HomeVsClub.svelte';
+import MeterCheck from '../islands/MeterCheck.svelte';
+import Predict from '../islands/Predict.svelte';
+import SignalPath from '../islands/SignalPath.svelte';
+import TwoCeilings from '../islands/TwoCeilings.svelte';
+import Base from '../layouts/Base.astro';
+import { GLOSSARY } from '../lib/glossary';
+import { MYTHS } from '../lib/myths';
+import { DJ_RULES, GUIDE_RULES } from '../lib/rules';
+import { GUIDE, section } from '../lib/sections';
+import { SOURCES } from '../lib/sources';
+import { href } from '../lib/url';
+
+const XDJ_MANUAL =
+  'https://downloads.support.alphatheta.com/manuals/all-in-one-dj-systems/XDJ-RX2/XDJ-RX2_DRI1479A_manual.pdf';
+
+/** A section's heading: its number and title, from the one list. */
+const h = (id: string) => `${section(id).number} ${section(id).title}`;
+
+const contents: ContentsEntry[] = [
+  ...GUIDE.map((p) => ({
+    id: p.id,
+    number: Number(p.number),
+    label: p.title,
+    ...(p.minutes ? { minutes: p.minutes } : {}),
+    subs: p.sections.map((s) => ({ id: s.id, label: `${s.number} ${s.short ?? s.title}` })),
+  })),
+  {
+    id: 'reference',
+    label: 'Words and sources',
+    subs: [
+      { id: 'glossary', label: 'Words' },
+      { id: 'sources', label: 'Sources' },
+    ],
+  },
+];
+const tabs = GUIDE.map((p) => ({ id: p.id, number: Number(p.number), label: p.title }));
+---
+
+<Base
+  title="Out of the red"
+  description="Every set here is recorded. What to know by heart at the mixer and on crew, then why it works: the meters, blends, the record level and what the demos assume."
+>
+  <Hero>
+    <p class="lede">
+      Every set here is recorded. A recording that’s too quiet can be turned up afterwards, but crunch from the red
+      stays in the file for good.
+    </p>
+  </Hero>
+  <Tabs parts={tabs} />
+
+  <div class="guide flow">
+    <div class="opening subflow">
+      <div class="boxes">
+        <KnowByHeart title="Know by heart when you’re playing" rules={DJ_RULES} />
+        <KnowByHeart title="Know by heart on crew" rules={GUIDE_RULES.slice(3)} start={4} />
+      </div>
+      <div class="aside">
+        <ColourCode />
+        <p class="tonight">
+          On crew tonight? The <a href={href('/night/')}>night page</a> has the checklists for doors, changeovers and
+          after, and the <a href={href('/night/#fixes')}>drills for when something goes wrong</a>.
+        </p>
+      </div>
+    </div>
+
+    <Contents entries={contents} rows={contents.length + 1} drills />
+
+    <Part
+      id="why"
+      number={1}
+      title="Why it matters"
+      meta="About a minute, for everyone."
+      objective="Know why the recording needs more care than the room."
+    >
+      <Predict client:visible />
+      <p>
+        Every set here is recorded on a <Term of="howler" then=",">Howler</Term> a small recorder that stores exactly
+        what the mixer sends it.
+      </p>
+      <p>
+        When a sound goes into the red, the mixer can slice the tops of its waves flat. That’s
+        <Term of="clipping" then=",">clipping</Term> and it adds a harsh crunch to the file. Turning anything down
+        afterwards makes the crunch quieter, but it can’t take it out.
+      </p>
+      <p>
+        On the night, big speakers, a loud room and tired ears often cover the crunch. On headphones the next day,
+        nothing covers it. So the mixer has to stay clean, and the room gets its volume from the crew.
+      </p>
+      <p class="signpost">
+        If you’re playing tonight, <a href="#playing">part 2</a> covers the whole job at the mixer. If you’re setting up
+        the rig, <a href="#rig">part 3</a> explains it and the <a href={href('/setup/')}>setup page</a> walks you
+        through it.
+      </p>
+    </Part>
+
+    <Part
+      id="playing"
+      number={2}
+      title="Playing a set"
+      meta="About 5 minutes, for anyone at the mixer."
+      objective="Keep every track and every blend out of the red."
+    >
+      <Procedure
+        id="trim"
+        number={section('trim').number}
+        title={section('trim').title}
+        kind="Every track"
+        caution="Red on a channel meter may distort the sound, and the crunch stays in the recording."
+        steps={[
+          { challenge: 'Channel fader', response: 'down' },
+          { challenge: 'HI, MID and LOW', response: '12 o’clock' },
+          { challenge: 'Track', response: 'cued, loudest part playing' },
+          {
+            challenge: 'TRIM',
+            response: 'first or second orange',
+            note: 'Start at 12 o’clock and turn until the loudest part lights the first or second orange light, with red dark.',
+          },
+          {
+            challenge: 'Channel fader',
+            response: 'up',
+            note: 'When you use the EQ, cut rather than boost: each knob can add up to 6 dB.',
+          },
+        ]}
+      >
+        <p class="source">
+          The <span class="nobr">XDJ-RX2</span> manual gives the same step: turn TRIM “to confirm that the orange indicator
+          lights up at the highest volume for the track” (<a href={`${XDJ_MANUAL}#page=31`} rel="external">page 31</a>).
+        </p>
+      </Procedure>
+      <p>
+        Do this for every track. Tracks arrive at different levels, and when you play from USB the
+        <span class="nobr">XDJ-RX2</span> doesn’t even them out. Set TRIM by the meter: where the knob points tells you
+        nothing about the level.
+      </p>
+      <p>
+        Bring each new track in at the level of the last one, not a little louder. For a big moment you can lift one,
+        then ease its TRIM back once it’s playing.
+      </p>
+
+      <h3 id="meters">{h('meters')}</h3>
+      <p>
+        The <span class="nobr">XDJ-RX2</span> has three columns of lights. The <Term of="channelMeter">side ones</Term>
+        each show one deck, before its fader, so moving a fader doesn’t move them. The <Term of="middleMeter"
+          >middle pair</Term
+        > shows the mix going out to the speakers and the recording.
+      </p>
+      <MeterAnatomy />
+      <p>
+        Pioneer’s manual says red means the sound may distort, and it doesn’t say how much room is left above the red.
+        Any crunch stays in the recording, so all three columns stay out of the red. For what the makers do and don’t
+        publish, see <a href="#red-top">{h('red-top')}</a>.
+      </p>
+      <p class="margin-note">
+        <strong>CLIP</strong>, above the middle meters, blinks slowly when the sound is “about to be distorted” and fast
+        when it “is distorted” (<a href={`${XDJ_MANUAL}#page=27`} rel="external">XDJ-RX2 manual, page 27</a>).
+      </p>
+
+      <h3 id="blends">{h('blends')}</h3>
+      <p>
+        Two tracks that each peak on orange can reach red together. When their kicks line up, as they do in a good blend,
+        the peaks add: two equal peaks landing at once are twice as high, +6&nbsp;dB, which is two lights up the meter.
+      </p>
+      <p class="margin-note">
+        Unrelated sounds, like pads and noise, add about 3&nbsp;dB on average. Lined-up kicks are the worst case because
+        they land together.
+      </p>
+      <Procedure
+        title="Middle meters reach red"
+        kind="Fix"
+        level={4}
+        steps={[
+          {
+            challenge: 'A channel fader',
+            response: 'down a notch',
+            note: 'The incoming one while it comes in, or either once both are up. This is the quickest fix mid-blend.',
+          },
+          {
+            challenge: 'Basslines',
+            response: 'one at a time',
+            note: 'Bring the new track in with its LOW turned down, then swap the LOWs at the drop.',
+          },
+          { challenge: 'EQ', response: 'cut, don’t boost', note: 'Each EQ knob can add up to 6 dB.' },
+        ]}
+      />
+      <p>
+        This is why the target is the first or second orange light: a track that peaks there leaves room for a blend. In
+        the lab below, bring deck 2 all the way in without the middle meters reaching red.
+      </p>
+      <div class="wide lab"><BlendLab client:visible /></div>
+
+      <h3 id="knobs">{h('knobs')}</h3>
+      <p>
+        Everything before the middle meters belongs to the DJ. The controls after them set the room and the recording,
+        so the crew set them once and tape them.
+      </p>
+      <div class="whose">
+        <div>
+          <h4 id="yours">Yours</h4>
+          <dl>
+            <div><dt>TRIM</dt><dd>How hot each track comes into its channel.</dd></div>
+            <div><dt>HI, MID and LOW</dt><dd>The EQ. Cut rather than boost.</dd></div>
+            <div><dt>Channel faders</dt><dd>The mix.</dd></div>
+            <div><dt>BOOTH MONITOR</dt><dd>The booth monitors, and nothing else. Tape tag: MONITOR.</dd></div>
+          </dl>
+        </div>
+        <div>
+          <h4 id="crews">The crew’s</h4>
+          <dl>
+            <div>
+              <dt><Term of="masterLevel">MASTER LEVEL</Term></dt>
+              <dd>The speakers and the recording together. Fully up, taped REC.</dd>
+            </div>
+            <div><dt>MASTER ATT</dt><dd>In the UTILITY settings. Turns the recording down if the Howler blinks red.</dd></div>
+            <div><dt>Amp gain knobs</dt><dd>The room’s volume. Tape tag: RIG.</dd></div>
+          </dl>
+        </div>
+      </div>
+      <p>
+        For more volume in the room, ask the crew: they turn the amps up. The full signal path, from each deck to the
+        speakers, the recording and the booth monitors, is in <a href="#signal">{h('signal')}</a>.
+      </p>
+
+      <h3 id="self-check">{h('self-check')}</h3>
+      <p>
+        Five questions. For each, say how sure you are: the answers you were sure of and got wrong are the ones you’ll
+        remember.
+      </p>
+      <MeterCheck client:visible />
+
+      <h3 id="myths">{h('myths')}</h3>
+      <p>Some of it is half right. The table says which half, with the manufacturer’s page where there is one.</p>
+      <Myths myths={MYTHS} />
+    </Part>
+
+    <Part
+      id="rig"
+      number={3}
+      title="The rig and the recording"
+      meta="About 8 minutes, for crew and anyone curious."
+      objective="Know where the sound can clip on its way to the file, and which knob fixes each."
+    >
+      <h3 id="signal">{h('signal')}</h3>
+      <p>
+        Everything a DJ does happens before the middle meters. After them the mix leaves the <span class="nobr"
+          >XDJ-RX2</span
+        > three ways: MASTER 1 to the <Term of="driveRack" then=",">DriveRack PA2</Term> the amps and the speakers;
+        MASTER 2 to the Howler; and BOOTH to the booth monitors.
+      </p>
+      <div class="wide lab"><SignalPath client:visible /></div>
+      <p>
+        MASTER LEVEL turns MASTER 1 and MASTER 2 up and down together, so it sets the room and the recording at once.
+        That’s why it stays fully up and taped, and the room’s volume comes from the amps and the DriveRack.
+      </p>
+
+      <h3 id="two-ceilings">{h('two-ceilings')}</h3>
+      <p>
+        The mixer has a ceiling at its red light, and the Howler has its own ceiling after MASTER LEVEL. No knob after
+        the mixer can remove crunch made in the mixer. Crunch made at the Howler’s input goes when the recording is
+        turned down. The lab takes five short steps, about three minutes, with sound.
+      </p>
+      <div class="wide lab"><TwoCeilings client:visible /></div>
+
+      <h3 id="hear">{h('hear')}</h3>
+      <p>
+        Three blind rounds. Each plays the same loop twice, once clean and once clipped, matched for loudness so the
+        louder one can’t win on volume alone. Headphones help.
+      </p>
+      <div class="wide lab"><HearIt client:visible /></div>
+
+      <h3 id="record-level">{h('record-level')}</h3>
+      <p>
+        The Howler has no input knob, just its LEVEL light: blinking green is right and blinking red is too hot. So
+        whatever feeds it sets the record level. Here that’s MASTER LEVEL, fully up, taped and marked REC, set once on a
+        blend hotter than any DJ should send.
+      </p>
+      <p>
+        If the Howler still blinks red on that blend, the crew turn the recording down with <Term of="att">MASTER ATT</Term
+        > in the mixer’s UTILITY settings, and bring the room back up at the amps. MASTER LEVEL comes down only as a last
+        resort, because the middle meters read after it: turned down, it would hide a hot blend from the DJs.
+      </p>
+      <p>
+        The <a href={href('/setup/#record-level')}>setup page</a> has the steps, with a practice rig.
+      </p>
+      <table class="cases">
+        <caption>Three recordings, and what fixes each</caption>
+        <thead>
+          <tr>
+            <th scope="col">What you hear</th>
+            <th scope="col">Where it clipped</th>
+            <th scope="col">What fixes it</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Crunch in the room and the recording</td>
+            <td>In the mixer: channels or the mix in the red</td>
+            <td>Only TRIM, EQ and the faders</td>
+          </tr>
+          <tr>
+            <td>A clean room, a crunchy recording</td>
+            <td>At the Howler’s input</td>
+            <td>Turning the recording down, with MASTER ATT</td>
+          </tr>
+          <tr>
+            <td>Clean in both</td>
+            <td>Nowhere</td>
+            <td>Nothing to fix. Turn the file up afterwards.</td>
+          </tr>
+        </tbody>
+      </table>
+    </Part>
+
+    <Part
+      id="hood"
+      number={4}
+      title="Under the hood"
+      meta="About 10 minutes, for the curious."
+      objective="Know why the rules work, and which parts are the makers’ facts and which are our assumptions."
+    >
+      <h3 id="worse">{h('worse')}</h3>
+      <p>Several things add up. A couple are about the recording, and most are about how we listen.</p>
+      <ol class="reasons">
+        <li>
+          The recording can take damage the room didn’t. The recorder’s input has a ceiling of its own, and a blinking
+          red LEVEL light on the Howler shows when it’s reached.
+        </li>
+        <li>
+          Hearing changes with volume. At club level, bass sounds nearly as loud as the mids. At home level the bass falls
+          away much faster than everything else, while clipping’s grit sits higher up, where hearing stays sharp, so it
+          stands out more.
+        </li>
+        <li>
+          Loud bass hides the sounds just above it, including some of its own distortion. Played quietly, it can’t.
+        </li>
+        <li>
+          Big speakers at full volume make far more distortion of their own than any mixer, especially in the sub-bass.
+          With the room, the crowd and the dancing, the mixer’s crunch is one layer among many.
+        </li>
+        <li>
+          The recording is heard up close: on headphones, in a quiet room, with full attention, again and again. Phones
+          and laptops lose the deep bass but keep its crunch.
+        </li>
+        <li>And the recording lasts, long after the night.</li>
+      </ol>
+      <p>
+        The ear’s part is well measured. The room’s part is reasoned from how speakers and rooms behave: nobody has
+        published a study comparing clipping heard in a club with the same clipping heard on a recording.
+      </p>
+      <div class="wide lab"><HomeVsClub client:visible /></div>
+
+      <h3 id="undo">{h('undo')}</h3>
+      <p>
+        Clipping throws away the one thing a repair would need: how far above the ceiling each peak wanted to go. A peak
+        that wanted to be a little over and one that wanted to be three times over are stored as the same flat line.
+      </p>
+      <p>
+        Repair tools redraw the missing tops by guessing from the shape of the wave either side. That works for a few
+        short clicks, and struggles with long runs of flat tops, dense club mixes and audio processed after it clipped.
+        Newer AI restorers produce a plausible version, not the original. It’s like recovering the highlights in a
+        blown-out photo: it can rebuild a few pixels, not a whole sky.
+      </p>
+
+      <h3 id="quiet">{h('quiet')}</h3>
+      <p>
+        Each extra bit in a file doubles the range of values it can hold, which is 6&nbsp;dB per bit. A CD’s 16 bits span
+        about 96&nbsp;dB. The Howler’s <Term of="bitDepth">24 bits</Term> span about 144&nbsp;dB, more than any real
+        electronics can deliver.
+      </p>
+      <p>
+        The hiss in a DJ recording comes from the gear and the tracks, not from the file. So a recording that peaks
+        around −12&nbsp;<Term of="dbfs">dBFS</Term> gives away two bits nobody was using. Turned up afterwards, its hiss
+        stays far below anything you’d hear under a kick drum.
+      </p>
+      <p>
+        That much room is needed because a blend can add 6&nbsp;dB, a bass boost nearly another 6, and nobody knows when
+        the big moment is coming.
+      </p>
+      <div class="wide lab"><Headroom client:visible /></div>
+      <p>
+        When you turn a file up, stop at −1&nbsp;dB true peak rather than 0. Waves can swing slightly higher between
+        samples, and a file that touches the very top can clip again when it’s turned into an MP3.
+      </p>
+
+      <h3 id="loud">{h('loud')}</h3>
+      <p>
+        A volume knob changes the size of a wave. A ceiling changes its shape, and nothing afterwards can change it back.
+      </p>
+      <p>
+        Clipping does make a track sound louder at the same peak level, because it packs the wave denser. That’s why it
+        can feel exciting in the moment, and why every comparison on this site matches loudness first.
+      </p>
+      <p>
+        A <Term of="limiter">limiter</Term> is an automatic volume knob that moves very fast. It turns everything down for
+        a moment when a peak would cross its line, so the wave mostly keeps its shape, where a clipper slices off whatever
+        sticks out. The DriveRack’s limiters sit just before the amps and, set up for our amps and speakers, protect
+        both. They never touch the recording, and they can’t undo clipping from the mixer.
+      </p>
+
+      <h3 id="red-top">{h('red-top')}</h3>
+      <p>
+        Some mixers have room above their first red light. Nobody publishes how much the <span class="nobr">XDJ-RX2</span>
+        has, so here is what the makers do publish, and what this site assumes where they don’t.
+      </p>
+      <dl class="facts">
+        <div>
+          <dt>Red on the meters</dt>
+          <dd>
+            <span class="who">Pioneer:</span> turn TRIM until the orange light shows at a track’s loudest, and keep red
+            dark, “or the sound may be distorted” (<a href={`${XDJ_MANUAL}#page=31`} rel="external">page 31</a>).
+          </dd>
+          <dd><span class="who">We assume:</span> red is the top.</dd>
+        </div>
+        <div>
+          <dt>CLIP</dt>
+          <dd>
+            <span class="who">Pioneer:</span> blinking slowly, the sound is “about to be distorted”; blinking fast, it
+            “is distorted” (<a href={`${XDJ_MANUAL}#page=27`} rel="external">page 27</a>).
+          </dd>
+          <dd><span class="who">We assume:</span> any blinking is too late for the recording.</dd>
+        </div>
+        <div>
+          <dt>Room above red</dt>
+          <dd><span class="who">Pioneer:</span> no figure published.</dd>
+          <dd>
+            <span class="who">We assume:</span> none you can use. A blend adds up to 6&nbsp;dB and an EQ boost another
+            6, so any margin goes in one bar.
+          </dd>
+        </div>
+        <div>
+          <dt>A limiter in the mixer</dt>
+          <dd>
+            <span class="who">Pioneer:</span> none listed. Its settings have attenuators for MASTER and BOOTH, not a
+            limiter (<a href={`${XDJ_MANUAL}#page=32`} rel="external">page 32</a>).
+          </dd>
+          <dd><span class="who">We assume:</span> nothing catches a hot mix before it reaches the recording.</dd>
+        </div>
+        <div>
+          <dt>The Howler’s input</dt>
+          <dd>
+            <span class="who">Howler:</span> says the mixer distorts first (<a
+              href="https://howler-audio.com/pages/faq"
+              rel="external">FAQ</a
+            >), but publishes no maximum input level.
+          </dd>
+          <dd>
+            <span class="who">We assume:</span> it overloads a little below the mixer’s red with MASTER LEVEL fully up.
+            Its LEVEL light is the check.
+          </dd>
+        </div>
+      </dl>
+      <p>
+        Room inside the mixer wouldn’t save the file anyway: the sound still leaves through an output and goes into the
+        Howler, and each has a ceiling of its own.
+      </p>
+
+      <h3 id="float">{h('float')}</h3>
+      <p>
+        Some recorders save 32-bit float files. They run two converters at once, one for quiet sounds and one for loud,
+        so the file’s ceiling is too high to hit. If such a recording looks clipped, turning it down later brings the
+        waves back.
+      </p>
+      <p>
+        They can’t fix anything that clipped before the recorder: a clipped mixer gets recorded perfectly, flat tops and
+        all. And their input circuit still has a voltage limit. A float recorder is a safety net for the night someone
+        bumps a knob, and the channel meters still matter.
+      </p>
+
+      <h3 id="ears">{h('ears')}</h3>
+      <p>
+        Clubs are loud enough to damage hearing over a night. The World Health Organization asks venues to keep the
+        A-weighted average below 100&nbsp;dB over any 15 minutes, and says even that doesn’t remove all risk. Every
+        3&nbsp;dB doubles the sound energy.
+      </p>
+      <p>
+        DJs and crew stand next to monitors for hours. Wear proper earplugs: flat-response ones keep the mix clear. Take
+        breaks somewhere quiet, and keep the monitors no louder than they need to be. Tired ears are also why levels
+        creep up late in the night.
+      </p>
+      <p>
+        On this site nothing plays until you press a button, everything starts quietly, and sound stops when you switch
+        tabs.
+      </p>
+
+      <h3 id="model">{h('model')}</h3>
+      <p>
+        The music is synthesised in your browser (a kick, a bassline, hats and chords), so every device hears the same
+        thing. Real tracks clip less neatly, but in the same way.
+      </p>
+      <p>
+        The mixer’s ceiling is its red light. Pioneer’s manual only says red “may” distort and doesn’t say how much room
+        is left above it, so the demos treat red as the top: from the booth, nobody can check the margin.
+      </p>
+      <p>
+        Howler says the mixer distorts before the recorder does, but doesn’t say which mixer outputs it tested; it
+        recommends a REC OUT, which the <span class="nobr">XDJ-RX2</span> doesn’t have, and it doesn’t publish its input
+        limit. So the demos assume the Howler overloads a little below the mixer’s red with MASTER LEVEL fully up, the
+        worse case. On the night, its LEVEL light is the only way to tell.
+      </p>
+      <p>
+        The waveforms are zoomed in to a few hundredths of a second, so you can see their shape. Clean and clipped
+        versions are matched for loudness before you compare them, because the louder one nearly always sounds better at
+        first.
+      </p>
+    </Part>
+
+    <Part id="reference" title="Words and sources">
+      <h3 id="glossary">Words</h3>
+      <dl class="glossary">
+        {Object.entries(GLOSSARY).map(([key, g]) => (
+  <div id={`word-${key}`}>
+    <dt>{g.term}</dt>
+    <dd>{g.gloss}</dd>
+  </div>
+))}
+      </dl>
+
+      <h3 id="sources">Sources</h3>
+      <p>
+        Checked in September 2026. Manufacturer documents come first. Where Pioneer or Howler don’t publish something,
+        this site says so rather than guessing.
+      </p>
+      {SOURCES.map((group) => (
+  <div class="source-group">
+    <h4>{group.title}</h4>
+    <ul class="sources">
+      {group.sources.map((s) => (
+        <li>
+          <a href={s.url} rel="external">
+            {s.title}
+          </a>
+          <span class="publisher">{s.publisher}</span>
+          {s.note && <span class="note-text">{s.note}</span>}
+        </li>
+      ))}
+    </ul>
+  </div>
+))}
+    </Part>
+  </div>
+</Base>
+
+<style>
+  .guide {
+    row-gap: 0;
+  }
+
+  .opening {
+    grid-column: full;
+    row-gap: 1rem;
+    margin-block-start: clamp(1.5rem, 1.1rem + 1.8vw, 2.5rem);
+  }
+
+  .boxes,
+  .aside {
+    display: grid;
+    gap: 1rem;
+    align-content: start;
+  }
+
+  @media (min-width: 80rem) {
+    .opening {
+      grid-column: rail-end / full-end;
+    }
+
+    .aside {
+      grid-column: notes;
+      grid-row: 1;
+    }
+  }
+
+  .tonight {
+    font-size: var(--text-sm);
+    line-height: 1.55;
+  }
+
+  /* The index follows the opening on phones; on wide screens it moves into the rail. */
+  .guide > :global(.toc) {
+    margin-block-start: 2rem;
+  }
+
+  @media (min-width: 80rem) {
+    .guide > :global(.toc) {
+      margin-block-start: clamp(1.5rem, 1.1rem + 1.8vw, 2.5rem);
+    }
+  }
+
+  .signpost {
+    font-size: var(--text-sm);
+    line-height: 1.55;
+  }
+
+  .lab {
+    margin-block: 0.75rem;
+  }
+
+  .reasons {
+    display: grid;
+    gap: 0.6rem;
+    margin: 0;
+    padding-left: 1.4rem;
+  }
+
+  .reasons li::marker {
+    font-weight: 700;
+  }
+
+  .cases {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+    line-height: 1.45;
+  }
+
+  .cases caption {
+    padding-block-end: 0.5rem;
+    font-weight: 700;
+    text-align: left;
+  }
+
+  .cases th {
+    padding: 0.45rem 0.6rem;
+    background: var(--strip);
+    color: var(--on-strip);
+    font-weight: 700;
+    text-align: left;
+    vertical-align: bottom;
+  }
+
+  .cases td {
+    padding: 0.55rem 0.6rem;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+
+  /* Published beside assumed: each row the thing, what the maker says, what we assume. */
+  .facts {
+    display: grid;
+    margin: 0.25rem 0 0;
+    border-top: 2px solid var(--ink);
+  }
+
+  .facts > div {
+    display: grid;
+    gap: 0.3rem;
+    padding-block: 0.8rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .facts dt {
+    font-weight: 700;
+    color: var(--ink-bright);
+  }
+
+  .facts dd {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.55;
+  }
+
+  .who {
+    font-weight: 700;
+  }
+
+  @media (min-width: 40rem) {
+    .facts > div {
+      grid-template-columns: 9.5rem minmax(0, 1fr);
+      column-gap: 1.25rem;
+      align-content: start;
+    }
+
+    /* The label runs beside both lines, so a two-line label doesn't push "We assume" down. */
+    .facts dt {
+      grid-row: span 2;
+    }
+
+    .facts dd {
+      grid-column: 2;
+    }
+  }
+
+  .glossary {
+    display: grid;
+    margin: 0;
+    border-top: 2px solid var(--ink);
+  }
+
+  .glossary > div {
+    display: grid;
+    gap: 0.15rem;
+    padding-block: 0.6rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  @media (min-width: 40rem) {
+    .glossary > div {
+      grid-template-columns: 11rem 1fr;
+      gap: 1rem;
+    }
+  }
+
+  .glossary dt {
+    font-weight: 700;
+  }
+
+  .glossary dd {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.55;
+  }
+
+  .source-group h4 {
+    margin-block: 0.75rem 0.6rem;
+    font-family: var(--font-display);
+    font-size: var(--text-base);
+    color: var(--ink-bright);
+  }
+
+  .sources {
+    display: grid;
+    gap: 0.7rem;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .sources li {
+    display: grid;
+    gap: 0.1rem;
+  }
+
+  .publisher,
+  .note-text {
+    font-size: var(--text-sm);
+    color: var(--ink-2);
+  }
+  /* Whose knobs are whose: two lists side by side once there's room. */
+  .whose {
+    display: grid;
+    gap: 1rem 2rem;
+  }
+
+  @media (min-width: 40rem) {
+    .whose {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .whose h4 {
+    padding-block-end: 0.35rem;
+    border-bottom: 2px solid var(--ink);
+    font-family: var(--font-display);
+    font-size: var(--text-base);
+  }
+
+  .whose dl {
+    margin: 0;
+  }
+
+  .whose dl > div {
+    padding-block: 0.5rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .whose dt {
+    font-weight: 700;
+  }
+
+  .whose dd {
+    margin: 0.1rem 0 0;
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+</style>

@@ -1,0 +1,112 @@
+---
+/**
+ * One part of the guide, opened like a section of a quick reference handbook: a black bar with the
+ * part's number and title, then how long it takes and who it's for, then its objective, what a
+ * reader can do by the end. The guide gets deeper part by part.
+ *
+ * Left unnamed, so it isn't a landmark: the h2 is how readers jump here, and the index links to it.
+ *
+ * Its children sit on the guide's own columns (a subgrid): the reading column by default, .wide
+ * for a lab whose width shows something, and .margin-note for a note beside the paragraph before
+ * it on wide screens.
+ */
+interface Props {
+  id: string;
+  /** Its place in the guide, like 2. Leave out for the reference section at the end. */
+  number?: number;
+  title: string;
+  /** "About 5 minutes, for anyone at the mixer." */
+  meta?: string;
+  /** What a reader can do by the end of the part. */
+  objective?: string;
+}
+
+const { id, number, title, meta, objective } = Astro.props;
+---
+
+<section class="part subflow" id={id}>
+  <h2 class="bar" id={`${id}-title`}>
+    {number && <span class="no">{number}</span>}
+    <span>{title}</span>
+  </h2>
+  {(meta || objective) && (
+  <div class="lines">
+    {meta && <p class="meta">{meta}</p>}
+    {objective && <p class="objective"><em>Objective.</em> {objective}</p>}
+  </div>
+)}
+  <slot />
+</section>
+
+<style>
+  .part {
+    grid-column: full;
+    align-content: start;
+    row-gap: 1rem;
+    margin-block-start: var(--space-section);
+  }
+
+  .bar {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75em;
+    padding: 0.5rem 0.8rem;
+    background: var(--strip);
+    color: var(--on-strip);
+    font-size: var(--text-h2);
+    line-height: 1.2;
+    scroll-margin-top: 4rem;
+  }
+
+  .lines {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .meta {
+    font-size: var(--text-sm);
+    color: var(--ink-3);
+  }
+
+  .objective {
+    font-size: var(--text-lede);
+    line-height: 1.45;
+  }
+
+  .objective em {
+    font-weight: 700;
+  }
+
+  /* Subsections: a little air above, like the headings in a manual. */
+  .part > :global(h3) {
+    margin-block-start: 1.5rem;
+    scroll-margin-top: 4rem;
+  }
+
+  @media (min-width: 80rem) {
+    .part {
+      /* Beside the guide's index rail, never under it. */
+      grid-column: rail-end / full-end;
+    }
+
+    .bar,
+    .part > :global(h3) {
+      scroll-margin-top: 1.5rem;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .bar {
+      forced-color-adjust: none;
+      background: CanvasText;
+      color: Canvas;
+    }
+  }
+
+  @media print {
+    .bar {
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
+  }
+</style>

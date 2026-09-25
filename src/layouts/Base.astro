@@ -1,0 +1,91 @@
+---
+import { Font } from 'astro:assets';
+import '../styles/tokens.css';
+import '../styles/global.css';
+import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SoundBar from '../islands/SoundBar.svelte';
+import { href } from '../lib/url';
+
+interface Props {
+  /** The page name, shown in the tab. The home page passes the site name alone. */
+  title: string;
+  description: string;
+  /** Set on pages that shouldn't carry the site chrome, like the print sheet. */
+  bare?: boolean;
+  /** Where search engines should look instead, for an old address that forwards (with the base path). */
+  canonicalPath?: string;
+}
+
+const { title, description, bare = false, canonicalPath } = Astro.props;
+const siteName = 'Out of the red';
+const fullTitle = title === siteName ? siteName : `${title} – ${siteName}`;
+const canonical = new URL(canonicalPath ?? Astro.url.pathname, Astro.site);
+const ogImage = new URL(href('/og.png'), Astro.site);
+---
+
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <!-- The site follows the reader's system setting: the printed card by day, the cockpit display by night. -->
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0c0e" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href={href('/favicon.svg')} type="image/svg+xml" />
+    <link rel="apple-touch-icon" href={href('/apple-touch-icon.png')} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="The words Out of the red over a row of mixer meter lights, lit green and orange, with the red light dark."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <Font cssVariable="--font-body" preload={[{ style: 'normal' }]} />
+    <Font cssVariable="--font-display" />
+    <Font cssVariable="--font-label" />
+    <Font cssVariable="--font-stencil" />
+    <slot name="head" />
+  </head>
+  <body>
+    {!bare && (
+  <a class="skip" href="#main">
+    Skip to content
+  </a>
+)}
+    {!bare && <SiteHeader />}
+    <main id="main">
+      <slot />
+    </main>
+    {!bare && <SiteFooter />}
+    {!bare && <SoundBar client:idle />}
+  </body>
+</html>
+
+<style>
+  .skip {
+    position: absolute;
+    left: var(--gutter);
+    top: 0.75rem;
+    z-index: 10;
+    padding: 0.6rem 0.9rem;
+    border-radius: var(--radius-control);
+    background: var(--ink);
+    color: var(--paper);
+    font-weight: 700;
+    transform: translateY(-200%);
+  }
+
+  .skip:focus-visible {
+    transform: none;
+  }
+</style>

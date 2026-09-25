@@ -1,0 +1,184 @@
+---
+/**
+ * A normal procedure, set like a quick reference handbook's checklist card: a black title strip
+ * with its number and kind, a caution before the steps it guards, then each step as a challenge
+ * and its response joined by leader dots. The response is the action, in the action colour. A
+ * note on a step sits under it; anything else (a source, a figure) goes in the slot at the end.
+ */
+interface Step {
+  challenge: string;
+  response: string;
+  note?: string;
+}
+
+interface Props {
+  /** The card's anchor, for links from the chat and the rules. */
+  id?: string;
+  /** Its number in the guide, like "2.1". */
+  number?: string;
+  title: string;
+  /** What kind of procedure: Normal, Once, Test. */
+  kind?: string;
+  /** Said before the steps, prefixed CAUTION. */
+  caution?: string;
+  steps: Step[];
+  /** A note after the steps. */
+  note?: string;
+  level?: 2 | 3 | 4;
+}
+
+const { id, number, title, kind = 'Normal', caution, steps, note, level = 3 } = Astro.props;
+const Heading = `h${level}` as 'h2' | 'h3' | 'h4';
+const titleId = id ? `${id}-title` : undefined;
+---
+
+<section class="proc" id={id}>
+  <Heading class="strip" id={titleId}>
+    <span>{number && <span class="no">{number}</span>}{number && ' '}{title}</span>
+    <span class="kind"><span class="visually-hidden">, </span>{kind}</span>
+  </Heading>
+  <div class="body">
+    {caution && (
+  <p class="caution"><strong>Caution.</strong> {caution}</p>
+)}
+    <ol class="steps">
+      {steps.map((s) => (
+  <li class="step">
+    <p class="line">
+      <span class="challenge">{s.challenge}</span>
+      <span class="dots" aria-hidden="true"></span>
+      <span class="response">{s.response}</span>
+    </p>
+    {s.note && <p class="step-note">{s.note}</p>}
+  </li>
+))}
+    </ol>
+    {note && (
+  <p class="note"><strong>Note.</strong> {note}</p>
+)}
+    <slot />
+  </div>
+</section>
+
+<style>
+  .proc {
+    display: grid;
+    border: 2px solid var(--ink);
+    scroll-margin-top: 1rem;
+  }
+
+  .strip {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.55rem 0.8rem;
+    background: var(--strip);
+    color: var(--on-strip);
+    font-size: var(--text-rule);
+    line-height: 1.3;
+  }
+
+  .no {
+    margin-inline-end: 0.35em;
+  }
+
+  .kind {
+    flex: none;
+    font-family: var(--font-body);
+    font-weight: 400;
+    font-size: var(--text-sm);
+  }
+
+  .body {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.8rem 0.8rem 0.9rem;
+  }
+
+  .caution {
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+
+  .caution strong {
+    letter-spacing: 0.02em;
+  }
+
+  .steps {
+    display: grid;
+    gap: 0.15rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: step;
+  }
+
+  .step {
+    display: grid;
+    grid-template-columns: 1.6rem minmax(0, 1fr);
+    padding-block: 0.35rem;
+    counter-increment: step;
+  }
+
+  .step::before {
+    content: counter(step);
+    font-weight: 700;
+  }
+
+  .line {
+    grid-column: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.4rem;
+    line-height: 1.4;
+  }
+
+  .challenge {
+    font-weight: 700;
+  }
+
+  .dots {
+    flex: 1 1 2.5rem;
+    min-width: 2.5rem;
+    border-bottom: 2px dotted var(--ink-4);
+    transform: translateY(-0.3em);
+  }
+
+  .response {
+    margin-inline-start: auto;
+    font-weight: 700;
+    color: var(--action);
+    text-align: right;
+  }
+
+  .step-note {
+    grid-column: 2;
+    margin-block-start: 0.15rem;
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+
+  .note {
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+
+  .body > :global(.source) {
+    padding-block-start: 0.6rem;
+    border-block-start: 1px solid var(--rule);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+
+  @media (forced-colors: active) {
+    .strip {
+      forced-color-adjust: none;
+      background: CanvasText;
+      color: Canvas;
+    }
+  }
+</style>

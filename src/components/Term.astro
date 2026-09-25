@@ -1,0 +1,93 @@
+---
+/**
+ * A word with a tap-to-reveal meaning. Uses the popover API, so it works on touch as well as with
+ * a keyboard; where anchor positioning is supported the bubble sits under the word.
+ */
+import { GLOSSARY, type GlossaryKey } from '../lib/glossary';
+
+interface Props {
+  /** Which glossary entry to show. */
+  of: GlossaryKey;
+  /** Punctuation straight after the word, like ",". It's kept on the word's line. */
+  then?: string;
+}
+
+const { of, then } = Astro.props;
+const entry = GLOSSARY[of];
+// Count the terms on each page, so every build gives the same ids and unchanged pages stay
+// byte-identical.
+Astro.locals.termCount = (Astro.locals.termCount ?? 0) + 1;
+const id = `term-${of}-${Astro.locals.termCount}`;
+const text = Astro.slots.has('default') ? await Astro.slots.render('default') : entry.term;
+// The markup starts right at the <button>, and the button and bubble share one line: any
+// whitespace around them would show as a stray space, and one after a no-break space would let
+// a number wrap away from its unit. Browsers may break a line straight after a button, whatever
+// follows it, so punctuation that follows the word comes in as `then`, and the two can't part.
+---
+<span class={then ? 'term-line' : undefined}><button type="button" class="term" popovertarget={id} set:html={text} />{then}</span><span class="term-pop" id={id} popover><strong>{entry.term}</strong> {entry.gloss}</span>
+
+<style>
+  .term-line {
+    white-space: nowrap;
+  }
+
+  .term {
+    all: unset;
+    cursor: help;
+    color: inherit;
+    text-decoration: underline dotted 0.1em;
+    text-decoration-color: color-mix(in oklab, currentColor 55%, transparent);
+    text-underline-offset: 0.2em;
+    border-radius: 2px;
+  }
+
+  .term:hover {
+    text-decoration-color: currentColor;
+  }
+
+  .term:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  /* Raised off the faceplate like a piece of kit, so it reads as a bubble over the text, not a
+     gap in it. */
+  .term-pop {
+    max-width: min(20rem, calc(100vw - 2rem));
+    margin: 0;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--hw-edge);
+    border-radius: var(--radius-panel);
+    background: var(--hw-2);
+    color: var(--hw-bright);
+    box-shadow: 0 6px 18px rgb(0 0 0 / 0.4);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    font-weight: 450;
+    text-align: left;
+  }
+
+  .term-pop strong {
+    font-weight: 750;
+  }
+
+  @supports (position-area: block-end) {
+    .term-pop {
+      /* The whole row under the word, edge to edge. The bubble keeps its own width, centres on the
+         word and is pushed back on screen near an edge, so a word by the right margin never gets a
+         sliver. Only the block axis can overflow, and flip-block moves the bubble above the word
+         when there's no room below (the margins flip with it). */
+      position-area: block-end;
+      margin-top: 0.4rem;
+      margin-inline: 1rem;
+      position-try-fallbacks: flip-block;
+    }
+  }
+
+  @supports not (position-area: block-end) {
+    .term-pop {
+      inset: auto 1rem 1rem;
+      margin-inline: auto;
+    }
+  }
+</style>

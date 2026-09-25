@@ -1,0 +1,24 @@
+---
+import PageHeader from '../components/PageHeader.astro';
+import Base from '../layouts/Base.astro';
+import { href } from '../lib/url';
+---
+
+<Base title="Page not found" description="There’s nothing at this address.">
+  <PageHeader title="Nothing here" lede="That page doesn’t exist, or it moved.">
+    <ul class="ways">
+      <li><a href={href('/')}>The guide, starting with the rules</a></li>
+      <li><a href={href('/night/')}>On the night: the checklists and fixes</a></li>
+      <li><a href={href('/setup/')}>Setting up the rig</a></li>
+    </ul>
+  </PageHeader>
+</Base>
+
+<style>
+  .ways {
+    display: grid;
+    gap: 0.5rem;
+    padding-left: 1.2rem;
+    font-weight: 650;
+  }
+</style>

@@ -1,0 +1,39 @@
+---
+import { href } from '../lib/url';
+---
+
+<footer class="site-footer flow">
+  <div class="inner">
+    <p>
+      Made for the DJs and crew at our nights. The sounds on this page are synthesised in your browser, and the demos
+      use a simplified model of the mixer: real gear clips less neatly, but the same way.
+    </p>
+    <p>
+      <a href={href('/#sources')}>Sources</a>
+      <span aria-hidden="true">/</span>
+      <a href={href('/night/')}>Checklists for the night</a>
+      <span aria-hidden="true">/</span>
+      <a href={href('/print/')}>Booth card and tape tags</a>
+    </p>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    margin-top: var(--space-section);
+    padding-block: 2rem 3rem;
+    border-top: 1px solid var(--rule);
+    font-size: var(--text-sm);
+    color: var(--ink-2);
+  }
+
+  .inner {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  span {
+    margin-inline: 0.4em;
+    color: var(--rule);
+  }
+</style>

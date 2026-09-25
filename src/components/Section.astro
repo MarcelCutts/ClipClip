@@ -1,0 +1,47 @@
+---
+/**
+ * A titled section of an inner page. Children sit in the reading column; add class="wide" to break out.
+ * Left unnamed on purpose, so it isn't a landmark: the h2 is how readers jump here, and the landmark list
+ * keeps to the interactive panels, which name themselves.
+ *
+ * Inside a page-wide .flow (one with a contents rail), it shares that grid's columns and keeps
+ * clear of the rail.
+ */
+interface Props {
+  id: string;
+  title: string;
+}
+
+const { id, title } = Astro.props;
+---
+
+<section class="section flow" id={id}>
+  <h2 id={`${id}-title`}>{title}</h2>
+  <slot />
+</section>
+
+<style>
+  .section {
+    margin-block-start: var(--space-section);
+    row-gap: 1rem;
+  }
+
+  .section > :global(h2) {
+    margin-block-end: 0.25rem;
+  }
+
+  .section > :global(.panel-slot) {
+    margin-block: 0.75rem;
+  }
+
+  :global(.flow) > .section {
+    grid-column: full;
+    grid-template-columns: subgrid;
+  }
+
+  @media (min-width: 80rem) {
+    :global(.flow) > .section {
+      grid-column: rail-end / full-end;
+    }
+  }
+</style>

@@ -1,0 +1,24 @@
+---
+// The crew page split in two: the night's checklists and fixes, and the one-off setup.
+import Moved from '../../layouts/Moved.astro';
+---
+
+<Moved
+  title="Setting up the recording"
+  to="/night/"
+  map={{
+    wiring: '/setup/#wiring',
+    setup: '/setup/',
+    'record-level': '/setup/#record-level',
+    checklists: '/night/#doors',
+    troubleshooting: '/night/#fixes',
+    backup: '/setup/#backup',
+    power: '/setup/#power',
+    'test-night': '/setup/#tests',
+    print: '/print/',
+  }}
+  links={[
+    { path: '/night/', label: 'On the night: the checklists and fixes' },
+    { path: '/setup/', label: 'Setting up: wiring, record level and tests' },
+  ]}
+/>

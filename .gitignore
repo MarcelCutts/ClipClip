@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+.astro/
+
+# test output
+test-results/
+playwright-report/
+blob-report/
+coverage/
+
+# tool scratch
+.playwright-mcp/
+
+# env & OS
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+.vitest/

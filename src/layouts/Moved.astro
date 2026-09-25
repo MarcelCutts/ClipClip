@@ -1,0 +1,66 @@
+---
+/**
+ * An old address that forwards to where its content lives now, so printed QR codes and old links
+ * in the group chat keep working. A section link (/crew/#troubleshooting) lands on the same
+ * section in its new home. Without JavaScript, a refresh goes to the page's new home and the body
+ * says where things went. Search engines are told to look at the new page instead.
+ */
+import PageHeader from '../components/PageHeader.astro';
+import { href } from '../lib/url';
+import Base from './Base.astro';
+
+interface Props {
+  /** The old page's name, for the tab. */
+  title: string;
+  /** Where the old page's content lives now, as a site path with an optional #section. */
+  to: string;
+  /** Old section ids whose content has a new address. */
+  map?: Record<string, string>;
+  /** Where any other old section id goes, keeping the id: '/' sends #meters to /#meters. */
+  keepIdsOn?: string;
+  /** The links to show, for readers without JavaScript. */
+  links: { path: string; label: string }[];
+}
+
+const { title, to, map = {}, keepIdsOn, links } = Astro.props;
+const target = href(to);
+const targetPath = target.split('#')[0] ?? target;
+const forward = {
+  target,
+  keep: keepIdsOn ? href(keepIdsOn) : null,
+  map: Object.fromEntries(Object.entries(map).map(([id, path]) => [id, href(path)])),
+};
+---
+
+<Base title={title} description="This page has moved." canonicalPath={targetPath}>
+  <Fragment slot="head">
+    <meta name="robots" content="noindex" />
+    <script is:inline define:vars={{ forward }}>
+      const id = decodeURIComponent(location.hash.slice(1));
+      let dest = (id && forward.map[id]) || (id && forward.keep ? `${forward.keep}#${id}` : forward.target);
+      // Keep any query (the lab's deep links carry one), before the section.
+      const at = dest.indexOf('#');
+      if (location.search) {
+        dest = at < 0 ? `${dest}${location.search}` : `${dest.slice(0, at)}${location.search}${dest.slice(at)}`;
+      }
+      location.replace(dest);
+    </script>
+    <meta http-equiv="refresh" content={`2; url=${target}`} />
+  </Fragment>
+  <PageHeader title="This page has moved" lede="Everything that was here is still on the site, in one of these:">
+    <ul class="moved">
+      {links.map((l) => (
+  <li><a href={href(l.path)}>{l.label}</a></li>
+))}
+    </ul>
+  </PageHeader>
+</Base>
+
+<style>
+  .moved {
+    display: grid;
+    gap: 0.5rem;
+    padding-left: 1.2rem;
+    font-weight: 650;
+  }
+</style>

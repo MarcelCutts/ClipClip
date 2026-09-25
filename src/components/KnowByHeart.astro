@@ -1,0 +1,146 @@
+---
+/**
+ * A "Know by heart" box: the few things to know without looking, set like a quick reference
+ * handbook's boxed items. Each line is a challenge and its response, joined by leader dots, with
+ * a note on what to do if it isn't so. A long response drops to its own line, right-aligned, as on
+ * a printed checklist. Pale yellow by day, outlined on the dark display.
+ */
+import type { Rule } from '../lib/rules';
+import { section } from '../lib/sections';
+import { href } from '../lib/url';
+
+interface Props {
+  title: string;
+  rules: Rule[];
+  /** The first item's number, so a second box carries on counting. */
+  start?: number;
+  /** Link each item to where the guide explains it. */
+  refs?: boolean;
+}
+
+const { title, rules, start = 1, refs = true } = Astro.props;
+const id = `kbh-${title.toLowerCase().replace(/[^a-z]+/g, '-')}`;
+---
+
+<section class="kbh">
+  <h2 id={id} class="kbh-title">{title}</h2>
+  <ol class="items" start={start} style={`counter-reset: kbh ${start - 1}`}>
+    {rules.map((r) => (
+  <li class="item">
+    <p class="line">
+      <span class="challenge">{r.challenge}</span>
+      <span class="dots" aria-hidden="true"></span>
+      <span class="response">{r.response}</span>
+    </p>
+    {(r.note || (refs && r.why)) && (
+    <p class="note">
+      {r.note}
+      {refs && r.why && (
+      <Fragment>
+        {' '}<a class="ref" href={href(`/${r.why}`)}>See {section(r.why).number}<span class="visually-hidden">, {section(r.why).title}</span></a>
+      </Fragment>
+    )}
+    </p>
+  )}
+  </li>
+))}
+  </ol>
+</section>
+
+<style>
+  .kbh {
+    display: grid;
+    gap: 0.5rem;
+    padding: 0.85rem 1rem 0.35rem;
+    background: var(--tint);
+    border: 2px solid var(--tint-edge);
+  }
+
+  .kbh-title {
+    font-size: var(--text-rule);
+    line-height: 1.25;
+  }
+
+  .items {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .item {
+    display: grid;
+    grid-template-columns: 1.75rem minmax(0, 1fr);
+    column-gap: 0.25rem;
+    padding-block: 0.7rem;
+    border-top: 1px solid color-mix(in srgb, var(--tint-edge) 22%, transparent);
+    counter-increment: kbh;
+  }
+
+  .item::before {
+    content: counter(kbh);
+    grid-row: 1;
+    font-weight: 700;
+    font-size: var(--text-rule);
+    line-height: 1.35;
+  }
+
+  /* Challenge, dots, response. When the response doesn't fit, it wraps to its own line and sits
+     at the right, and the dots run to the end of the first line. */
+  .line {
+    grid-column: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.4rem;
+    font-size: var(--text-rule);
+    line-height: 1.35;
+  }
+
+  .challenge {
+    font-weight: 700;
+  }
+
+  .dots {
+    flex: 1 1 2.5rem;
+    min-width: 2.5rem;
+    border-bottom: 2px dotted var(--ink-4);
+    transform: translateY(-0.3em);
+  }
+
+  .response {
+    margin-inline-start: auto;
+    font-weight: 700;
+    color: var(--action);
+    text-align: right;
+  }
+
+  .note {
+    grid-column: 2;
+    margin-block-start: 0.2rem;
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    color: var(--ink);
+  }
+
+  .ref {
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  @media (forced-colors: active) {
+    .kbh {
+      border-color: CanvasText;
+    }
+  }
+
+  @media print {
+    .kbh {
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
+
+    .ref {
+      display: none;
+    }
+  }
+</style>

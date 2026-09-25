@@ -1,0 +1,460 @@
+---
+/**
+ * The print kit. On screen: the site's header, each printable once with where it goes, and the chat
+ * messages with copy buttons. On paper: four A4 sheets laid out for cutting and laminating: the
+ * booth cards, the tape tags, then the crew's checklists as quick reference cards, C1 and C2 on one
+ * sheet and C3 and S1 on the next.
+ * One wiring throughout: MASTER LEVEL feeds the PA and the Howler (REC), BOOTH the booth monitors.
+ * The two views are separate trees, so each can be laid out for its own medium. Its sections are
+ * left unnamed, as Section.astro's are, so they aren't landmarks: the headings are how to move round.
+ */
+import PageHeader from '../components/PageHeader.astro';
+import BoothCard from '../components/print/BoothCard.astro';
+import ChecklistCard from '../components/print/ChecklistCard.astro';
+import KnobTag from '../components/print/KnobTag.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import CopyText from '../islands/CopyText.svelte';
+import Base from '../layouts/Base.astro';
+import { chatMessages } from '../lib/messages';
+import { MASTER_TAG, SHORT_TAGS } from '../lib/tags';
+import { href } from '../lib/url';
+
+const site = Astro.site ?? Astro.url;
+const messages = chatMessages((path) => new URL(href(path), site).toString());
+
+/** The setup list is the longest, so its card sets the lines smaller, in two columns. */
+const SETUP_CARD = { list: 'setup', scale: 0.88, columns: 2 } as const;
+
+const shortTags = SHORT_TAGS;
+const masterTag = MASTER_TAG;
+const copies = (n: number) => Array.from({ length: n }, (_, i) => i);
+---
+
+<Base
+  title="Print kit"
+  description="A booth card, tape tags and the crew’s checklists as laminated cards, to print for the XDJ-RX2 booth, plus messages to paste into the group chat."
+  bare
+>
+  <div class="screen-view">
+    <SiteHeader />
+
+    <PageHeader
+      title="Print kit"
+      lede="A card for the booth, tape tags for the knobs and the crew’s checklists as cards, on four sheets of A4."
+    >
+      <ol class="steps">
+        <li>Print on A4 at 100&nbsp;% scale, with “Fit to page” turned off.</li>
+        <li>Cut on the dashed lines.</li>
+        <li>Laminate the cards in matte film if you can, because gloss glares under booth lights.</li>
+      </ol>
+      <p class="actions">
+        <button type="button" class="print-button" data-print hidden>Print this page</button>
+        <a href="#messages">Messages for the group chat</a>
+      </p>
+    </PageHeader>
+
+    <section class="block flow">
+      <h2 id="booth-title">Booth card</h2>
+      <p>
+        Page 1 prints two, each A6. Put one by the meters, where the DJ looks while mixing. Its QR code opens the guide
+        at setting TRIM.
+      </p>
+      <div class="wide stage">
+        <div class="paper cuts booth-cuts">
+          <BoothCard />
+        </div>
+      </div>
+    </section>
+
+    <section class="block flow">
+      <h2 id="tags-title">Tape tags</h2>
+      <p>
+        Page 2 prints six of each short tag and four of the long one. Each fits a strip of 19&nbsp;mm console tape.
+        Stick it on the tape, or print the page on sticker paper.
+      </p>
+      <ul class="wide tag-list">
+        {
+          shortTags.map((tag) => (
+            <li>
+              <div class="paper cuts">
+                <KnobTag name={tag.name} owner={tag.owner} />
+              </div>
+              <p>{tag.where}</p>
+            </li>
+          ))
+        }
+        <li>
+          <div class="paper cuts">
+            <KnobTag name={masterTag.name} lines={masterTag.lines} width={masterTag.width} />
+          </div>
+          <p>{masterTag.where}</p>
+        </li>
+      </ul>
+      <p>Then draw a line across each knob and onto the panel, so any turn shows at a glance.</p>
+    </section>
+
+    <section class="block flow">
+      <h2 id="crew-title">Crew cards</h2>
+      <p>
+        Pages 3 and 4 print the checklists as cards. C1 to C3 are for every night, from the
+        <a href={href('/night/')}>night page</a>, so keep them in the booth. S1 is the
+        <a href={href('/setup/')}>first-time setup</a>, for before the first night. Each card’s tab sits a step lower
+        than the last, so a stack of them opens at the one you want.
+      </p>
+      <p>On a phone, the night page keeps your ticks for the night.</p>
+      <div class="wide crew-list">
+        {(['doors', 'changeover', 'after', 'setup'] as const).map((id) => (
+  <div class="sheet-preview">
+    <ChecklistCard {...(id === 'setup' ? SETUP_CARD : { list: id })} />
+  </div>
+))}
+      </div>
+    </section>
+
+    <section class="block flow" id="messages">
+      <h2 id="messages-title">Messages for the group chat</h2>
+      <p>Formatted for WhatsApp. Copy one, paste it into the chat, and change anything before you send.</p>
+      <div class="wide messages">
+        {
+          messages.map((m) => (
+            <section class="message">
+              <h3 id={`msg-${m.id}`}>{m.title}</h3>
+              <p class="caption">{m.when}</p>
+              <CopyText text={m.text} name={m.title} client:visible />
+            </section>
+          ))
+        }
+      </div>
+      <section class="clip">
+        <h3 id="clip-title">A ten-second clip</h3>
+        <figure>
+          <figcaption id="clip-print-caption">
+            For people who won’t open a link. It needs no sound. A wave pushed past the ceiling gets flat tops, and
+            turning the recording down afterwards only makes it quieter. It ends on a strip of tape that says “Keep
+            channel meters out of the red”.
+          </figcaption>
+          <video
+            controls
+            muted
+            playsinline
+            preload="none"
+            width="720"
+            height="720"
+            poster={href('/media/turn-it-down-poster.jpg')}
+            aria-describedby="clip-print-caption"
+          >
+            <source src={href('/media/turn-it-down.mp4')} type="video/mp4" />
+          </video>
+        </figure>
+        <p><a href={href('/media/turn-it-down.mp4')} download>Download the clip (MP4, 180&nbsp;KB)</a></p>
+      </section>
+    </section>
+  </div>
+
+  <div class="print-view">
+    <section class="sheet">
+      <p class="sheet-head">Out of the red: booth cards, A6. Cut on the dashed lines.</p>
+      <div class="cuts booth-cuts">
+        {copies(2).map(() => <BoothCard />)}
+      </div>
+    </section>
+    <section class="sheet">
+      <p class="sheet-head">Out of the red: tape tags for 19&nbsp;mm console tape. Cut on the dashed lines.</p>
+      <div class="cuts tag-cuts short">
+        {shortTags.map((tag) => copies(6).map(() => <KnobTag name={tag.name} owner={tag.owner} />))}
+      </div>
+      <div class="cuts tag-cuts long">
+        {copies(4).map(() => <KnobTag name={masterTag.name} lines={masterTag.lines} width={masterTag.width} />)}
+      </div>
+    </section>
+    <!-- Paired by size, so the four cards fit two sheets. Cut out, they stack by their tabs. -->
+    <section class="sheet">
+      <p class="sheet-head">Out of the red: crew cards C1 and C3, for every night. Cut round the cards and tabs.</p>
+      <div class="crew-cards">
+        <ChecklistCard list="doors" />
+        <ChecklistCard list="after" />
+      </div>
+    </section>
+    <section class="sheet">
+      <p class="sheet-head">
+        Out of the red: crew card C2, for every night, and S1, for the first-time setup. Cut round the cards and tabs.
+      </p>
+      <div class="crew-cards">
+        <ChecklistCard list="changeover" />
+        <ChecklistCard {...SETUP_CARD} />
+      </div>
+    </section>
+  </div>
+</Base>
+
+<script>
+  // The print button only makes sense with JavaScript, so it stays hidden until this runs.
+  const button = document.querySelector<HTMLButtonElement>('[data-print]');
+  if (button) {
+    button.hidden = false;
+    button.addEventListener('click', () => window.print());
+  }
+</script>
+
+<style is:global>
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
+  @media screen {
+    .print-view {
+      display: none;
+    }
+  }
+
+  /* Paper is white whatever the screen theme: tokens.css applies the dark theme on screen only. */
+  @media print {
+    .screen-view {
+      display: none;
+    }
+  }
+</style>
+
+<style>
+  /* ---- Screen ---------------------------------------------------------------------------------- */
+
+  .steps {
+    display: grid;
+    gap: 0.4rem;
+    margin: 0;
+    padding-left: 1.4rem;
+  }
+
+  .steps li::marker {
+    font-weight: 700;
+  }
+
+  .steps li {
+    padding-inline-start: 0.2em;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.5rem;
+  }
+
+  .print-button {
+    min-height: 2.75rem;
+    padding: 0.55rem 1.15rem;
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--ink);
+    color: var(--paper);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .print-button:hover {
+    background: color-mix(in oklab, var(--ink) 86%, var(--paper));
+  }
+
+  @media (forced-colors: active) {
+    .print-button {
+      border: 1px solid ButtonText;
+    }
+  }
+
+  .block {
+    row-gap: 1rem;
+    margin-block-start: var(--space-section);
+  }
+
+  .block h2 {
+    margin-block-end: 0.25rem;
+  }
+
+  /* Paper: white in both themes, because paper is white. Its edges are the cut lines. */
+  .paper {
+    color-scheme: light;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .stage {
+    margin-block: 0.5rem;
+  }
+
+  .booth-cuts {
+    width: min(100%, 148mm);
+  }
+
+  /* Explicit minmax(0, 1fr) columns: an implicit auto column would grow to the print size of the
+     widest piece (a 90 mm tag, a 190 mm card) and push a 360 px phone sideways. */
+  .tag-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+    margin: 0.5rem 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .tag-list li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.6rem;
+    align-items: center;
+  }
+
+  .tag-list p {
+    margin: 0;
+    max-width: 30rem;
+    font-size: var(--text-sm);
+    color: var(--ink-2);
+  }
+
+  .tag-list .paper {
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  @media (min-width: 44rem) {
+    .tag-list li {
+      grid-template-columns: 92mm minmax(0, 1fr);
+      gap: 1.5rem;
+    }
+  }
+
+  /* The crew cards, one under another, each drawn on its own cut line with its tab. */
+  .crew-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+    margin-block: 0.5rem;
+  }
+
+  .sheet-preview {
+    color-scheme: light;
+    color: CanvasText;
+  }
+
+  .messages {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+  }
+
+  @media (min-width: 56rem) {
+    .messages {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 2.5rem;
+    }
+  }
+
+  .message {
+    display: grid;
+    align-content: start;
+    gap: 0.45rem;
+  }
+
+  .message h3 {
+    margin: 0;
+  }
+
+  .message .caption {
+    margin: 0 0 0.35rem;
+  }
+
+  .screen-view {
+    padding-bottom: var(--space-section);
+  }
+
+  /* Cut lines: every piece gets a dashed edge, and neighbours share one. The crew cards draw their
+     own, round their tabs. */
+  .cuts,
+  .crew-list,
+  .crew-cards {
+    --cut: color-mix(in srgb, CanvasText 50%, Canvas);
+  }
+
+  .cuts {
+    border-top: 0.3mm dashed var(--cut);
+    border-left: 0.3mm dashed var(--cut);
+  }
+
+  .cuts > :global(*) {
+    border-right: 0.3mm dashed var(--cut);
+    border-bottom: 0.3mm dashed var(--cut);
+  }
+
+  .clip,
+  .clip figure {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .clip {
+    max-width: 22rem;
+    margin-top: 1.5rem;
+  }
+
+  .clip video {
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius-panel);
+    background: var(--screen);
+  }
+
+  /* ---- Paper ----------------------------------------------------------------------------------- */
+
+  @media print {
+    .print-view {
+      color-scheme: light;
+      color: CanvasText;
+    }
+
+    .sheet {
+      break-after: page;
+    }
+
+    .sheet:last-child {
+      break-after: auto;
+    }
+
+    /* What's on the sheet and how to cut it: 10 pt, like any sentence on paper. */
+    .sheet-head {
+      margin: 0 0 4mm;
+      font-family: var(--font-body);
+      font-size: 10pt;
+      font-weight: 700;
+    }
+
+    .cuts {
+      display: grid;
+      width: fit-content;
+      margin-inline: auto;
+    }
+
+    .booth-cuts {
+      width: 148mm;
+    }
+
+    .tag-cuts.short {
+      grid-template-columns: repeat(3, 60mm);
+    }
+
+    .tag-cuts.long {
+      grid-template-columns: repeat(2, 90mm);
+      margin-top: 8mm;
+    }
+
+    .crew-cards {
+      display: grid;
+      gap: 6mm;
+      width: 190mm;
+      margin-inline: auto;
+    }
+
+    .crew-cards > :global(*) {
+      break-inside: avoid;
+    }
+  }
+</style>

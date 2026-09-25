@@ -1,0 +1,395 @@
+@layer reset, base, layout, components;
+
+@layer reset {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    scroll-padding-top: 1.5rem;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  body,
+  h1,
+  h2,
+  h3,
+  h4,
+  p,
+  figure,
+  blockquote,
+  dl,
+  dd,
+  ol,
+  ul {
+    margin: 0;
+  }
+
+  img,
+  svg {
+    display: block;
+    max-width: 100%;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+
+  [hidden] {
+    /* biome-ignore lint/complexity/noImportantStyles: hidden must win over any display rule */
+    display: none !important;
+  }
+}
+
+@layer base {
+  body {
+    background: repeating-linear-gradient(0deg, var(--paper-grain) 0 1px, transparent 1px 3px), var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    font-weight: 400;
+    line-height: 1.6;
+    font-kerning: normal;
+    -webkit-font-smoothing: antialiased;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Headings are B612 bold, in sentence case, like the section titles of a quick reference
+     handbook. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--ink-bright);
+    text-wrap: balance;
+  }
+
+  h2 {
+    font-size: var(--text-h2);
+    line-height: 1.15;
+  }
+
+  h3 {
+    font-size: var(--text-h3);
+    line-height: 1.2;
+  }
+
+  p,
+  li,
+  dd {
+    text-wrap: pretty;
+  }
+
+  strong {
+    font-weight: 700;
+  }
+
+  /* Links are silk-screen white like the text, told apart by their underline. */
+  a {
+    color: var(--link);
+    text-decoration-color: color-mix(in oklab, var(--link) 60%, transparent);
+    text-decoration-thickness: 0.08em;
+    text-underline-offset: 0.16em;
+  }
+
+  a:hover {
+    color: var(--link);
+    text-decoration-color: currentColor;
+    text-decoration-thickness: 0.14em;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--focus) 38%, transparent);
+  }
+
+  abbr[title] {
+    text-decoration: underline dotted 0.08em;
+    text-underline-offset: 0.16em;
+    cursor: help;
+  }
+}
+
+@layer layout {
+  /*
+   * Like a manual: one reading column (--measure, about 70 characters) hung from the left edge of
+   * a wider frame, so every line of text shares one left edge. The rest of the frame is the notes
+   * column: margin notes sit there beside their text, and labs (.wide) extend into it when their
+   * width shows something. On phones the columns are one.
+   */
+  .flow {
+    display: grid;
+    grid-template-columns:
+      [full-start] minmax(var(--gutter), 1fr)
+      [wide-start content-start] min(var(--measure), 100% - 2 * var(--gutter))
+      [content-end notes-start] min(var(--wide) - var(--measure), max(0px, 100% - 2 * var(--gutter) - var(--measure)))
+      [notes-end wide-end] minmax(var(--gutter), 1fr)
+      [full-end];
+    align-content: start;
+  }
+
+  /* Wide screens: the page's contents in a rail on the left, then the reading column and the
+     notes column, 3rem apart, centred as one frame. The frame is 1190px, so at 80rem the margins
+     either side are what's left over: a 4vw minimum there would push the page sideways. */
+  @media (min-width: 80rem) {
+    .flow {
+      grid-template-columns:
+        [full-start] minmax(1rem, 1fr)
+        [rail-start] var(--nav-rail) [rail-end] 3rem
+        [wide-start content-start] var(--measure) [content-end] 3rem
+        [notes-start] var(--notes) [notes-end wide-end]
+        minmax(1rem, 1fr) [full-end];
+    }
+  }
+
+  .flow > * {
+    grid-column: content;
+  }
+
+  .flow > .wide {
+    grid-column: wide;
+  }
+
+  .flow > .full {
+    grid-column: full;
+  }
+
+  /* A section inside a .flow that keeps its columns (the guide's parts), so a paragraph, a lab and
+     a margin note inside it line up with everything else on the page. */
+  .subflow {
+    display: grid;
+    grid-template-columns: subgrid;
+  }
+
+  .subflow > * {
+    grid-column: content;
+  }
+
+  .subflow > .wide {
+    grid-column: wide;
+  }
+
+  /* A margin note: under its paragraph on smaller screens, beside it in the notes column on wide
+     ones. It says where a claim comes from, or defines a word, and never carries the argument. */
+  :is(.flow, .subflow) > .margin-note {
+    grid-column: content;
+  }
+
+  @media (min-width: 80rem) {
+    :is(.flow, .subflow) > .margin-note {
+      grid-column: notes;
+      align-self: start;
+    }
+  }
+
+  /* Vertical rhythm inside a section: prose paragraphs, lists and figures. */
+  .stack > * + * {
+    margin-block-start: var(--stack-gap, 1em);
+  }
+}
+
+@layer components {
+  /* biome-ignore-start lint/complexity/noImportantStyles: the standard visually-hidden pattern must win */
+  .visually-hidden:not(:focus-within):not(:active) {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    clip-path: inset(50%) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+    padding: 0 !important;
+    margin: -1px !important;
+  }
+  /* biome-ignore-end lint/complexity/noImportantStyles: end of visually-hidden */
+
+  /* Names that mustn't break at their hyphen, like XDJ-RX2. */
+  .nobr {
+    white-space: nowrap;
+  }
+
+  .lede {
+    font-size: var(--text-lede);
+    line-height: 1.45;
+    font-weight: 400;
+    text-wrap: pretty;
+  }
+
+  /* A note: set off by a rule above and its size, never by a stripe down its side. */
+  .margin-note {
+    padding-block-start: 0.5rem;
+    border-block-start: 1px solid var(--rule);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+
+  .margin-note strong {
+    color: var(--ink);
+  }
+
+  .caption,
+  figcaption {
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    color: var(--ink-2);
+  }
+
+  /* Silk-screened hardware label: only for names printed on real gear (TRIM, LOW, MASTER, CLIP). */
+  .hw-label {
+    font-family: var(--font-label);
+    font-weight: 800;
+    font-size: 0.75rem;
+    line-height: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    /* Set --hw-label-color on a parent to dim or tint labels, say for an unselected diagram node. */
+    color: var(--hw-label-color, var(--hw-label));
+  }
+
+  /* The hardware panel that frames every interactive: flat, with a printed outline that shows
+     against the dark display. */
+  .panel {
+    --focus: var(--hw-focus);
+    /* Links on a panel are its white lettering, whatever the page around it. */
+    --link: var(--hw-bright);
+    background: var(--hw);
+    color: var(--hw-label);
+    border: 1px solid var(--panel-edge);
+    border-radius: var(--radius-panel);
+    padding: clamp(0.875rem, 0.6rem + 1.2vw, 1.5rem);
+  }
+
+  .screen {
+    background: var(--screen);
+    border-radius: var(--radius-control);
+  }
+
+  /* Gaffer tape strip with torn ends. */
+  .tape {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    background: var(--tape);
+    color: var(--tape-ink);
+    font-family: var(--font-stencil);
+    font-optical-sizing: auto;
+    font-weight: 800;
+    font-size: clamp(1.2rem, 1rem + 1vw, 1.55rem);
+    line-height: 1.05;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    padding: 0.55em 1.05em 0.5em;
+    clip-path: polygon(
+      0 5%,
+      2.5% 0,
+      5% 5%,
+      7.5% 0,
+      100% 0,
+      98.5% 14%,
+      100% 28%,
+      98% 43%,
+      100% 58%,
+      98.5% 74%,
+      100% 89%,
+      98% 100%,
+      5% 100%,
+      2.5% 95%,
+      0 100%,
+      1.6% 82%,
+      0 66%,
+      2% 50%,
+      0 34%,
+      1.4% 18%
+    );
+  }
+
+  .tape small {
+    display: block;
+    margin-top: 0.3em;
+    font-family: var(--font-body);
+    font-size: max(0.875rem, 0.62em);
+    font-weight: 560;
+    line-height: 1.3;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--tape-ink-2);
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --ink-2: var(--ink);
+    --ink-3: var(--ink);
+    --rule: var(--ink-2);
+  }
+}
+
+/* Printing an ordinary page (the crew guide, say): drop the chrome, keep the content, show where links go. */
+@media print {
+  :root {
+    color-scheme: light;
+    --paper: #fff;
+    --paper-2: #f2f2f2;
+    --ink: #000;
+    --ink-bright: #000;
+    --ink-2: #333;
+    --ink-3: #555;
+    --rule: #ccc;
+    --link: #000;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  .site-header nav,
+  .site-footer,
+  .skip {
+    display: none;
+  }
+
+  .panel,
+  .screen,
+  .tape {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  a[href^='http']::after {
+    content: ' (' attr(href) ')';
+    font-size: 0.8em;
+    color: #333;
+    word-break: break-all;
+  }
+
+  details:not([open]) > :not(summary) {
+    display: revert;
+  }
+
+  section,
+  figure,
+  .panel {
+    break-inside: avoid-page;
+  }
+}

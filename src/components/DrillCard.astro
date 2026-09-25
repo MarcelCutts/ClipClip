@@ -1,0 +1,475 @@
+---
+/**
+ * One drill for when something goes wrong, set like a quick reference handbook's: a black title strip
+ * with the light you're looking at drawn lit, the title and the drill's number; the condition and the
+ * objective; then numbered steps. A step is a control and what to do with it, joined by leader dots,
+ * or a line starting "If". "Choose one" lists what you might find, each branch ending the drill
+ * (■ ■ ■ ■), jumping to a step or another drill, or carrying on with the next step. Why it works comes
+ * last, as additional information that needn't be read.
+ *
+ * The drill is linkable as /night/#fix-<id>, and each step as #fix-<id>-step-<n>. The light sits on a
+ * scrap of black faceplate, because lit colour only ever means a signal state and LEDs sit on black.
+ */
+import { drill, drillAnchor, type Fix, isIfStep, type Next } from '../lib/fixes';
+import { section } from '../lib/sections';
+import { href } from '../lib/url';
+
+interface Props {
+  fix: Fix;
+  /** Heading level for the title, to fit the page's outline. */
+  level?: 2 | 3 | 4;
+}
+
+const { fix, level = 3 } = Astro.props;
+const Heading = `h${level}` as 'h2' | 'h3' | 'h4';
+const anchor = drillAnchor(fix.id);
+const titleId = `${anchor}-title`;
+const see = fix.see ? section(fix.see) : undefined;
+
+/** Where a jump lands, and its words: "Go to step 3", or "Go to F4" with the drill's title for screen readers. */
+function jump(next: Next): { to: string; text: string; title?: string } {
+  if (typeof next === 'number') return { to: `#${drillAnchor(fix.id, next)}`, text: `Go to step ${next}` };
+  const target = drill(next);
+  return { to: `#${drillAnchor(target.id)}`, text: `Go to ${target.code}`, title: target.title };
+}
+---
+
+<article class="drill" id={anchor} aria-labelledby={titleId}>
+  <div class="strip">
+    {fix.light && (
+  <span class="light" data-light={fix.light} aria-hidden="true">
+    {fix.light === 'meters-red' ? (
+      <span class="ladder">
+        {Array.from({ length: 6 }, (_, i) => <span data-zone={i === 5 ? 'red' : i >= 3 ? 'orange' : 'green'} />)}
+      </span>
+    ) : fix.light === 'howler-red' ? (
+      <span class="led" />
+    ) : (
+      <Fragment>
+        <span class="clip-leds">
+          <span class="led" />
+          {fix.light === 'driverack-clip' && <span class="led" />}
+        </span>
+        <span class="legend">Clip</span>
+      </Fragment>
+    )}
+  </span>
+)}
+    <Heading class="title" id={titleId}><span class="visually-hidden">{fix.code}: </span>{fix.title}</Heading>
+    <span class="code" aria-hidden="true">{fix.code}</span>
+  </div>
+
+  <div class="body">
+    <div class="lines">
+      <p><em>Condition.</em> {fix.condition}</p>
+      <p><em>Objective.</em> {fix.objective}</p>
+    </div>
+    {fix.warning && (
+  <p class="warning"><strong>Warning.</strong> {fix.warning}</p>
+)}
+
+    <ol class="steps">
+      {fix.steps.map((step, i) => (
+  <li class="step" id={drillAnchor(fix.id, i + 1)}>
+    <span class="n">{i + 1}</span>
+    {isIfStep(step) ? (
+      <p class="if">
+        <strong>If</strong>{step.if.slice(2)}
+        {step.next !== undefined && (
+        <Fragment>
+          {' '}<a class="go" href={jump(step.next).to}>{jump(step.next).text}{jump(step.next).title && <span class="visually-hidden">: {jump(step.next).title}</span>}</a>
+        </Fragment>
+      )}
+        {step.end && (
+        <Fragment>
+          {' '}<span class="stop"><span class="visually-hidden">End of {fix.code}.</span><span class="marks" aria-hidden="true"><span /><span /><span /><span /></span></span>
+        </Fragment>
+      )}
+      </p>
+    ) : (
+      <div class="action">
+        <p class="line">
+          <span class="challenge">{step.challenge}</span><span class="visually-hidden">,</span>
+          <span class="dots" aria-hidden="true"></span>
+          <span class="response">{step.response}</span>
+        </p>
+        {step.note && <p class="note">{step.note}</p>}
+        {step.choose && (
+        <div class="choose">
+          <p class="choose-one">Choose one:</p>
+          <ul class="branches">
+            {step.choose.map((b) => (
+            <li class="branch">
+              <span class="diamond" aria-hidden="true"></span>
+              <p>
+                <strong>{b.finding}:</strong>
+                {b.action && <Fragment>{' '}{b.action}</Fragment>}
+                {b.next !== undefined && (
+                <Fragment>
+                  {' '}<a class="go" href={jump(b.next).to}>{jump(b.next).text}{jump(b.next).title && <span class="visually-hidden">: {jump(b.next).title}</span>}</a>
+                </Fragment>
+              )}
+                {b.end && (
+                <Fragment>
+                  {' '}<span class="stop"><span class="visually-hidden">End of {fix.code}.</span><span class="marks" aria-hidden="true"><span /><span /><span /><span /></span></span>
+                </Fragment>
+              )}
+              </p>
+            </li>
+          ))}
+          </ul>
+        </div>
+      )}
+      </div>
+    )}
+  </li>
+))}
+    </ol>
+
+    <p class="end"><span class="visually-hidden">End of {fix.code}.</span><span class="marks" aria-hidden="true"><span /><span /><span /><span /></span></p>
+
+    {fix.why && (
+  <p class="why">
+    <strong>Why.</strong> {fix.why}
+    {see && (
+    <Fragment>
+      {' '}<a class="ref" href={href(`/${fix.see}`)}>See {see.number}<span class="visually-hidden">, {see.title}</span></a>
+    </Fragment>
+  )}
+  </p>
+)}
+  </div>
+</article>
+
+<style>
+  .drill {
+    display: grid;
+    border: 2px solid var(--ink);
+    scroll-margin-top: var(--anchor-offset, 1rem);
+  }
+
+  /* The title strip: black by day, a raised display header by night. */
+  .strip {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.55rem 0.8rem;
+    background: var(--strip);
+    color: var(--on-strip);
+  }
+
+  .title {
+    flex: 1;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-rule);
+    font-weight: 700;
+    line-height: 1.3;
+    color: inherit;
+    text-wrap: balance;
+  }
+
+  .code {
+    flex: none;
+    font-weight: 700;
+    font-size: var(--text-sm);
+  }
+
+  /* The light you're looking at, lit, on a scrap of faceplate. */
+  .light {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.35rem 0.4rem;
+    border-radius: var(--radius-control);
+    background: var(--hw-sunk);
+  }
+
+  .led {
+    display: block;
+    width: 0.8rem;
+    height: 0.8rem;
+    border-radius: 50%;
+    background: var(--led-r);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--led-r) 60%, transparent);
+  }
+
+  .clip-leds {
+    display: grid;
+    gap: 2px;
+  }
+
+  .clip-leds .led {
+    width: 0.95rem;
+    height: 0.45rem;
+    border-radius: 1px;
+  }
+
+  /* Printed on the gear above the light, so it's set like the silk-screen. */
+  .legend {
+    font-family: var(--font-label);
+    font-weight: 800;
+    font-size: 0.625rem;
+    line-height: 1;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--hw-label);
+  }
+
+  .ladder {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 2px;
+  }
+
+  .ladder > span {
+    width: 0.95rem;
+    height: 3px;
+    border-radius: 1px;
+    background: var(--led-g);
+  }
+
+  .ladder > [data-zone='orange'] {
+    background: var(--led-a);
+  }
+
+  .ladder > [data-zone='red'] {
+    background: var(--led-r);
+    box-shadow: 0 0 5px color-mix(in srgb, var(--led-r) 60%, transparent);
+  }
+
+  .body {
+    display: grid;
+    gap: 0.8rem;
+    padding: 0.75rem 0.8rem 0.9rem;
+  }
+
+  .lines {
+    display: grid;
+    gap: 0.2rem;
+    line-height: 1.5;
+  }
+
+  .lines em {
+    font-style: italic;
+  }
+
+  .warning strong {
+    color: var(--warning);
+  }
+
+  .steps {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0.8rem 0 0;
+    list-style: none;
+    border-top: 1px solid var(--rule);
+  }
+
+  .step {
+    display: grid;
+    grid-template-columns: 1.75rem minmax(0, 1fr);
+    align-items: baseline;
+    scroll-margin-top: var(--anchor-offset, 1rem);
+  }
+
+  /* Landed here from a "Go to step" jump: the step is shaded, so the eye finds it. */
+  .step:target {
+    background: var(--paper-2);
+    outline: 0.4rem solid var(--paper-2);
+  }
+
+  .n {
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  .action {
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  /* Challenge, dots, response. When the response doesn't fit, it takes its own line at the right,
+     and the dots run to the end of the first. */
+  .line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.4rem;
+    line-height: 1.4;
+  }
+
+  .challenge {
+    font-weight: 700;
+  }
+
+  .dots {
+    flex: 1 1 2.5rem;
+    min-width: 2.5rem;
+    border-bottom: 2px dotted var(--ink-4);
+    translate: 0 -0.3em;
+  }
+
+  .response {
+    margin-inline-start: auto;
+    font-weight: 700;
+    color: var(--action);
+    text-align: right;
+    text-wrap: balance;
+  }
+
+  .note {
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+
+  .if {
+    line-height: 1.5;
+  }
+
+  .choose {
+    display: grid;
+    gap: 0.4rem;
+    margin-block-start: 0.2rem;
+  }
+
+  .choose-one {
+    font-size: var(--text-sm);
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  .branches {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .branch {
+    display: grid;
+    grid-template-columns: 1.15rem minmax(0, 1fr);
+    align-items: baseline;
+    line-height: 1.5;
+  }
+
+  .diamond {
+    width: 0.45rem;
+    height: 0.45rem;
+    background: var(--ink);
+    rotate: 45deg;
+    translate: 0.05rem -0.2em;
+  }
+
+  /* A jump is something to do, so it takes the action colour. */
+  .go {
+    color: var(--action);
+    font-weight: 700;
+    text-decoration-color: currentColor;
+    white-space: nowrap;
+  }
+
+  /* ■ ■ ■ ■: the drill ends here. */
+  .marks {
+    display: inline-flex;
+    gap: 0.3em;
+  }
+
+  .marks > span {
+    width: 0.5em;
+    height: 0.5em;
+    background: var(--ink);
+  }
+
+  .stop {
+    display: inline-block;
+    white-space: nowrap;
+  }
+
+  .stop .marks {
+    translate: 0 -0.05em;
+  }
+
+  .end {
+    display: flex;
+    justify-content: center;
+    padding-block: 0.15rem;
+  }
+
+  .end .marks {
+    gap: 0.75rem;
+  }
+
+  .end .marks > span {
+    width: 0.55rem;
+    height: 0.55rem;
+  }
+
+  /* Additional information: it never has to be read to do the drill. */
+  .why {
+    padding-block-start: 0.65rem;
+    border-block-start: 1px solid var(--rule);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+
+  .why strong {
+    color: var(--ink);
+  }
+
+  .ref {
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  /* System colours: the strip keeps its fill, and the light becomes a lit mark on a plain bezel.
+     Everything in the strip inherits its forced-color-adjust. */
+  @media (forced-colors: active) {
+    .strip {
+      forced-color-adjust: none;
+      background: CanvasText;
+      color: Canvas;
+    }
+
+    .light {
+      background: Canvas;
+    }
+
+    .led,
+    .ladder > span {
+      background: CanvasText;
+      box-shadow: none;
+    }
+
+    .legend {
+      color: CanvasText;
+    }
+
+    .diamond,
+    .marks > span {
+      forced-color-adjust: none;
+      background: CanvasText;
+    }
+
+    .step:target {
+      outline-color: Highlight;
+    }
+  }
+
+  @media print {
+    .drill {
+      break-inside: avoid;
+    }
+
+    .strip,
+    .light {
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
+  }
+</style>

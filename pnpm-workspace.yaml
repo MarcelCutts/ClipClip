@@ -1,0 +1,7 @@
+# pnpm 11+ reads its settings from here, not .npmrc.
+# Already on by default: minimumReleaseAge 1440, strictDepBuilds, blockExoticSubdeps.
+allowBuilds:
+  esbuild: true # postinstall binary check; Astro's own examples allow it
+trustPolicy: no-downgrade # fail if a package's publishing trust level drops
+trustPolicyExclude:
+  - chokidar@4.0.3 # via @astrojs/check and svelte-check; the example in pnpm's docs

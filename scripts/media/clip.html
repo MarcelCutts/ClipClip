@@ -1,0 +1,63 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Archivo;src:url(/node_modules/@fontsource-variable/archivo/files/archivo-latin-wdth-normal.woff2) format("woff2");font-weight:100 900;font-stretch:62% 125%}
+@font-face{font-family:BSS;src:url(/node_modules/@fontsource-variable/big-shoulders-stencil/files/big-shoulders-stencil-latin-opsz-normal.woff2) format("woff2");font-weight:100 900}
+html,body{margin:0;width:1080px;height:1080px;background:repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 3px),#16181a;overflow:hidden;font-family:Archivo;color:#e9edef}
+.top{position:absolute;left:72px;right:72px;top:64px}
+.kicker{font-stretch:62%;font-weight:850;font-size:84px;line-height:.9;margin:0;text-transform:uppercase;color:#f3f6f7}
+.cap{font-size:40px;line-height:1.25;font-weight:600;margin:22px 0 0;min-height:100px}
+.screen{position:absolute;left:72px;right:72px;top:360px;height:420px;background:#0a0e12;border-radius:22px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.05)}
+svg{position:absolute;inset:0;width:100%;height:100%}
+.knob{position:absolute;left:72px;right:72px;top:820px;display:flex;align-items:center;gap:28px}
+.lbl{font-stretch:75%;font-weight:800;font-size:28px;letter-spacing:.14em;text-transform:uppercase;color:#c7ced2;min-width:190px}
+.trk{flex:1;height:14px;border-radius:9px;background:#111518;position:relative}
+.fill{position:absolute;left:0;top:0;bottom:0;border-radius:9px;background:#56616a}
+.cap2{position:absolute;top:-17px;width:34px;height:48px;border-radius:6px;background:linear-gradient(#6b747b,#3b4247);border:2px solid #0b0d0f;transform:translateX(-50%)}
+.val{font-weight:700;font-size:34px;min-width:150px;text-align:right;font-variant-numeric:tabular-nums}
+/* The tape sits across the top edge of the screen, above its ceiling line: a video player's controls cover the bottom of the frame. */
+.tape{position:absolute;left:72px;top:318px;background:#e4e1d8;color:#1b1f22;font-family:BSS;font-weight:800;font-size:40px;text-transform:uppercase;padding:18px 32px 16px;rotate:-1deg;opacity:var(--tape,0);
+clip-path:polygon(0 5%,2.5% 0,5% 5%,7.5% 0,100% 0,98.5% 14%,100% 28%,98% 43%,100% 58%,98.5% 74%,100% 89%,98% 100%,5% 100%,2.5% 95%,0 100%,1.6% 82%,0 66%,2% 50%,0 34%,1.4% 18%)}
+</style></head><body>
+<div class="top"><p class="kicker" id="kicker">Out of the red</p><p class="cap" id="cap"></p></div>
+<div class="screen"><svg viewBox="0 0 936 420" preserveAspectRatio="none">
+<line x1="0" y1="210" x2="936" y2="210" stroke="#18202a" stroke-width="2"/>
+<line id="ceilT" x1="0" x2="936" stroke="#8fa0ae" stroke-width="3" stroke-dasharray="14 10"/>
+<line id="ceilB" x1="0" x2="936" stroke="#8fa0ae" stroke-width="3" stroke-dasharray="14 10"/>
+<path id="ghost" fill="none" stroke="#e5574d" stroke-width="3" stroke-dasharray="6 6" opacity=".8"/>
+<path id="wave" fill="none" stroke="#3d8fe6" stroke-width="5" stroke-linejoin="round"/>
+</svg></div>
+<div class="knob"><span class="lbl" id="klbl">Channel</span><div class="trk"><div class="fill" id="fill"></div><div class="cap2" id="capk"></div></div><span class="val" id="val"></span></div>
+<div class="tape" id="tape">Keep channel meters out of the red</div>
+<script>
+const W=936,H=420,MID=210,AMP=150; // AMP = ceiling height in px
+const sig=t=>0.8*Math.sin(2*Math.PI*1.5*t)+0.2*Math.sin(2*Math.PI*21*t);
+let pk=0;for(let i=0;i<2000;i++)pk=Math.max(pk,Math.abs(sig(i/2000)));
+const clip=v=>Math.max(-1,Math.min(1,v));
+const ease=x=>x<0?0:x>1?1:x*x*(3-2*x);
+// timeline (seconds): 0-2 clean, 2-4.5 push to +8 dB, 4.5-6 hold, 6-8.5 turn down to -12 dB, 8.5-10 hold + tape
+// push is dB against the mixer's ceiling (its red light). It starts at -9, the second orange light, where the DJ
+// rule puts the loudest bits. The words say "past the ceiling", never "into the red": Pioneer only says red may distort.
+window.frame=(time)=>{
+  let push=0,down=0,cap='',kicker='A channel in the orange',lbl='Channel',tape=0;
+  if(time<2){push=-9;cap='Plenty of room under the ceiling.';}
+  else if(time<4.5){push=-9+17*ease((time-2)/2.5);kicker='Past the ceiling';cap='Push it too far and the tops get sliced flat.';}
+  else if(time<6){push=8;kicker='Past the ceiling';cap='That flat top is the crunch. It’s in the mix now.';}
+  else if(time<8.5){push=8;down=-12*ease((time-6)/2.5);lbl='Recorder';kicker='Turn it down?';cap='Turn the recorder down afterwards…';}
+  else {push=8;down=-12;lbl='Recorder';kicker='Still flat';cap='…and it’s quieter, but the tops stay flat.';tape=ease((time-8.5)/0.6);}
+  const g1=10**(push/20),g2=10**(down/20);
+  let d='',gh='';
+  for(let x=0;x<=W;x+=3){const t=x/W;const v=sig(t)/pk*g1;const c=clip(v)*g2;d+=(x?'L':'M')+x+' '+(MID-c*AMP).toFixed(1);gh+=(x?'L':'M')+x+' '+(MID-Math.max(-1.35,Math.min(1.35,v*g2))*AMP).toFixed(1);}
+  document.getElementById('wave').setAttribute('d',d);
+  document.getElementById('ghost').setAttribute('d',(push>0&&time>=2)?gh:'');
+  // The ceiling lines stay put, in the site's screen-text grey (red is for damage). Once the recorder knob turns
+  // down, the flat tops sit below them: quieter, still flat.
+  for(const [id,y] of [['ceilT',MID-AMP],['ceilB',MID+AMP]]){const el=document.getElementById(id);el.setAttribute('y1',y);el.setAttribute('y2',y);}
+  const knobDb=lbl==='Channel'?push:down; const pos=lbl==='Channel'?(push+12)/24:(down+24)/24;
+  document.getElementById('fill').style.width=(pos*100)+'%';document.getElementById('capk').style.left=(pos*100)+'%';
+  document.getElementById('val').textContent = lbl==='Channel' ? (push<=0?'Orange':'Red') : ('−'+Math.abs(knobDb).toFixed(0)+' dB');
+  document.getElementById('klbl').textContent=lbl;document.getElementById('kicker').textContent=kicker;document.getElementById('cap').textContent=cap;
+  document.getElementById('tape').style.setProperty('--tape',tape);
+};
+window.frame(0);
+</script></body></html>

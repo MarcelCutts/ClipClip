@@ -1,0 +1,15 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:best-practices"],
+  "packageRules": [
+    {
+      "description": "TypeScript 7 has no API yet; @astrojs/check and svelte-check need 5 or 6",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<7"
+    },
+    { "matchPackageNames": ["astro", "@astrojs/*"], "groupName": "astro" },
+    { "matchPackageNames": ["svelte", "svelte-check"], "groupName": "svelte" },
+    { "matchPackageNames": ["vitest", "@vitest/*"], "groupName": "vitest" },
+    { "matchPackageNames": ["@playwright/test", "@axe-core/playwright"], "groupName": "playwright" }
+  ]
+}

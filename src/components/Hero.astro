@@ -1,0 +1,171 @@
+---
+/**
+ * The home page's opening: the title in the gear's condensed lettering, over the XDJ-RX2's own
+ * twelve-light meter. On load the lights climb to the second orange, where a well-set track
+ * peaks, and stop. The red light at the top stays dark: the whole site in one picture.
+ */
+import { TARGET_PEAK_DB } from '../lib/model';
+import { METER_SEGMENTS } from '../lib/xdj';
+
+const peak = TARGET_PEAK_DB.second;
+const segments = METER_SEGMENTS.map((s, i) => ({ ...s, i, lit: s.db <= peak }));
+const label = (db: number) => (db > 0 ? `+${db}` : db < 0 ? `−${-db}` : '0');
+const litCount = segments.filter((s) => s.lit).length;
+---
+
+<header class="hero flow">
+  <div class="stage wide">
+    <h1 class="title">Out of the red</h1>
+    <figure class="meter">
+    <div class="leds" aria-hidden="true">
+      {segments.map((s) => (
+  <span class="led" data-zone={s.zone} data-lit={s.lit ? '' : undefined} style={`--i: ${s.i}`}></span>
+))}
+    </div>
+    <div class="scale" aria-hidden="true">
+      {segments.map((s) => <span>{label(s.db)}</span>)}
+    </div>
+    <figcaption>
+      <span class="visually-hidden"
+        >The mixer’s meter, lit up to the second orange light, {litCount} lights out of {segments.length}.</span
+      >
+      Red stays dark<svg class="caret" viewBox="0 0 10 10" aria-hidden="true" focusable="false"
+        ><path d="M5 1 9 8H1z"></path></svg
+      >
+    </figcaption>
+  </figure>
+  <div class="aside"><slot /></div>
+  </div>
+</header>
+
+<style>
+  .hero {
+    padding-block: clamp(1.75rem, 1rem + 3vw, 3.75rem) 0;
+  }
+
+  /* The title, what the site is for, then the meter: the card's heading and its one picture.
+     The meter runs the frame's full width on wide screens, like the meter bridge across a mixer. */
+  .stage {
+    display: grid;
+    grid-template-areas: 'title' 'aside' 'meter';
+    row-gap: 1rem;
+  }
+
+  .title {
+    grid-area: title;
+    margin: 0;
+    font-size: var(--text-h1);
+    line-height: 1.02;
+    letter-spacing: -0.015em;
+  }
+
+  .meter {
+    grid-area: meter;
+    display: grid;
+    gap: 0.45rem;
+    margin: 0.5rem 0 0;
+  }
+
+  .aside {
+    grid-area: aside;
+    max-width: var(--measure);
+  }
+
+  .leds,
+  .scale {
+    --bezel: clamp(4px, 0.15rem + 0.35vw, 8px);
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: clamp(3px, 0.2rem + 0.3vw, 6px);
+    padding-inline: var(--bezel);
+  }
+
+  /* The lights sit in the mixer's own black bezel, by day as well as by night. */
+  .leds {
+    padding-block: var(--bezel);
+    border-radius: var(--radius-control);
+    background: var(--hw-sunk);
+    border: 1px solid var(--panel-edge);
+  }
+
+  .led {
+    --lit: var(--led-g);
+    --unlit: var(--led-g-off);
+    height: clamp(1.6rem, 1.2rem + 1.4vw, 2.25rem);
+    border-radius: 3px;
+    background: var(--unlit);
+  }
+
+  .led[data-zone='orange'] {
+    --lit: var(--led-a);
+    --unlit: var(--led-a-off);
+  }
+
+  .led[data-zone='red'] {
+    --unlit: var(--led-r-off);
+    box-shadow: inset 0 0 0 1.5px var(--led-r-rim);
+  }
+
+  .led[data-lit] {
+    background: var(--lit);
+    box-shadow:
+      0 0 12px color-mix(in srgb, var(--lit) 38%, transparent),
+      inset 0 -2px 0 rgb(0 0 0 / 0.14);
+  }
+
+  .scale {
+    font-family: var(--font-label);
+    font-weight: 600;
+    font-size: clamp(0.625rem, 0.55rem + 0.3vw, 0.8125rem);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    color: var(--ink-3);
+  }
+
+  figcaption {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.4rem;
+    padding-inline-end: 0.35rem;
+    font-weight: 700;
+    font-size: var(--text-sm);
+    color: var(--ink);
+  }
+
+  .caret {
+    width: 0.65rem;
+    height: 0.65rem;
+    fill: var(--led-r);
+  }
+
+  /* The one orchestrated moment: the lights climb, one after another, and stop short of the red. */
+  @media (prefers-reduced-motion: no-preference) {
+    .led[data-lit] {
+      animation: light-up 0.16s ease-out calc(0.35s + var(--i) * 0.07s) backwards;
+    }
+  }
+
+  @keyframes light-up {
+    from {
+      background: var(--unlit);
+      box-shadow: none;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .led {
+      forced-color-adjust: none;
+      background: Canvas;
+      box-shadow: inset 0 0 0 1px CanvasText;
+    }
+
+    .led[data-lit] {
+      background: CanvasText;
+    }
+
+    .caret {
+      fill: CanvasText;
+    }
+  }
+</style>

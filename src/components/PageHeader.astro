@@ -1,0 +1,37 @@
+---
+/**
+ * Title block for the inner pages, lettered like the gear. The home page has the meter hero instead.
+ * Pass the lede as a string, or in the "lede" slot when it needs markup such as <Term>.
+ */
+interface Props {
+  title: string;
+  lede?: string;
+}
+
+const { title, lede } = Astro.props;
+const hasLede = Boolean(lede) || Astro.slots.has('lede');
+---
+
+<header class="page-header flow">
+  <h1>{title}</h1>
+  {hasLede && <p class="lede">{lede}<slot name="lede" /></p>}
+  <slot />
+</header>
+
+<style>
+  .page-header {
+    padding-block: clamp(1.75rem, 1rem + 3vw, 3.25rem) 0;
+    row-gap: 1rem;
+  }
+
+  /* A tool page's name: big enough to know where you are, small enough to reach the tool. */
+  h1 {
+    font-size: var(--text-title);
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+  }
+
+  .lede {
+    max-width: 34rem;
+  }
+</style>

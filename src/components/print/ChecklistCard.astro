@@ -1,0 +1,256 @@
+---
+/**
+ * A crew checklist as a laminated quick reference card, landscape: a black title strip with the
+ * card's code (C1 to C3 for the night, S1 for the setup) and its time budget, when and how to run
+ * it, each line as the thing to check and the state it should be in joined by leader dots, and the
+ * call to say at the end. A black thumb tab with the code sticks out of the right-hand edge, a step
+ * lower on each card, so a stack of them opens at the one you want. Same data as the <Checklist>
+ * island on /night/ and /setup/.
+ *
+ * Sizes are print millimetres through container units: the printout is exact, and on a wide screen
+ * the preview is too. On a narrow screen a millimetre never drops below 3 px, so the preview reflows
+ * at a readable size instead of shrinking. Every sentence prints at 10 pt or more.
+ */
+import { budgetLabel, budgetText, CHECKLISTS, type ChecklistId, howToRun } from '../../lib/checklists';
+
+interface Props {
+  list: ChecklistId;
+  /** The size of the lines, strip and call, relative to the night's cards: less for the long setup
+   * card. Notes stay at 10 pt whatever it is. */
+  scale?: number;
+  /** Flow the lines into two columns. */
+  columns?: 1 | 2;
+}
+
+const { list: id, scale = 1, columns = 1 } = Astro.props;
+const list = CHECKLISTS[id];
+
+/** The cards as they stack, top tab first: the night's three in order, then the one-off setup. */
+const STACK: readonly ChecklistId[] = ['doors', 'changeover', 'after', 'setup'];
+
+// The strip gives the time budget, or says the setup is done once; the line under it says how to
+// run the list.
+const budget = list.seconds ? budgetLabel(list.seconds) : id === 'setup' ? 'Once' : '';
+const how = list.seconds ? howToRun(list).replace(budgetText(list.seconds), '').trim() : howToRun(list);
+---
+
+<div class="card-frame" style={`--tab: ${STACK.indexOf(id)}; --scale: ${scale}`}>
+  <article class="qrh-card" data-columns={columns}>
+    <div class="body">
+      <p class="strip">
+        <span><span class="code">{list.code}</span>{list.title}</span>
+        {budget && <span class="budget">{budget}</span>}
+      </p>
+      <p class="how"><strong>{list.when}</strong> {how}</p>
+      <ol class="items">
+        {
+          list.items.map((item) => (
+            <li class="item">
+              <p class="line">
+                <span class="check">{item.check}</span>
+                <span class="visually-hidden">:</span>
+                <span class="dots" aria-hidden="true" />
+                <span class="target">{item.target}</span>
+              </p>
+              {item.note && <p class="note">{item.note}</p>}
+            </li>
+          ))
+        }
+      </ol>
+      <p class="call">Say: “{list.call}”</p>
+    </div>
+    <p class="tab" aria-hidden="true">{list.code}</p>
+  </article>
+</div>
+
+<style>
+  /* 190 mm wide at print size: the card, and its thumb tab sticking out 12 mm. */
+  .card-frame {
+    container-type: inline-size;
+    width: 190mm;
+    max-width: 100%;
+  }
+
+  .qrh-card {
+    /* One print millimetre, whatever size the preview is drawn at, and one point. */
+    --mm: calc(100cqi / 190);
+    --pt: calc(var(--mm) * 0.3528);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) calc(var(--mm) * 12);
+    align-items: start;
+    height: 100%;
+    font-family: var(--font-body);
+    line-height: 1.3;
+  }
+
+  /* A narrow screen: keep the words readable and let the card reflow. */
+  @media screen {
+    .qrh-card {
+      --mm: max(100cqi / 190, 3px);
+    }
+  }
+
+  p {
+    margin: 0;
+  }
+
+  /* The card itself, inside its cut line. */
+  .body {
+    display: grid;
+    align-content: start;
+    gap: calc(var(--mm) * 2.6);
+    height: 100%;
+    padding-bottom: calc(var(--mm) * 5);
+    border: 0.3mm dashed var(--cut, color-mix(in srgb, CanvasText 50%, Canvas));
+    background: Canvas;
+    color: CanvasText;
+    font-size: calc(var(--pt) * 12.5 * var(--scale));
+  }
+
+  .body > :not(.strip) {
+    margin-inline: calc(var(--mm) * 6);
+  }
+
+  /* About 15 pt, white on black, edge to edge across the top. */
+  .strip {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: calc(var(--mm) * 4);
+    padding: calc(var(--mm) * 2.4) calc(var(--mm) * 6) calc(var(--mm) * 2.2);
+    background: var(--strip);
+    color: var(--on-strip);
+    font-size: calc(var(--pt) * 15 * var(--scale));
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .code {
+    margin-inline-end: 0.6em;
+  }
+
+  .budget {
+    flex: none;
+    font-size: calc(var(--pt) * 12 * var(--scale));
+    font-weight: 400;
+  }
+
+  /* 10.5 pt: when to run it and how, read before starting. */
+  .how {
+    font-size: calc(var(--pt) * 10.5);
+    line-height: 1.35;
+  }
+
+  .items {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: calc(var(--mm) * 0.35) solid CanvasText;
+    counter-reset: line;
+  }
+
+  [data-columns='2'] .items {
+    columns: 2;
+    column-gap: calc(var(--mm) * 8);
+    column-rule: calc(var(--mm) * 0.2) solid CanvasText;
+  }
+
+  /* A preview narrower than the printed card reflows, so one column reads better there. Paper is
+     always 190 mm wide. */
+  @container (width < 36rem) {
+    [data-columns='2'] .items {
+      columns: auto;
+    }
+  }
+
+  .item {
+    display: grid;
+    grid-template-columns: 1.3em minmax(0, 1fr);
+    padding-block: calc(var(--mm) * 1.7);
+    border-bottom: calc(var(--mm) * 0.2) solid color-mix(in srgb, CanvasText 45%, Canvas);
+    counter-increment: line;
+    break-inside: avoid;
+  }
+
+  .item::before {
+    content: counter(line);
+    font-weight: 700;
+  }
+
+  /* The line to read, about 12.5 pt: what to check, dots, the state it should be in. A state too
+     long for the line drops to the next one and sits at the right. */
+  .line {
+    grid-column: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.35em;
+  }
+
+  .check {
+    font-weight: 700;
+  }
+
+  .dots {
+    flex: 1 1 1.5em;
+    min-width: 1.5em;
+    border-bottom: calc(var(--mm) * 0.4) dotted currentColor;
+    translate: 0 -0.25em;
+  }
+
+  .target {
+    margin-inline-start: auto;
+    font-weight: 700;
+    text-align: right;
+  }
+
+  /* How or why, under its line: 10 pt, like every sentence on the card. */
+  .note {
+    grid-column: 2;
+    margin-top: calc(var(--mm) * 0.8);
+    font-size: calc(var(--pt) * 10);
+    line-height: 1.3;
+  }
+
+  /* The completion call, said out loud: 14 pt. */
+  .call {
+    font-size: calc(var(--pt) * 14 * var(--scale));
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  /* The thumb tab: black like the strip, sticking out of the right-hand edge, a step lower on each
+     card. */
+  .tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: calc(var(--mm) * 20);
+    margin-top: calc(var(--mm) * (4 + var(--tab) * 24));
+    /* Cut round it too. The dashes also show the tab against a dark page, in the preview. */
+    border: 0.3mm dashed var(--cut, color-mix(in srgb, CanvasText 50%, Canvas));
+    border-left: 0;
+    background: var(--strip);
+    color: var(--on-strip);
+    font-size: calc(var(--pt) * 14);
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  @media print {
+    .strip,
+    .tab {
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .strip,
+    .tab {
+      forced-color-adjust: none;
+      background: CanvasText;
+      color: Canvas;
+    }
+  }
+</style>

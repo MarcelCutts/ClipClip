@@ -1,0 +1,162 @@
+/*
+ * Design tokens. See docs/DESIGN.md for what each one is for.
+ *
+ * The site reads like a flight-deck quick reference handbook (QRH) for the booth. By day it's the
+ * printed card: white, near-black ink, one action colour. By night, when the reader's device is in
+ * dark mode, it's the cockpit display: near-black ground, light text, the same action colour made
+ * brighter. The hardware (panels, meters, LEDs) is the same in both, because the gear is black.
+ * Printing uses paper (global.css). Components only ever use these tokens.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Page, by day: the printed card */
+  --paper: #ffffff;
+  /* Shaded cells: table headers, the colour-code panel */
+  --paper-2: #f1f3f4;
+  --paper-grain: transparent;
+  --ink: #0b0c0d;
+  --ink-bright: #0b0c0d;
+  /* Secondary text, including any instruction: never dimmer than this */
+  --ink-2: #353b40;
+  /* Metadata at 15px or more: part times, counts */
+  --ink-3: #5e666c;
+  /* Not for words: leader dots, tick marks */
+  --ink-4: #9aa2a8;
+  --rule: #c5cbd0;
+  --link: #0b0c0d;
+  --focus: #1d5fd0;
+  /* The action colour: only for what to do (a checklist's response, a drill's step) */
+  --action: #006a8e;
+  /* "Know by heart" boxes: the pale yellow printed checklists use */
+  --tint: #fff4c7;
+  --tint-edge: #0b0c0d;
+  /* Title strips: a card's black header by day, a raised display header by night */
+  --strip: #0b0c0d;
+  --on-strip: #ffffff;
+  /* The one warning colour: the tab and title of a drill for something going wrong */
+  --warning: #c42519;
+  --on-warning: #ffffff;
+  --good: #1e7f4a;
+  --warn: #9a5b00;
+  --bad: #c0322b;
+  /* Printed things are flat */
+  --panel-shadow: none;
+
+  /* Hardware: black in both lights, because the gear is black */
+  --hw: #1e2225;
+  --hw-2: #262c30;
+  --hw-3: #30373c;
+  --hw-edge: #394146;
+  /* A panel's outline: invisible against white, a printed line against the dark display */
+  --panel-edge: #1e2225;
+  --hw-sunk: #111518;
+  --hw-label: #c7ced2;
+  --hw-bright: #eef1f2;
+  /* Secondary words on a panel. Tick marks can be dimmer; words can't. */
+  --hw-label-2: #a9b3b8;
+  --hw-focus: #78b6ff;
+  /* On a panel the action colour is the display's cyan */
+  --hw-action: #3fd0ff;
+  /* Rubber pads and step buttons on the panels */
+  --pad-top: #353c41;
+  --pad-bottom: #2a3034;
+  --pad-hover-top: #3b4348;
+  --pad-hover-bottom: #2f363a;
+  --pad-edge: #0d1012;
+  --pad-lit-edge: #58626a;
+  --screen: #0a0e12;
+  --screen-grid: #18202a;
+  --screen-axis: #2a3642;
+  --screen-text: #a6b4bf;
+  /* Fader caps, with a white index line */
+  --cap-top: #6b747b;
+  --cap-bottom: #3b4247;
+  --cap-edge: #0b0d0f;
+  --cap-line: #f2f4f5;
+  /* The slot below a fader's cap, lit to show how far it's pushed */
+  --cap-travel: #56616a;
+
+  /* Chart marks, validated against --screen (dataviz palette check, all pairs) */
+  --sig: #3d8fe6;
+  --sig-b: #1fa88f;
+  --dmg: #e5574d;
+
+  /* LEDs copy the hardware (its "green" is a yellow-green) and only ever mean a signal state */
+  --led-g: #a8e23a;
+  --led-a: #ff9f0a;
+  --led-r: #ff3b30;
+  --led-off: #353c41;
+  /* An unlit LED still shows its colour through the lens */
+  --led-g-off: #29311f;
+  --led-a-off: #3a2c15;
+  --led-r-off: #3b1c1a;
+  --led-r-rim: #7a2d27;
+
+  /* Gaffer tape, for the things that get printed and stuck on the gear */
+  --tape: #e4e1d8;
+  --tape-ink: #1b1f22;
+  --tape-ink-2: #4a5156;
+
+  /* Type (the font stacks come from Astro's <Font>: --font-body and --font-display are B612,
+     --font-label is Archivo for silk-screen lettering, --font-stencil is for printed tape).
+     B612 is wide, so sizes sit a step below a narrower face's. */
+  --text-xs: 0.875rem;
+  --text-sm: 0.9375rem;
+  --text-base: 1.0625rem;
+  --text-rule: clamp(1.0625rem, 1rem + 0.3vw, 1.1875rem);
+  --text-lede: clamp(1.125rem, 1.05rem + 0.4vw, 1.3125rem);
+  --text-h3: clamp(1.1875rem, 1.1rem + 0.35vw, 1.375rem);
+  --text-h2: clamp(1.4375rem, 1.3rem + 0.7vw, 1.875rem);
+  --text-title: clamp(2rem, 1.6rem + 2vw, 3.25rem);
+  --text-h1: clamp(2.375rem, 1.8rem + 3vw, 4rem);
+
+  /* Layout */
+  --gutter: max(16px, 4vw);
+  /* The reading column: about 65 characters of B612, whatever size the body is */
+  --measure: calc(var(--text-base) * 38);
+  --nav-rail: 13rem;
+  --notes: 15rem;
+  --wide: 66rem;
+  /* Wide screens: index rail, reading column and notes column, each 3rem apart */
+  --frame: calc(var(--nav-rail) + var(--measure) + var(--notes) + 6rem);
+  --space-section: clamp(3rem, 2.25rem + 3.5vw, 5rem);
+  /* Two radii: panels, and the controls on them */
+  --radius-panel: 6px;
+  --radius-control: 4px;
+}
+
+/* By night: the cockpit display */
+@media screen and (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --paper: #0a0c0e;
+    --paper-2: #15191c;
+    --ink: #e8ecef;
+    --ink-bright: #f3f6f7;
+    --ink-2: #c3cad0;
+    --ink-3: #8c969d;
+    --ink-4: #5b646b;
+    --rule: #2c3238;
+    --link: #e8ecef;
+    --focus: #78b6ff;
+    --action: #3fd0ff;
+    --tint: #16191c;
+    --tint-edge: #e8ecef;
+    --strip: #2a3137;
+    --on-strip: #f3f6f7;
+    --warning: #ff5a4e;
+    --on-warning: #0a0c0e;
+    --good: #4fd08a;
+    --warn: #ffb547;
+    --bad: #ff7a70;
+    --panel-edge: #5b646b;
+  }
+}
+
+@media (min-width: 48rem) {
+  :root {
+    --text-base: 1.125rem;
+  }
+}

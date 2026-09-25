@@ -1,0 +1,93 @@
+---
+import { href } from '../lib/url';
+
+const here = Astro.url.pathname.replace(/\/+$/, '');
+const isCurrent = (path: string) => here === href(path).replace(/\/+$/, '');
+// The guide teaches; the other three are tools for doing the job.
+const links = [
+  { path: '/', label: 'Guide' },
+  { path: '/night/', label: 'On the night' },
+  { path: '/setup/', label: 'Set up' },
+  { path: '/print/', label: 'Print' },
+];
+---
+
+<header class="site-header">
+  <a class="mark" href={href('/')}>Out of the red</a>
+  <nav aria-label="Site">
+    <ul>
+      {links.map((l) => (
+  <li>
+    <a href={href(l.path)} aria-current={isCurrent(l.path) ? 'page' : undefined}>
+      {l.label}
+    </a>
+  </li>
+))}
+    </ul>
+  </nav>
+</header>
+
+<style>
+  .site-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0 1.75rem;
+    border-bottom: 2px solid var(--ink);
+    padding: 0.5rem var(--gutter) 0;
+    max-width: calc(var(--wide) + 2 * var(--gutter));
+    margin-inline: auto;
+  }
+
+  .mark {
+    display: inline-block;
+    padding-block: 0.7rem;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.1875rem;
+    line-height: 1;
+    color: var(--ink-bright);
+    text-decoration: none;
+  }
+
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1.35rem;
+    list-style: none;
+    padding: 0;
+  }
+
+  nav a {
+    display: inline-flex;
+    align-items: center;
+    /* At least 44px tall for thumbs. */
+    padding-block: 0.75rem;
+    font-size: var(--text-sm);
+    color: var(--ink-2);
+    text-decoration: none;
+  }
+
+  nav a:hover {
+    color: var(--ink-bright);
+  }
+
+  /* The page you're on is underlined. Lit colours are kept for signal levels. */
+  nav a[aria-current='page'] {
+    color: var(--ink-bright);
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.45em;
+  }
+
+
+  @media (min-width: 80rem) {
+    .site-header {
+      /* The frame plus the same 1rem margins the page grid keeps, so its edges line up. */
+      max-width: calc(var(--frame) + 2rem);
+      padding-inline: 1rem;
+    }
+  }
+</style>

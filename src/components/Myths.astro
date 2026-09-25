@@ -1,0 +1,103 @@
+---
+/**
+ * Things DJs say about the red, set out as a reference table: what people say, and what's true,
+ * with the part of the claim that's fair, what actually happens, what to do instead and the
+ * manufacturer's page where one backs it. Everything is visible: a sceptic scans the left column
+ * for their own belief. On phones each row stacks.
+ */
+import type { Myth } from '../lib/myths';
+
+interface Props {
+  myths: Myth[];
+}
+
+const { myths } = Astro.props;
+---
+
+<div class="myths">
+  <p class="head" aria-hidden="true"><span>What people say</span><span>What’s true</span></p>
+  <ul>
+    {myths.map((m) => (
+  <li id={`myth-${m.id}`}>
+    <p class="claim"><span class="visually-hidden">What people say: </span>“{m.claim}”</p>
+    <div class="true">
+      <p class="truth"><span class="visually-hidden">What’s true: </span>{m.truth}</p>
+      <p>{m.fair} {m.actually}</p>
+      <p class="instead"><strong>So:</strong> {m.instead}</p>
+      {m.source && (
+      <p class="source">
+        Source: <a href={m.source.page ? `${m.source.url}#page=${m.source.page}` : m.source.url} rel="external"
+          >{m.source.title}</a
+        >{m.source.page && `, page ${m.source.page}`}.
+      </p>
+    )}
+    </div>
+  </li>
+))}
+  </ul>
+</div>
+
+<style>
+  .myths {
+    display: grid;
+  }
+
+  .head {
+    display: none;
+  }
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 2px solid var(--ink);
+  }
+
+  li {
+    display: grid;
+    gap: 0.5rem;
+    padding-block: 0.9rem;
+    border-bottom: 1px solid var(--rule);
+    scroll-margin-top: 4rem;
+  }
+
+  .claim {
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  .true {
+    display: grid;
+    gap: 0.4rem;
+    font-size: var(--text-sm);
+    line-height: 1.55;
+  }
+
+  .truth {
+    font-size: var(--text-base);
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  .source {
+    color: var(--ink-2);
+  }
+
+  /* Wide enough: a two-column table with its headings once at the top. */
+  @media (min-width: 48rem) {
+    .head {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+      gap: 1.5rem;
+      padding-block-end: 0.4rem;
+      font-size: var(--text-sm);
+      font-weight: 700;
+      color: var(--ink-3);
+    }
+
+    li {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+      gap: 1.5rem;
+    }
+  }
+</style>

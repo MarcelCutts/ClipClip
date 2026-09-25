@@ -1,0 +1,15 @@
+---
+// The DJ page became Part 2 of the guide. Its section ids live on there, bar these three.
+import Moved from '../../layouts/Moved.astro';
+---
+
+<Moved
+  title="Playing a set here"
+  to="/#playing"
+  keepIdsOn="/"
+  map={{ 'first-track': '/#trim', 'crew-knobs': '/#knobs', more: '/#two-ceilings' }}
+  links={[
+    { path: '/#playing', label: 'Playing a set, in the guide' },
+    { path: '/night/', label: 'On the night: the checklists' },
+  ]}
+/>

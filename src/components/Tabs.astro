@@ -1,0 +1,103 @@
+---
+/**
+ * The guide's parts as thumb tabs, on phones and laptops: a strip under the header that stays at
+ * the top of the screen as you read, like the tabs down the edge of a printed handbook. The part
+ * you're in is filled (Contents.astro's script marks it). The last tab, F, opens the night page's
+ * drills. Wide screens have the index rail instead.
+ */
+import { href } from '../lib/url';
+
+interface Props {
+  parts: { id: string; number: number; label: string }[];
+}
+
+const { parts } = Astro.props;
+---
+
+<nav class="tabs" aria-label="Parts" data-tabs>
+  <ol>
+    {parts.map((p) => (
+  <li>
+    <a href={`#${p.id}`} data-target={p.id}>
+      <span aria-hidden="true">{p.number}</span><span class="visually-hidden">Part {p.number}: {p.label}</span>
+    </a>
+  </li>
+))}
+    <li>
+      <a class="drills" href={href('/night/#fixes')}>
+        <span aria-hidden="true">F</span><span class="visually-hidden">Drills: something’s wrong</span>
+      </a>
+    </li>
+  </ol>
+</nav>
+
+<style>
+  .tabs {
+    position: sticky;
+    top: 0;
+    z-index: 12;
+    padding: 0 var(--gutter);
+    background: var(--paper);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  ol {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.35rem;
+    max-width: calc(var(--measure));
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    border: 1.5px solid var(--ink);
+    border-top: 0;
+    font-weight: 700;
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  a[aria-current] {
+    background: var(--strip);
+    color: var(--on-strip);
+  }
+
+  .drills {
+    background: var(--warning);
+    border-color: var(--warning);
+    color: var(--on-warning);
+  }
+
+  /* Anything else that sticks (the signal path's title) sits below the tabs. */
+  @media (max-width: 79.99rem) {
+    :global(:root:has([data-tabs])) {
+      --sticky-top: calc(2.75rem + 1px);
+    }
+  }
+
+  @media (min-width: 80rem) {
+    .tabs {
+      display: none;
+    }
+  }
+
+  @media (forced-colors: active) {
+    a[aria-current] {
+      forced-color-adjust: none;
+      background: CanvasText;
+      color: Canvas;
+    }
+  }
+
+  @media print {
+    .tabs {
+      display: none;
+    }
+  }
+</style>

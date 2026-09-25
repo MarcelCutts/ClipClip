@@ -1,0 +1,122 @@
+---
+/**
+ * A knob tag for the gear, sized to sit on a strip of 19 mm console tape: 18 mm tall, and 60 mm
+ * long unless it says more. Stencil type, black on white. Sizes are in print millimetres, scaled
+ * through container units so the on-screen preview shrinks to fit. A long tag's lines are
+ * sentences, so they print at 10 pt or more.
+ */
+interface Props {
+  /** The big word, as it would be written on the tape: REC, MONITOR, RIG. */
+  name: string;
+  /** Whose knob it is, shown after the name: "set by crew", "yours". */
+  owner?: string;
+  /** Extra lines for a long-form tag that says why. */
+  lines?: readonly string[];
+  /** Length in millimetres at print size. */
+  width?: number;
+}
+
+const { name, owner, lines = [], width = 60 } = Astro.props;
+---
+
+<div class="tag-frame" style={`--w: ${width}`}>
+  <p class:list={['tag', { long: lines.length > 0 }]}>
+    <span class="name">{name}</span>
+    {
+      owner && (
+        <span class="owner">
+          <span class="dot" aria-hidden="true">
+            ·
+          </span>
+          <span class="visually-hidden">, </span>
+          {owner}
+        </span>
+      )
+    }
+    {
+      lines.length > 0 && (
+        <span class="lines">
+          {lines.map((line) => (
+            <span class="line">{line} </span>
+          ))}
+        </span>
+      )
+    }
+  </p>
+</div>
+
+<style>
+  .tag-frame {
+    container-type: inline-size;
+    width: calc(var(--w) * 1mm);
+    max-width: 100%;
+    aspect-ratio: var(--w) / 18;
+  }
+
+  .tag {
+    /* One print millimetre, whatever size the preview is drawn at. */
+    --mm: calc(100cqi / var(--w));
+    display: flex;
+    flex-wrap: wrap;
+    align-content: center;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0 calc(var(--mm) * 2);
+    height: 100%;
+    margin: 0;
+    padding: calc(var(--mm) * 1.5) calc(var(--mm) * 3);
+    font-family: var(--font-stencil);
+    font-optical-sizing: auto;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .name {
+    font-size: calc(var(--mm) * 10);
+    font-weight: 850;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  .owner {
+    font-size: calc(var(--mm) * 4.8);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  .dot {
+    margin-right: 0.25em;
+  }
+
+  .tag.long {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    justify-content: center;
+    gap: calc(var(--mm) * 1.2);
+    padding: calc(var(--mm) * 1.2) calc(var(--mm) * 4);
+  }
+
+  .long .name {
+    font-size: calc(var(--mm) * 6.2);
+  }
+
+  /* 10.2 pt: the smallest a sentence prints. */
+  .lines {
+    display: grid;
+    gap: calc(var(--mm) * 0.7);
+    font-size: calc(var(--mm) * 3.6);
+    font-weight: 720;
+    letter-spacing: 0.015em;
+  }
+
+  /* On screen, let a tag wrap and grow rather than spill when a reader widens the text spacing
+     (WCAG 1.4.12). Paper keeps the fixed height the tape is cut to. */
+  @media screen {
+    .tag {
+      white-space: normal;
+      height: auto;
+      min-height: 100%;
+    }
+  }
+</style>

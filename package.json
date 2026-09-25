@@ -1,0 +1,47 @@
+{
+  "name": "out-of-the-red",
+  "version": "1.0.0",
+  "private": true,
+  "description": "An interactive guide to clean DJ set recordings, for DJs and crew.",
+  "type": "module",
+  "packageManager": "pnpm@12.6.0",
+  "engines": {
+    "node": ">=24.11.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check && svelte-check --fail-on-warnings",
+    "lint": "biome ci .",
+    "format": "biome check --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "verify": "pnpm lint && pnpm check && pnpm test && pnpm build && pnpm test:e2e"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "3.7.4",
+    "@astrojs/svelte": "9.0.1",
+    "@fontsource-variable/archivo": "5.3.0",
+    "@fontsource-variable/big-shoulders-stencil": "5.3.0",
+    "@fontsource/b612": "5.3.0",
+    "astro": "7.3.4",
+    "qrcode": "1.5.4",
+    "svelte": "5.57.1"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.10",
+    "@axe-core/playwright": "4.13.0",
+    "@biomejs/biome": "2.5.14",
+    "@playwright/test": "1.63.0",
+    "@types/node": "24.13.6",
+    "@types/qrcode": "1.5.6",
+    "@vitest/browser-playwright": "5.0.1",
+    "playwright": "1.63.0",
+    "svelte-check": "4.7.6",
+    "typescript": "6.0.3",
+    "vitest": "5.0.1",
+    "vitest-browser-svelte": "3.1.0"
+  }
+}

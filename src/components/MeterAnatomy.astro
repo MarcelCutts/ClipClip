@@ -1,0 +1,231 @@
+---
+/**
+ * The XDJ-RX2's three meter columns, lit the way they should look on a well-set blend: each deck
+ * on the first or second orange, the mix a light or two higher, red dark. The title above says
+ * that; labels sit beside what they name, and a bracket marks where to aim. Server-rendered, and
+ * at the reading column's width: nothing in it needs more.
+ */
+import { TARGET_PEAK_DB } from '../lib/model';
+import { METER_SEGMENTS } from '../lib/xdj';
+
+// The blend in the picture: deck 1 on the second orange, deck 2 on the first, the mix one light
+// above deck 1.
+const CH1 = TARGET_PEAK_DB.second;
+const CH2 = TARGET_PEAK_DB.first;
+const MIX = TARGET_PEAK_DB.second + 3;
+
+const rows = [...METER_SEGMENTS].reverse();
+const tick = (db: number) => (db > 0 ? `+${db}` : db < 0 ? `−${-db}` : '0');
+const lit = (db: number, level: number) => db <= level;
+// Grid rows: 1 is the names, then one row per light from the top (+12) down.
+const rowOf = (db: number) => 2 + rows.findIndex((s) => s.db === db);
+const aimTop = rowOf(TARGET_PEAK_DB.second);
+const aimBottom = rowOf(TARGET_PEAK_DB.first) + 1;
+const zoneAt = (level: number) => METER_SEGMENTS.find((s) => s.db === level)?.zone ?? 'green';
+const label = `The XDJ-RX2’s meters mid-blend. CH1 peaks at ${tick(CH1)}, the second orange light. CH2 peaks at ${tick(CH2)}, the first orange light. The middle meters show the mix at ${tick(MIX)}, ${zoneAt(MIX)}, with red dark.`;
+---
+
+<figure class="anatomy">
+  <figcaption class="takeaway">
+    Mid-blend, done right: each deck on the first or second orange, the mix below the red.
+  </figcaption>
+  <div class="panel rig">
+    <div class="layout">
+    <div class="bridge" role="img" aria-label={label}>
+      <span class="name hw-label" style="grid-column: ch1">CH1</span>
+      <span class="name hw-label" style="grid-column: ml / mr-end">Master</span>
+      <span class="name hw-label" style="grid-column: ch2">CH2</span>
+      {rows.map((s, i) => (
+  <Fragment>
+    <span class="led" data-zone={s.zone} data-on={lit(s.db, CH1) ? '' : undefined} style={`grid-area: ${i + 2} / ch1`}></span>
+    <span class="tick" style={`grid-area: ${i + 2} / t1`}>{tick(s.db)}</span>
+    <span class="led narrow" data-zone={s.zone} data-on={lit(s.db, MIX) ? '' : undefined} style={`grid-area: ${i + 2} / ml`}></span>
+    <span class="led narrow" data-zone={s.zone} data-on={lit(s.db, MIX) ? '' : undefined} style={`grid-area: ${i + 2} / mr`}></span>
+    <span class="tick" style={`grid-area: ${i + 2} / t2`}>{tick(s.db)}</span>
+    <span class="led" data-zone={s.zone} data-on={lit(s.db, CH2) ? '' : undefined} style={`grid-area: ${i + 2} / ch2`}></span>
+  </Fragment>
+))}
+      <span class="aim" style={`grid-row: ${aimTop} / ${aimBottom}`} aria-hidden="true"><span>Aim</span></span>
+    </div>
+    <dl class="callouts">
+      <div>
+        <dt>Side meters</dt>
+        <dd>One deck each, <strong>before</strong> its fader. Set TRIM here, on cue.</dd>
+      </div>
+      <div>
+        <dt>Middle meters</dt>
+        <dd>The mix going out. <strong>Watch these in a blend.</strong></dd>
+      </div>
+      <div>
+        <dt>Aim</dt>
+        <dd>The loudest bits on the first or second orange light. A blend can add two more, so red stays dark.</dd>
+      </div>
+    </dl>
+    </div>
+  </div>
+  <p class="aside-note">Some people call the orange lights yellow. They’re the same lights.</p>
+</figure>
+
+<style>
+  .anatomy {
+    display: grid;
+    gap: 0.75rem;
+    margin-block: 0.5rem;
+  }
+
+  /* The figure's point, above it, in the words of the rule. */
+  .takeaway {
+    font-size: var(--text-base);
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--ink-bright);
+    text-wrap: balance;
+  }
+
+  .rig {
+    container: anatomy / inline-size;
+  }
+
+  .layout {
+    display: grid;
+    gap: 1.5rem;
+    justify-items: start;
+  }
+
+  /* The meter bridge, drawn as one grid so the aim bracket can span exactly two lights. */
+  .bridge {
+    --led-h: 0.6rem;
+    display: grid;
+    grid-template-columns:
+      [aim] 2.4rem [ch1] 1.75rem [t1] 1.9rem [ml] 0.85rem [mr] 0.85rem [mr-end t2] 1.9rem
+      [ch2] 1.75rem;
+    grid-template-rows: auto repeat(12, var(--led-h));
+    column-gap: 4px;
+    row-gap: 5px;
+    padding: 0.75rem 0.9rem 0.9rem 0.5rem;
+    border-radius: var(--radius-control);
+    background: var(--hw-sunk);
+  }
+
+  .name {
+    grid-row: 1;
+    justify-self: center;
+    margin-bottom: 0.35rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+
+  .led {
+    border-radius: 2px;
+    background: var(--led-g-off);
+  }
+
+  .led[data-zone='orange'] {
+    background: var(--led-a-off);
+  }
+
+  .led[data-zone='red'] {
+    background: var(--led-r-off);
+    box-shadow: inset 0 0 0 1px var(--led-r-rim);
+  }
+
+  .led[data-on][data-zone='green'] {
+    background: var(--led-g);
+    box-shadow: 0 0 0.4rem color-mix(in oklab, var(--led-g) 55%, transparent);
+  }
+
+  .led[data-on][data-zone='orange'] {
+    background: var(--led-a);
+    box-shadow: 0 0 0.4rem color-mix(in oklab, var(--led-a) 55%, transparent);
+  }
+
+  .tick {
+    align-self: center;
+    font-family: var(--font-label);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    color: var(--hw-label-2);
+  }
+
+  /* A square bracket beside CH1's two orange lights, labelled like a note on the panel. */
+  .aim {
+    grid-column: aim;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin-block: -2px;
+    margin-inline-end: 3px;
+    border: 2px solid var(--hw-bright);
+    border-inline-start: 0;
+    border-radius: 0 3px 3px 0;
+    width: 0.45rem;
+    justify-self: end;
+  }
+
+  /* Our note on the panel, not a word printed on it, so it's set like writing, not silk-screen. */
+  .aim span {
+    margin-inline-end: 0.9rem;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--hw-bright);
+  }
+
+  .callouts {
+    display: grid;
+    gap: 0.9rem;
+    margin: 0;
+  }
+
+  .callouts dt {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--hw-bright);
+  }
+
+  .callouts dd {
+    margin: 0.2rem 0 0;
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    color: var(--hw-label);
+  }
+
+  .callouts strong {
+    color: var(--hw-bright);
+  }
+
+  .aside-note {
+    font-size: var(--text-sm);
+    color: var(--ink-2);
+  }
+
+  /* Wide enough: the callouts beside the meters, top-aligned with the names. */
+  @container anatomy (min-width: 30rem) {
+    .layout {
+      grid-template-columns: auto minmax(0, 1fr);
+      column-gap: 2rem;
+      align-items: center;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .led {
+      forced-color-adjust: none;
+      background: Canvas;
+      box-shadow: inset 0 0 0 1px CanvasText;
+    }
+
+    .led[data-on][data-zone] {
+      background: CanvasText;
+      box-shadow: none;
+    }
+
+    .aim {
+      border-color: CanvasText;
+    }
+  }
+</style>
