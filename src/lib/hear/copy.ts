@@ -40,10 +40,10 @@ export const PLAYER_LABEL = 'Listening test';
  */
 export const ROUND_INTROS: readonly string[] = ROUND_PUSHES_DB.map((db, i) =>
   i === 0
-    ? `Play A and B. One was pushed ${dbText(db)} into the mixer’s ceiling, so it clipped. Both play equally loud.`
+    ? `Play A and B. One was pushed ${dbText(db)} past the mixer’s ceiling, so it clipped. Both play equally loud.`
     : i === ROUND_PUSHES_DB.length - 1
-      ? `In the last round, the clipped one was pushed only ${dbText(db)} into the ceiling.`
-      : `This time the clipped one was pushed ${dbText(db)} into the ceiling.`,
+      ? `In the last round, the clipped one was pushed only ${dbText(db)} past the ceiling.`
+      : `This time the clipped one was pushed ${dbText(db)} past the ceiling.`,
 );
 
 /** What to listen for, before you press play. Only the words change with the device. */
@@ -61,7 +61,7 @@ export const TRANSPORT_NOTE = 'Starts quietly. If you hear nothing, check your v
 export const MODEL_NOTE =
   'This is a model. It plays one synth loop, clipped the way a digital mixer clips, then turned down until both measure equally loud.';
 
-export const NO_AUDIO = 'Sound is blocked or missing in this browser. Try another one.';
+export const NO_AUDIO = 'This browser can’t play the sound. Everything else works; try another browser to hear it.';
 
 export const CHECK = 'Check answer';
 export const MISSING_PICK = 'Choose A or B first.';
@@ -73,7 +73,7 @@ export const verdictLine = (spotted: boolean): string => (spotted ? 'You spotted
 
 /** The reveal: which one was clipped, and what was done to it. */
 export const revealLine = (round: Round): string =>
-  `${letter(round.clipped)} was pushed ${dbText(round.pushDb)} into the ceiling, then turned down to match.`;
+  `${letter(round.clipped)} was pushed ${dbText(round.pushDb)} past the ceiling, then turned down to match.`;
 
 export const scopeTitle = (clipped: boolean, unmatched: boolean): string =>
   !clipped ? 'Clean' : unmatched ? 'Clipped, as loud as the mixer left it' : 'Clipped, turned down to match';

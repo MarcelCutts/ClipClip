@@ -15,6 +15,7 @@ import {
   LISTEN_NOTE,
   MODEL_NOTES,
   mixReadout,
+  NO_SOUND,
   PRESET_GROUPS,
   plain,
   presetLine,
@@ -156,7 +157,7 @@ describe('explanation line', () => {
   });
 });
 
-describe('a side meter in the red', () => {
+describe('a channel meter in the red', () => {
   const hot: BlendSettings = {
     deck1: { trim: 12, low: 0, fader: 6 },
     deck2: { trim: 6, low: 0, fader: 10 },
@@ -183,9 +184,9 @@ describe('a side meter in the red', () => {
 
   it('keeps the challenge open with its own message', () => {
     expect(challengeMessage('hot1')).toBe(
-      'The middle meters are clear, but deck 1’s own meter is in the red, so it distorts before its fader.',
+      'The middle meters are clear, but deck 1’s channel meter is in the red, so it distorts before its fader.',
     );
-    expect(challengeMessage('hot2')).toMatch(/deck 2’s own meter/);
+    expect(challengeMessage('hot2')).toMatch(/deck 2’s channel meter/);
   });
 });
 
@@ -258,8 +259,8 @@ describe('the guess', () => {
 });
 
 describe('preset sets', () => {
-  it('have names, and the ways out say when they’ll show', () => {
-    expect(PRESET_GROUPS).toEqual({ push: 'Push it', out: 'Ways out' });
+  it('have plain names, and the fixes say when they’ll show', () => {
+    expect(PRESET_GROUPS).toEqual({ push: 'Blends that hit the red', out: 'Fixes' });
     expect(WAYS_OUT_WAIT).toBe('They show up once you’ve hit the red.');
     expect(WAYS_OUT_SHOW).toBe('Show them now');
     expect(WAVEFORM_TOGGLE).toBe('Show the waveform');
@@ -306,10 +307,10 @@ describe('live region', () => {
     expect(verdict(silent)).toBe('The middle meters are dark.');
     const hot = cloneSettings(START);
     hot.deck1.trim = 12;
-    expect(verdict(hot)).toBe('The middle meters are in the red. CLIP is lit. Deck 1’s own meter is in the red.');
+    expect(verdict(hot)).toBe('The middle meters are in the red. CLIP is lit. Deck 1’s channel meter is in the red.');
     hot.deck2.trim = 12;
     hot.deck2.fader = 6;
-    expect(verdict(hot)).toMatch(/Both decks’ own meters are in the red\.$/);
+    expect(verdict(hot)).toMatch(/Both channel meters are in the red\.$/);
   });
 
   it('gives a pad the whole result, numbers and all, without saying the red twice', () => {
@@ -340,6 +341,7 @@ describe('house style', () => {
     WAYS_OUT_WAIT,
     WAYS_OUT_SHOW,
     WAVEFORM_TOGGLE,
+    NO_SOUND,
     ...Object.values(PRESET_GROUPS),
     GUESS_PROMPT,
     GUESS_LEGEND,
@@ -392,8 +394,9 @@ describe('house style', () => {
 
   it('keeps the spec’s fixed lines', () => {
     expect(CHALLENGE_PROMPT).toBe('Bring deck 2 all the way up without the middle meters going red.');
+    expect(NO_SOUND).toBe('This browser can’t play the sound. Everything else works; try another browser to hear it.');
     expect(TEACHING_NOTE).toBe(
-      'The side meters read each track before its fader, so they don’t move when you move a fader. Only the middle meters show the blend.',
+      'The channel meters read each track before its fader, so they don’t move when you move a fader. Only the middle meters show the blend.',
     );
     expect(text(CAPTION)).toContain('Real kicks rarely line up perfectly, so plan for up to +6 dB.');
     expect(CAPTION).toContain('THRU');

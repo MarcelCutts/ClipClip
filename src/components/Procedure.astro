@@ -1,9 +1,10 @@
 ---
 /**
  * A normal procedure, set like a quick reference handbook's checklist card: a black title strip
- * with its number and kind, a caution before the steps it guards, then each step as a challenge
- * and its response joined by leader dots. The response is the action, in the action colour. A
- * note on a step sits under it; anything else (a source, a figure) goes in the slot at the end.
+ * with its number and kind, a plain sentence on what could go wrong when there's a real
+ * consequence, then each step as a challenge and its response joined by leader dots (a screen
+ * reader hears a comma). The response is the action, in the action colour. A note on a step sits
+ * under it; anything else (a source, a figure) goes in the slot at the end.
  */
 interface Step {
   challenge: string;
@@ -19,7 +20,7 @@ interface Props {
   title: string;
   /** What kind of procedure: Normal, Once, Test. */
   kind?: string;
-  /** Said before the steps, prefixed CAUTION. */
+  /** A real consequence, said in a plain sentence before the steps, with no label. */
   caution?: string;
   steps: Step[];
   /** A note after the steps. */
@@ -38,21 +39,21 @@ const titleId = id ? `${id}-title` : undefined;
     <span class="kind"><span class="visually-hidden">, </span>{kind}</span>
   </Heading>
   <div class="body">
-    {caution && (
-  <p class="caution"><strong>Caution.</strong> {caution}</p>
+    {caution && <p class="caution">{caution}</p>}
+    {steps.length > 0 && (
+  <ol class="steps">
+    {steps.map((s) => (
+    <li class="step">
+      <p class="line">
+        <span class="challenge">{s.challenge}</span><span class="visually-hidden">, </span>
+        <span class="dots" aria-hidden="true"></span>
+        <span class="response">{s.response}</span>
+      </p>
+      {s.note && <p class="step-note">{s.note}</p>}
+    </li>
+  ))}
+  </ol>
 )}
-    <ol class="steps">
-      {steps.map((s) => (
-  <li class="step">
-    <p class="line">
-      <span class="challenge">{s.challenge}</span>
-      <span class="dots" aria-hidden="true"></span>
-      <span class="response">{s.response}</span>
-    </p>
-    {s.note && <p class="step-note">{s.note}</p>}
-  </li>
-))}
-    </ol>
     {note && (
   <p class="note"><strong>Note.</strong> {note}</p>
 )}
@@ -61,10 +62,11 @@ const titleId = id ? `${id}-title` : undefined;
 </section>
 
 <style>
+  /* The card's top line is the strip's edge: by night it lifts the strip off the display. */
   .proc {
     display: grid;
     border: 2px solid var(--ink);
-    scroll-margin-top: 1rem;
+    border-top-color: var(--strip-edge);
   }
 
   .strip {
@@ -99,10 +101,6 @@ const titleId = id ? `${id}-title` : undefined;
   .caution {
     font-size: var(--text-sm);
     line-height: 1.5;
-  }
-
-  .caution strong {
-    letter-spacing: 0.02em;
   }
 
   .steps {

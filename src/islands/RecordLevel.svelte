@@ -1,19 +1,22 @@
 <script lang="ts">
   /**
-   * W4 · Set the record level. The steps as a read-then-do list, then the same job to practise on
-   * a model of the rig: a worked example with every instruction, then "Your turn" without them.
+   * Set the record level: the S3 card's steps (lib/record/flow, printed on the setup page) to
+   * practise on a model of the rig, a worked example with every instruction, then "Your turn"
+   * without them. The card lists the steps, so the panel only shows the one you're on and the one
+   * you've just done, and a summary of what you set at the end.
    *
    * The Howler records from MASTER 2 and has no input knob, just one light, so MASTER LEVEL is the
-   * record level. It stays fully up and taped; MASTER ATT, in UTILITY, trims the feed; and MASTER
-   * LEVEL only comes down if the light is still red at MASTER ATT's lowest step. All the judging
-   * lives in lib/record, so this file only wires state to parts.
+   * record level. It stays fully up and taped; MASTER ATT, in UTILITY, turns the feed down; and
+   * MASTER LEVEL only comes down if the light is still red at MASTER ATT's lowest step. All the
+   * judging lives in lib/record, so this file only wires state to parts.
    *
    * One DOM order reads right on a phone: the step, the controls, what the Howler and the file
    * show, then the key and what it said. On a wide panel a grid lifts the rig into a column beside
-   * the steps, so the step you're on keeps its instruction, its key and its result together between
+   * the step, so the step you're on keeps its instruction, its key and its result together between
    * two rules.
    */
   import { tick } from 'svelte';
+  import { OPEN_UTILITY } from '../lib/checklists';
   import { formatDb } from '../lib/dsp/db';
   import { HOWLER_BELOW_RED_DB } from '../lib/model';
   import {
@@ -29,6 +32,8 @@
     reduce,
     STEP_IDS,
     STEPS,
+    settingsSummary,
+    stepAction,
     stepResponse,
     workedStart,
   } from '../lib/record/flow';
@@ -51,7 +56,6 @@
   import FileLadder from './record-level/FileLadder.svelte';
   import Howler from './record-level/Howler.svelte';
   import LevelFader from './record-level/LevelFader.svelte';
-  import Procedure from './record-level/Procedure.svelte';
   import RadioPads from './record-level/RadioPads.svelte';
   import StepRow from './record-level/StepRow.svelte';
   import HwButton from './ui/HwButton.svelte';
@@ -68,8 +72,8 @@
 
   const index = $derived(STEP_IDS.indexOf(flow.step));
   const current = $derived(STEPS[index]!);
-  const before = $derived(flow.complete ? STEPS : STEPS.slice(0, index));
-  const after = $derived(flow.complete ? [] : STEPS.slice(index + 1));
+  /** The step just done, which keeps what its key said. The card above the panel lists the rest. */
+  const previous = $derived(flow.complete || index === 0 ? null : STEPS[index - 1]!);
   const light = $derived(lightFor(flow.rig, flow.limit));
   const peaks = $derived(peaksFor(flow.rig, ['blend', 'loud', 'quiet'], flow.limit));
   const off = $derived(offMark(flow));
@@ -139,6 +143,20 @@
             ? panel.querySelector<HTMLElement>('.checks input')
             : goKey;
     el?.focus();
+    if (target !== 'key' && target !== 'checks') revealKey(el);
+  }
+
+  /**
+   * On a phone the key sits under the rig, and can end up just below the screen. If it has, scroll
+   * it into sight, but never so far that the control with focus goes off the top.
+   */
+  function revealKey(focused: HTMLElement | null | undefined) {
+    if (!goKey || !focused) return;
+    const margin = 16;
+    const below = goKey.getBoundingClientRect().bottom + margin - window.innerHeight;
+    const room = focused.getBoundingClientRect().top - margin;
+    const by = Math.min(below, room);
+    if (by > 0) window.scrollBy({ top: by, behavior: 'auto' });
   }
 
   function commit() {
@@ -159,7 +177,7 @@
   function hear(check: CheckId, value: boolean) {
     dispatch({ type: 'heard', check, value });
     if (!flow.complete) return;
-    say(`${DONE_MESSAGE} ${aside()}`);
+    say(`${DONE_MESSAGE} ${settingsSummary(flow)} ${aside()}`);
     void focusOn('key');
   }
 
@@ -200,151 +218,134 @@
   $effect(() => () => clearTimeout(statusTimer));
 </script>
 
-<div class="walkthrough">
-  <Procedure />
+<section class="panel record-level" aria-labelledby="{uid}-title" bind:this={panel}>
+  <header class="top">
+    <p class="title" id="{uid}-title">Practise it here<span class="visually-hidden">: set the record level</span></p>
+    <!-- Beside the title, so it never needs a row of its own on a phone. -->
+    {#if dirty}
+      <button type="button" class="again" onclick={() => start(flow.mode, true)}>Start again</button>
+    {/if}
+    <div class="modes">
+      <!-- Switching mode starts it fresh. Pressing the mode you're in does nothing: "Start again" resets. -->
+      <Pad pressed={flow.mode === 'worked'} onclick={() => flow.mode !== 'worked' && start('worked')}>Worked example</Pad>
+      <Pad pressed={flow.mode === 'practice'} onclick={() => flow.mode !== 'practice' && start('practice')}>Your turn</Pad>
+    </div>
+  </header>
 
-  <section class="panel record-level" aria-labelledby="{uid}-title" bind:this={panel}>
-    <header class="top">
-      <p class="title" id="{uid}-title">Practise it here<span class="visually-hidden">: set the record level</span></p>
-      <!-- Beside the title, so it never needs a row of its own on a phone. -->
-      {#if dirty}
-        <button type="button" class="again" onclick={() => start(flow.mode, true)}>Start again</button>
-      {/if}
-      <div class="modes">
-        <!-- Switching mode starts it fresh. Pressing the mode you're in does nothing: "Start again" resets. -->
-        <Pad pressed={flow.mode === 'worked'} onclick={() => flow.mode !== 'worked' && start('worked')}>Worked example</Pad>
-        <Pad pressed={flow.mode === 'practice'} onclick={() => flow.mode !== 'practice' && start('practice')}>Your turn</Pad>
-      </div>
-    </header>
-
-    <div class="body" data-step={flow.complete ? 'complete' : flow.step}>
-      {#if before.length > 0 || flow.mode === 'practice'}
-        <div class="done">
-          {#if flow.mode === 'practice'}
-            <p class="intro">The same steps without the instructions, and the rig starts somewhere new.</p>
-          {/if}
-          {#each before as s, i (s.id)}
-            <StepRow
-              n={i + 1}
-              of={STEPS.length}
-              label={s.label}
-              response={stepResponse(flow, s.id)}
-              state="done"
-              message={!flow.complete && flow.note === null && flow.last?.step === s.id ? flow.last.text : null}
-            />
-          {/each}
-        </div>
-      {/if}
-
-      {#if !flow.complete}
-        <div class="now">
+  <div class="body" data-step={flow.complete ? 'complete' : flow.step}>
+    {#if previous || flow.mode === 'practice'}
+      <div class="done">
+        {#if flow.mode === 'practice'}
+          <p class="intro">The same steps without the instructions, and the rig starts somewhere new.</p>
+        {/if}
+        {#if previous}
           <StepRow
-            n={index + 1}
+            n={index}
             of={STEPS.length}
-            label={current.label}
-            response={current.target}
-            state="current"
-            instruction={flow.mode === 'worked' ? current.instruction : null}
+            label={previous.label}
+            response={stepResponse(flow, previous.id)}
+            state="done"
+            message={flow.note === null && flow.last?.step === previous.id ? flow.last.text : null}
           />
-        </div>
-      {/if}
-
-      <div class="rig">
-        <div class="play">
-          <RadioPads
-            name="{uid}-play"
-            legend="What’s playing"
-            note={MATERIALS_NOTE}
-            layout="row"
-            wrap
-            options={playOptions}
-            value={flow.rig.material}
-            onchange={(m) => dispatch({ type: 'play', material: m })}
-          />
-        </div>
-        <div class="level">
-          <LevelFader
-            id="{uid}-level"
-            value={flow.rig.level}
-            tape={flow.kept.tape}
-            speak={(level) => spokenLevel({ ...flow.rig, level }, flow.kept.tape, flow.limit)}
-            oninput={(v) => dispatch({ type: 'level', db: v })}
-          />
-        </div>
-        <div class="att">
-          <RadioPads
-            name="{uid}-att"
-            legend="MASTER ATT"
-            hardware
-            note="It’s in UTILITY, and it turns the speakers down too."
-            layout="row"
-            options={attOptions}
-            value={flow.rig.att}
-            onchange={(v) => dispatch({ type: 'att', db: v })}
-          />
-        </div>
-        <!-- What the booth and a test recording show. On phones, a strip right under the controls. -->
-        <div class="results">
-          <div class="howler"><Howler {light} /></div>
-          <div class="file"><FileLadder {peaks} playing={flow.rig.material} /></div>
-        </div>
-      </div>
-
-      <div class="act" class:alone={flow.complete}>
-        {#if listening && !flow.complete}
-          {#if flow.note && showNote}
-            {@render note(flow.note.tone, flow.note.text, false)}
-          {/if}
-          <fieldset class="checks">
-            <legend>Listen on headphones</legend>
-            {#each CHECKS as c (c.id)}
-              <label class="check">
-                <input type="checkbox" checked={flow.heard[c.id]} onchange={(e) => hear(c.id, e.currentTarget.checked)} />
-                <span>{c.label}</span>
-              </label>
-            {/each}
-          </fieldset>
-        {:else if !flow.complete}
-          <HwButton primary onclick={commit} bind:element={goKey}>{current.action}</HwButton>
-          {#if flow.note && showNote}
-            {@render note(flow.note.tone, flow.note.text, flow.note.rig !== flow.rig)}
-          {/if}
-        {/if}
-        {#if offNote}
-          {@render note('fix', offNote, false)}
-        {/if}
-        {#if flow.complete}
-          {@render note('good', DONE_MESSAGE, false)}
-          <p class="aside">{aside()}</p>
-          <HwButton primary onclick={() => start('practice', true)} bind:element={goKey}>
-            {flow.mode === 'worked' ? 'Your turn, without hints' : 'Go again'}
-          </HwButton>
         {/if}
       </div>
+    {/if}
 
-      {#if after.length > 0}
-        <div class="todo">
-          {#each after as s, i (s.id)}
-            <StepRow
-              n={index + i + 2}
-              of={STEPS.length}
-              label={s.label}
-              response={stepResponse(flow, s.id)}
-              state="todo"
-            />
-          {/each}
-        </div>
-      {/if}
+    {#if !flow.complete}
+      <div class="now">
+        <StepRow
+          n={index + 1}
+          of={STEPS.length}
+          label={current.label}
+          response={current.target}
+          state="current"
+          instruction={flow.mode === 'worked' ? current.instruction : null}
+        />
+      </div>
+    {/if}
+
+    <div class="rig">
+      <div class="play">
+        <RadioPads
+          name="{uid}-play"
+          legend="What’s playing"
+          note={MATERIALS_NOTE}
+          layout="row"
+          wrap
+          options={playOptions}
+          value={flow.rig.material}
+          onchange={(m) => dispatch({ type: 'play', material: m })}
+        />
+      </div>
+      <div class="level">
+        <LevelFader
+          id="{uid}-level"
+          value={flow.rig.level}
+          tape={flow.kept.tape}
+          speak={(level) => spokenLevel({ ...flow.rig, level }, flow.kept.tape, flow.limit)}
+          oninput={(v) => dispatch({ type: 'level', db: v })}
+        />
+      </div>
+      <div class="att">
+        <RadioPads
+          name="{uid}-att"
+          legend="MASTER ATT"
+          hardware
+          note={`It’s in UTILITY, and it turns the speakers down too. ${OPEN_UTILITY}`}
+          layout="row"
+          options={attOptions}
+          value={flow.rig.att}
+          onchange={(v) => dispatch({ type: 'att', db: v })}
+        />
+      </div>
+      <!-- What the booth and a test recording show. On phones, a strip right under the controls. -->
+      <div class="results">
+        <div class="howler"><Howler {light} /></div>
+        <div class="file"><FileLadder {peaks} playing={flow.rig.material} /></div>
+      </div>
     </div>
 
-    <p class="model">
-      This is a model. It assumes MASTER ATT reaches MASTER 2, which Pioneer doesn’t say, and that the Howler overloads
-      {db(HOWLER_BELOW_RED_DB)} below the mixer’s red with MASTER LEVEL fully up, which Howler doesn’t publish. On the
-      night, its LEVEL light is the only way to tell.
-    </p>
-    <p class="visually-hidden" aria-live="polite">{announce}</p>
-  </section>
-</div>
+    <div class="act" class:alone={flow.complete}>
+      {#if listening && !flow.complete}
+        {#if flow.note && showNote}
+          {@render note(flow.note.tone, flow.note.text, false)}
+        {/if}
+        <fieldset class="checks">
+          <legend>Listen on headphones</legend>
+          {#each CHECKS as c (c.id)}
+            <label class="check">
+              <input type="checkbox" checked={flow.heard[c.id]} onchange={(e) => hear(c.id, e.currentTarget.checked)} />
+              <span>{c.label}</span>
+            </label>
+          {/each}
+        </fieldset>
+      {:else if !flow.complete}
+        <HwButton primary onclick={commit} bind:element={goKey}>{stepAction(flow)}</HwButton>
+        {#if flow.note && showNote}
+          {@render note(flow.note.tone, flow.note.text, flow.note.rig !== flow.rig)}
+        {/if}
+      {/if}
+      {#if offNote}
+        {@render note('fix', offNote, false)}
+      {/if}
+      {#if flow.complete}
+        {@render note('good', DONE_MESSAGE, false)}
+        <p class="aside settings">{settingsSummary(flow)}</p>
+        <p class="aside">{aside()}</p>
+        <HwButton primary onclick={() => start('practice', true)} bind:element={goKey}>
+          {flow.mode === 'worked' ? 'Your turn, without hints' : 'Go again'}
+        </HwButton>
+      {/if}
+    </div>
+  </div>
+
+  <p class="model">
+    This is a model. It assumes MASTER ATT reaches MASTER 2, which Pioneer doesn’t say (T2 tests it). It also assumes
+    the Howler overloads about {db(HOWLER_BELOW_RED_DB)} below the mixer’s red with MASTER LEVEL fully up. That’s our
+    assumption, because Howler doesn’t publish its input limit. On the night, its LEVEL light is the only way to tell.
+  </p>
+  <p class="visually-hidden" aria-live="polite">{announce}</p>
+</section>
 
 {#snippet note(tone: 'good' | 'fix', text: string, stale: boolean)}
   <!-- Feedback about a rig that has since changed stays readable, but steps back. -->
@@ -357,12 +358,6 @@
 {/snippet}
 
 <style>
-  .walkthrough {
-    display: grid;
-    gap: 1.75rem;
-    min-width: 0;
-  }
-
   .record-level {
     container: record / inline-size;
     display: grid;
@@ -430,8 +425,7 @@
     row-gap: 0.85rem;
   }
 
-  .done,
-  .todo {
+  .done {
     display: grid;
     gap: 0.1rem;
     align-content: start;
@@ -531,6 +525,11 @@
     color: var(--hw-label);
   }
 
+  /* What to write on the REC tape: the job's result, so it reads first after "Done". */
+  .aside.settings {
+    color: var(--hw-bright);
+  }
+
   .checks {
     display: grid;
     gap: 0.25rem;
@@ -600,7 +599,7 @@
 
     .body {
       grid-template-columns: minmax(18rem, 22rem) minmax(0, 1fr);
-      grid-template-rows: auto auto auto auto 1fr;
+      grid-template-rows: auto auto auto 1fr;
       column-gap: 2rem;
       row-gap: 0;
     }
@@ -625,11 +624,6 @@
     .act.alone {
       padding: 0.2rem 0 0;
       border-bottom: 0;
-    }
-
-    .todo {
-      grid-area: 4 / 1;
-      margin-top: 0.4rem;
     }
 
     /* Controls on the left, in signal order; on the right, what they do: the Howler's light

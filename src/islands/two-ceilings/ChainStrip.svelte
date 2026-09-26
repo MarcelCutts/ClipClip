@@ -149,9 +149,10 @@
     color: var(--hw-label-2);
   }
 
+  /* MASTER LEVEL as printed on the mixer: it names a control, so 14px like the fader names. */
   .sub.hw-label {
-    font-size: 0.74rem;
-    line-height: 1.3;
+    font-size: 0.875rem;
+    line-height: 1.2;
     color: var(--hw-label);
   }
 

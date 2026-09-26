@@ -3,9 +3,17 @@
  * The heading is always the correction, never the myth on its own, so a reader who only
  * skims the headings takes away the right idea.
  *
- * Where a myth leans on what a manufacturer says, `actually` quotes it word for word with the
- * page, and `source` points at the document (it's in sources.ts too).
+ * Where a myth leans on what a maker says, `actually` quotes or reports it with the page, and
+ * `source` points at the document (it's in sources.ts too). The guide sets `fair`, `actually` and
+ * `instead` as one paragraph, so each reads on from the one before.
  */
+
+/** SoundCloud's help page on loudness: it "applies Loudness Normalization to your tracks as they're played". */
+const SOUNDCLOUD_LOUDNESS = {
+  publisher: 'SoundCloud Help',
+  title: 'Will SoundCloud play my track at the level it’s mastered?',
+  url: 'https://help.soundcloud.com/hc/en-us/articles/360053660014-Will-SoundCloud-play-my-track-at-the-level-it-s-mastered',
+} as const;
 
 const XDJ_MANUAL = {
   title: 'XDJ-RX2 Operating Instructions',
@@ -22,10 +30,13 @@ export interface Myth {
   fair: string;
   /** What actually happens. */
   actually: string;
-  /** What to do instead. */
+  /** What to do instead, as the paragraph's last sentence. */
   instead: string;
-  /** The manufacturer's document behind `actually`, with the page quoted there. */
-  source?: { title: string; url: string; page?: number };
+  /**
+   * The maker's document behind `actually`, with the page quoted there. A publisher is named
+   * first when the title doesn't say whose it is.
+   */
+  source?: { title: string; url: string; page?: number; publisher?: string };
 }
 
 export const MYTHS: Myth[] = [
@@ -33,10 +44,10 @@ export const MYTHS: Myth[] = [
     id: 'room',
     truth: 'Crunch the room covers up is still in the recording.',
     claim: 'It sounded fine in the room, so it’s fine.',
-    fair: 'On the night a lot gets covered up: the speakers add their own grit, the room is loud, and nobody is listening closely.',
+    fair: 'On the night a lot gets covered up. The speakers add their own grit, the room is loud, and nobody is listening closely.',
     actually:
       'By midnight your ears are tired too, so the booth is the worst place to judge. The recording gets played on headphones in a quiet room, again and again, with nothing covering it.',
-    instead: 'Trust the meters over your ears late in the night.',
+    instead: 'Late in the night, trust the meters over your ears.',
   },
   {
     id: 'headroom',
@@ -69,18 +80,18 @@ export const MYTHS: Myth[] = [
     // Pioneer's UTILITY settings (manual p.32) have MASTER and BOOTH attenuators and no limiter, and no
     // firmware up to 1.43 adds one.
     actually:
-      'Once it’s set up for our amps, it holds the speakers back when you push too hard, so the room stops getting louder. It can’t undo clipping that arrives from the mixer, and the recorder doesn’t go through it. Pioneer lists no limiter on the XDJ-RX2 either: its settings have attenuators, not a limiter (page 32). So nothing protects the recording but your meters.',
+      'Once it’s set up for our amps, it holds the speakers back when you push too hard, so the room stops getting louder. It can’t undo clipping that arrives from the mixer, and the recorder doesn’t go through it. Pioneer lists no limiter on the XDJ-RX2 either. Its settings have attenuators for MASTER and BOOTH and no limiter (page 32), so only your meters protect the recording.',
     instead:
-      'If pushing harder stops making the room louder, that’s the limiter. Ease back to orange and ask the crew.',
+      'If pushing harder stops making the room louder, the limiter is working. Ease back to orange and ask the crew.',
     source: { ...XDJ_MANUAL, page: 32 },
   },
   {
     id: 'post',
     truth: 'A quiet file can be turned up afterwards, but no tool can put back the tops clipping cut off.',
     claim: 'I’ll fix it afterwards.',
-    fair: 'A recording that’s too quiet takes a minute to fix: turn the whole file up.',
+    fair: 'A recording that’s too quiet takes a minute to fix, by turning the whole file up.',
     actually:
-      'A clipped recording has lost the tops of its waves. Repair tools redraw them with a guess, which works for a few clicks and fails on a whole set. You can’t record Saturday night again.',
+      'A clipped recording has lost the tops of its waves. Repair tools redraw them with a guess, which works for a few clicks but not for a whole set, and nobody can record the night again.',
     instead: 'Keep the mixer clean and turn the file up afterwards.',
   },
   {
@@ -89,17 +100,21 @@ export const MYTHS: Myth[] = [
     claim: 'The big names play in the red.',
     fair: 'You’ll see red lights in some festival videos.',
     actually:
-      'At festivals and big clubs there’s an engineer and a rack of processing between the DJ and the speakers, often cleaning up after them. Our recording has none of that. And many big names stay out of the red.',
-    instead: 'Play to this rig, which has no engineer after the mixer.',
+      'Many big names stay out of the red. Where you do see red, at festivals and big clubs, there’s an engineer and a rack of processing between the DJ and the speakers, often cleaning up after them.',
+    instead: 'Our rig has no engineer after the mixer, so keep your meters out of the red.',
   },
   {
     id: 'quiet-file',
     truth: 'Recordings get their loudness afterwards.',
     claim: 'My recordings sound quieter than sets online, so I should play hotter.',
     fair: 'A clean recording does sound quieter than a finished upload before anyone turns it up.',
+    // SoundCloud Help (updated September 2026): "SoundCloud applies Loudness Normalization to your
+    // tracks as they're played to listeners", aiming at −14 LUFS. Other services aren't on the
+    // sources list, so they aren't named.
     actually:
-      'Published mixes are turned up after the set. SoundCloud and others turn loud uploads down anyway, so a clipped mix ends up no louder than a clean one, and sounds worse.',
+      'Published mixes are turned up after the set. SoundCloud turns loud tracks down as it plays them, so a clipped mix ends up no louder than a clean one that’s been turned up, and it sounds worse.',
     instead: 'Record clean, then turn the file up.',
+    source: SOUNDCLOUD_LOUDNESS,
   },
   {
     id: 'digital',
@@ -107,7 +122,7 @@ export const MYTHS: Myth[] = [
     claim: 'It’s digital, so it can’t clip.',
     fair: 'Some digital mixers can carry levels above their meters inside.',
     actually:
-      'Somewhere the sound leaves the mixer as a real electrical signal with a real top: the output, the lead, the recorder’s input. There’s always a ceiling.',
+      'Somewhere the sound leaves the mixer as a real electrical signal, and the mixer’s output and the recorder’s input each have a top.',
     instead: 'Keep red dark on every mixer.',
   },
 ];

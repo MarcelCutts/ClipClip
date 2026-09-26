@@ -1,9 +1,9 @@
 ---
 /**
- * The guide's index, set like a quick reference handbook's: each part a row with its tab marker,
+ * The guide's index, set like a quick reference handbook's: each part a row with its thumb tab,
  * number, title and reading time, and a last row, F, for the drills on the night page. On phones
  * and laptops it's a list near the top; on wide screens it sits in the rail left of the text, stays
- * in view, and opens the part you're in. The tab marker of the part you're in is filled.
+ * in view, and opens the part you're in. The thumb tab of the part you're in is filled.
  *
  * Without JavaScript it's a plain list of links. With it, the part and section you're in are
  * marked here and on the phone's tab strip (Tabs.astro).
@@ -16,6 +16,8 @@ export interface ContentsEntry {
   /** Its place: a part number like 2, or a card's code like S1. */
   number?: number | string;
   minutes?: number;
+  /** A small warning lamp before the number, as on the drills' tab. */
+  lamp?: boolean;
   subs?: { id: string; label: string }[];
 }
 
@@ -37,9 +39,11 @@ const { entries, rows, drills = false } = Astro.props;
   <li class="part" data-part={e.id}>
     <a href={`#${e.id}`} data-target={e.id}>
       <span class="marker" aria-hidden="true"></span>
-      <span class="no">{e.number ?? ''}</span>
-      <span class="label">{e.label}</span>
-      {e.minutes && <span class="time">{e.minutes}&nbsp;min</span>}
+      <span class="no">{e.lamp && <span class="lamp" aria-hidden="true"></span>}{e.number ?? ''}</span>
+      <span class="text">
+        <span class="label">{e.label}</span>
+        {e.minutes && <span class="time">{e.minutes}&nbsp;min</span>}
+      </span>
     </a>
     {e.subs && e.subs.length > 0 && (
     <ol class="subs">
@@ -55,12 +59,14 @@ const { entries, rows, drills = false } = Astro.props;
   </li>
 ))}
     {drills && (
-  <li class="part drills">
+  <li class="part">
     <a href={href('/night/#fixes')}>
       <span class="marker" aria-hidden="true"></span>
-      <span class="no">F</span>
-      <span class="label">Drills: something’s wrong</span>
-      <span class="time">On the night</span>
+      <span class="no"><span class="lamp" aria-hidden="true"></span>F</span>
+      <span class="text">
+        <span class="label">Something’s wrong</span>
+        <span class="time">On the night</span>
+      </span>
     </a>
   </li>
 )}
@@ -144,22 +150,29 @@ const { entries, rows, drills = false } = Astro.props;
     text-decoration: none;
   }
 
-  .label {
+  /* The title, with its reading time at the end of the line, or under it when there's no room. */
+  .text {
     flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.1rem 0.75rem;
+  }
+
+  .label {
+    flex: 1 1 auto;
     line-height: 1.3;
   }
 
-  /* A thumb tab, as on the edge of a printed handbook: filled for the part you're in. */
+  /* A thumb tab, drawn as the notch it makes in the edge of a printed handbook: open on the page's
+     side, and filled for the part you're in. */
   .marker {
     flex: none;
-    width: 0.75rem;
+    width: 0.625rem;
     height: 1.75rem;
     border: 1.5px solid var(--ink);
-  }
-
-  .drills .marker {
-    background: var(--warning);
-    border-color: var(--warning);
+    border-inline-start: 0;
   }
 
   .part[data-open] .marker {
@@ -168,11 +181,21 @@ const { entries, rows, drills = false } = Astro.props;
 
   .no {
     flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
     min-width: 1.5rem;
     font-weight: 700;
   }
 
-  .drills .label,
+  /* The drills' lamp, as on their tab: the only red in the index. */
+  .lamp {
+    flex: none;
+    width: 0.5rem;
+    height: 0.5rem;
+    background: var(--warning);
+  }
+
   .part[data-open] .label {
     font-weight: 700;
   }
@@ -185,6 +208,7 @@ const { entries, rows, drills = false } = Astro.props;
   .time {
     flex: none;
     font-size: var(--text-sm);
+    line-height: 1.3;
     color: var(--ink-3);
   }
 
@@ -195,13 +219,14 @@ const { entries, rows, drills = false } = Astro.props;
   /* Wide screens: the index in a rail beside the text that stays in view, opening the part
      you're in. */
   @media (min-width: 80rem) {
+    /* Below anything that sticks above it, like the night page's tabs. */
     .toc {
       grid-column: rail;
       grid-row: 1 / span var(--toc-rows);
       position: sticky;
-      top: 1.5rem;
+      top: calc(var(--sticky-top, 0px) + 1.5rem);
       align-self: start;
-      max-height: calc(100dvh - 3rem);
+      max-height: calc(100dvh - var(--sticky-top, 0px) - 3rem);
       overflow-y: auto;
       overscroll-behavior: contain;
       margin-block-start: clamp(1.75rem, 1.2rem + 2vw, 2.75rem);
@@ -226,7 +251,8 @@ const { entries, rows, drills = false } = Astro.props;
     .subs a {
       display: block;
       padding-block: 0.3rem;
-      padding-inline-start: 3.35rem;
+      /* In line with the titles: tab, gap, number, gap. */
+      padding-inline-start: calc(0.625rem + 0.55rem + 1.5rem + 0.55rem);
       font-size: var(--text-sm);
       line-height: 1.3;
       color: var(--ink-2);
@@ -245,8 +271,8 @@ const { entries, rows, drills = false } = Astro.props;
   }
 
   @media (forced-colors: active) {
-    .drills .marker,
-    .part[data-open] .marker {
+    .part[data-open] .marker,
+    .lamp {
       forced-color-adjust: none;
       background: CanvasText;
     }

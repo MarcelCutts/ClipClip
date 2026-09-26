@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { LEVEL_FALLBACK, OPEN_UTILITY } from './checklists';
 import { type ActionStep, type Branch, drill, drillAnchor, FIXES, type Fix, isIfStep } from './fixes';
 import { section } from './sections';
 
@@ -9,13 +10,20 @@ const branches = (f: Fix): Branch[] => actions(f).flatMap((s) => s.choose ?? [])
 const copyOf = (f: Fix): string[] =>
   [
     f.title,
+    f.short,
     f.condition,
     f.objective,
     f.warning ?? '',
     ...f.steps.flatMap((s) =>
       isIfStep(s)
-        ? [s.if]
-        : [s.challenge, s.response, s.note ?? '', ...(s.choose ?? []).flatMap((b) => [b.finding, b.action ?? ''])],
+        ? [s.if, s.see?.title ?? '']
+        : [
+            s.before ?? '',
+            s.challenge,
+            s.response,
+            s.note ?? '',
+            ...(s.choose ?? []).flatMap((b) => [b.finding, b.action ?? '']),
+          ],
     ),
     f.why ?? '',
   ].filter(Boolean);
@@ -74,6 +82,17 @@ describe('the drills', () => {
     for (const f of FIXES.filter((f) => f.light)) expect(f.title, f.id).toMatch(/^[A-Z][^:]*: [a-z]+$/);
   });
 
+  it('give each drill a short name for the index rail, one line of it, each one different', () => {
+    const shorts = FIXES.map((f) => f.short);
+    expect(new Set(shorts).size).toBe(shorts.length);
+    for (const f of FIXES) {
+      expect(f.short.length, f.id).toBeLessThanOrEqual(18);
+      expect(f.short, f.id).toMatch(/^[A-Z]/);
+      expect(f.short, f.id).not.toMatch(/[.?!]$/);
+    }
+    expect(drill('howler-red').short).toBe('Howler LEVEL: red');
+  });
+
   it('title the symptoms in sentence case, with capitals only for names printed on the gear', () => {
     expect(drill('not-loud').title).toBe('The room isn’t loud enough');
     expect(drill('my-settings').title).toMatch(/MY SETTINGS/);
@@ -110,6 +129,8 @@ describe('the drills', () => {
         expect(step.response, f.id).not.toMatch(/[.?:]$/);
         expect(words(step.response), step.response).toBeLessThanOrEqual(6);
         if (step.note) expect(step.note, f.id).toMatch(/^[A-Z].*\.$/);
+        // What the step also does is a plain sentence, never a CAUTION label.
+        if (step.before) expect(step.before, f.id).toMatch(/^[A-Z][^:]*\.$/);
       }
     }
   });
@@ -177,20 +198,70 @@ describe('what the drills say', () => {
     expect(mix?.end).toBe(true);
     expect(loaded).toMatchObject({ finding: 'A DJ just loaded MY SETTINGS', next: 2 });
     expect(neither).toMatchObject({ finding: 'Neither', next: 3 });
-    expect(settings).toMatchObject({ challenge: 'MASTER ATT and BOOTH ATT', response: 'as on the tape' });
-    expect(settings?.note).toMatch(/UTILITY/);
+    expect(settings).toMatchObject({ challenge: 'MASTER ATT and BOOTH ATT', response: 'as on the REC tape' });
+    expect(settings?.note).toContain(OPEN_UTILITY);
     expect(att).toMatchObject({ challenge: 'MASTER ATT', response: 'down a step' });
     expect(att?.note).toMatch(/UTILITY: −6\sdB, then −12\sdB/);
     expect(att?.choose?.map((b) => [b.finding, b.next])).toEqual([
       ['Green through the loudest blend', 5],
       ['Still red, or no change', 4],
     ]);
-    // Pioneer doesn't say MASTER ATT reaches MASTER 2: MASTER LEVEL is the fallback, and it costs the meters.
-    expect(level).toMatchObject({ challenge: 'MASTER LEVEL', response: 'down a notch at a time' });
+    // Pioneer doesn't say MASTER ATT reaches MASTER 2: MASTER LEVEL is the fallback, worded as S1 words it,
+    // and it costs the meters.
+    expect(level).toMatchObject({ challenge: LEVEL_FALLBACK.challenge, response: LEVEL_FALLBACK.response });
+    expect(level?.note?.startsWith(LEVEL_FALLBACK.note)).toBe(true);
     expect(level?.note).toMatch(/middle meters then read low/);
+    expect(howler.why).toMatch(/Pioneer doesn’t say whether MASTER ATT reaches MASTER 2/);
     // Both turn the PA down too, so the room comes back at the amps.
     expect(tape).toMatchObject({ challenge: 'REC tape', response: 're-marked' });
     expect(room).toMatchObject({ response: 'back up at the amps' });
+  });
+
+  it('say before turning MASTER ATT down that the room drops too, so the DJ hears it first', () => {
+    for (const f of FIXES) {
+      for (const step of actions(f).filter((s) => s.challenge === 'MASTER ATT' && /down/.test(s.response))) {
+        expect(step.before, f.id).toBe('This turns the room down too, so tell the DJ first.');
+      }
+    }
+    const [, settings] = actions(drill('howler-red'));
+    expect(settings?.before).toMatch(/room down too, so tell the DJ first\.$/);
+    // Not a caution label: the handbook keeps those for hazards to people.
+    expect(FIXES.flatMap(copyOf).join(' ')).not.toMatch(/\bcaution\b/i);
+  });
+
+  it('say how to open UTILITY wherever a drill sends the crew into it', () => {
+    const into = FIXES.flatMap((f) =>
+      actions(f)
+        .filter((s) => /UTILITY/.test(`${s.challenge} ${s.note ?? ''}`) || /\bATT\b/.test(s.challenge))
+        .map((s) => ({ id: f.id, step: s })),
+    );
+    // F1 steps 2 and 3, F6 step 3, F7 step 1 (F7's last step follows its first).
+    expect(into.length).toBeGreaterThanOrEqual(4);
+    for (const { id, step } of into.filter(({ step }) => step.challenge !== 'The ATT that changed')) {
+      expect(step.note, `${id}: ${step.challenge}`).toContain(OPEN_UTILITY);
+    }
+    // Pioneer: "Press the [MENU (UTILITY)] button for over 1 second" (Operating Instructions p.31).
+    expect(OPEN_UTILITY).toBe('To open UTILITY, hold MENU (UTILITY) for over a second.');
+  });
+
+  it('check both attenuators against the REC tape, where the crew wrote them', () => {
+    const all = FIXES.flatMap(copyOf).join(' ');
+    expect(all).not.toMatch(/\bthe tape\b/);
+    expect(all).toMatch(/both ATTs against the REC tape/);
+    expect(actions(drill('my-settings'))[0]).toMatchObject({ response: 'check against the REC tape' });
+  });
+
+  it('say what MASTER REC is at its first mention, and send the crew to the setup card for it', () => {
+    const cut = drill('power-cut');
+    const last = cut.steps.at(-1);
+    expect(last && isIfStep(last) ? last.if : '').toMatch(/^If the USB backup \(MASTER REC\) was running/);
+    expect(last && isIfStep(last) ? last.see : undefined).toEqual({
+      code: 'S6',
+      title: 'USB backup',
+      path: '/setup/#backup',
+    });
+    const first = FIXES.flatMap(copyOf).find((text) => text.includes('MASTER REC'));
+    expect(first).toMatch(/USB backup \(MASTER REC\)/);
   });
 
   it('take the room up at the amps, a click at a time, and say when to stop', () => {
@@ -220,11 +291,12 @@ describe('what the drills say', () => {
     expect(copyOf(cut).join(' ')).toMatch(/MASTER LEVEL on its REC mark, both ATTs/);
   });
 
-  it('never cure hum by lifting an earth', () => {
+  it('never cure hum by disconnecting an earth', () => {
     const hum = drill('hum');
     expect(hum.steps[0]).toEqual({ challenge: 'Isolation transformer', response: 'on the Howler’s lead' });
-    // A warning comes before the steps it guards.
-    expect(hum.warning).toMatch(/^Never lift an earth\./);
+    // A warning comes before the steps it guards. It's the one hazard to people on the page.
+    expect(hum.warning).toMatch(/^Never disconnect an earth: no ground-lift adapters, no taped or cut earth pins\./);
+    expect(FIXES.filter((f) => f.warning).map((f) => f.id)).toEqual(['hum']);
   });
 
   it('keep the Howler on MASTER 2, RCA to RCA', () => {
@@ -250,7 +322,14 @@ describe('drill copy follows the house style', () => {
     for (const text of all) {
       expect(text, text).not.toMatch(/\bplease\b|!/i);
       expect(text, text).not.toMatch(/\byellow\b|\bTHD\b|\bcolor\b|\bnormaliz/i);
+      // "Hot" is jargon, and "trim" is only ever the TRIM knob.
+      expect(text, text).not.toMatch(/\bhot(?:ter)?\b|\btrim(?:s|med)?\b/);
     }
+  });
+
+  it('asks the DJ plainly, with no colon reveals', () => {
+    for (const text of all) expect(text, text).not.toMatch(/quiet word with the DJ:|Remind (?:that DJ|them):/);
+    expect(all.join(' ')).toMatch(/Ask the DJ, quietly, to turn TRIM down\./);
   });
 
   it('writes conditions as “If …”, and asks no questions', () => {

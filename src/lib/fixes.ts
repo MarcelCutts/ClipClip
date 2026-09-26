@@ -6,13 +6,16 @@
  * A drill has a title (the light as printed and where it is, when a light prompts it; otherwise the
  * symptom, in sentence case), a condition (what you see), an objective (what the drill achieves), then
  * numbered steps. A step is a control and what to do with it, joined by leader dots ("MASTER ATT ……
- * down a step"), or a line that starts "If". After a step, "Choose one" lists what you might find, each
+ * down a step"), or a line that starts "If". Where doing a step has a consequence, a plain sentence
+ * says so before it ("This turns the room down too, so tell the DJ first."): no CAUTION label, which
+ * the handbook keeps for hazards to people. After a step, "Choose one" lists what you might find, each
  * branch ending the drill (■ ■ ■ ■), jumping to a step or another drill, or carrying on to the next
  * step. `why` is additional information: it never has to be read to do the drill.
  *
  * The rig, one way only: MASTER 1 (XLR) → DriveRack PA2 → two QSC GX7 amps → PA; MASTER 2 (RCA) →
  * Howler; BOOTH → booth monitors. MASTER LEVEL is taped fully up (REC), so the middle meters show the
- * mix itself, and the room's volume comes from the amps' gain knobs (RIG), never the mixer.
+ * mix itself, and the room's volume comes from the amps' gain knobs (RIG), never the mixer. Both
+ * attenuators are in the mixer's UTILITY screen, and the crew write both settings on the REC tape (S1).
  *
  * Facts come from the documents in sources.ts, with page numbers in the comments:
  * - Pioneer, XDJ-RX2 Operating Instructions (DRI1479A);
@@ -24,11 +27,23 @@
  * signs (−, U+2212), apostrophes and quotes are curly.
  */
 
+import { LEVEL_FALLBACK, OPEN_UTILITY } from './checklists';
+
 /** A light drawn lit beside a drill's title, in its real colour: the one you're looking at. */
 export type DrillLight = 'howler-red' | 'meters-red' | 'clip' | 'driverack-clip';
 
 /** Where to go next: a step number in the same drill, or another drill's id. */
 export type Next = number | string;
+
+/** A card on another page that says more, set as a "See S6" link. */
+export interface CardRef {
+  /** Its code, as its title strip gives it: "S6". */
+  code: string;
+  /** Its title, for screen readers. */
+  title: string;
+  /** Where it is on the site: '/setup/#backup'. */
+  path: string;
+}
 
 /** One of the things you might find after a step, under "Choose one". */
 export interface Branch {
@@ -44,6 +59,8 @@ export interface Branch {
 
 /** A step as a challenge and its response: the control, and what to do with it or the state it ends in. */
 export interface ActionStep {
+  /** What doing the step also does, said in a plain sentence before it: "This turns the room down too…". */
+  before?: string;
   /** The control or the thing to look at, named as printed on the gear: "MASTER ATT". */
   challenge: string;
   /** What to do with it, or the state it should end in: "down a step". Set in the action colour. */
@@ -57,6 +74,8 @@ export interface ActionStep {
 /** A step that only applies sometimes, written as sentences starting "If": "If the DJ wants it louder, …". */
 export interface IfStep {
   if: string;
+  /** A card elsewhere that says more, linked after the sentence. */
+  see?: CardRef;
   next?: Next;
   end?: true;
 }
@@ -75,6 +94,11 @@ export interface Fix {
    * "LEVEL light on the Howler: red". Otherwise the symptom, in sentence case: "The room isn’t loud enough".
    */
   title: string;
+  /**
+   * The index rail's name for it, on one line after its code: about 17 characters of B612. A light as
+   * its title has it, "Howler LEVEL: red"; otherwise the symptom in a few words, "Room too quiet".
+   */
+  short: string;
   /** The light you're looking at, drawn lit beside the title. */
   light?: DrillLight;
   /** What you see or hear, as one sentence. */
@@ -96,17 +120,28 @@ export const isIfStep = (step: Step): step is IfStep => 'if' in step;
 export const drillAnchor = (id: string, step?: number): string =>
   step === undefined ? `fix-${id}` : `fix-${id}-step-${step}`;
 
+/**
+ * Said before a step that turns MASTER ATT down. It turns the PA down with it (rig.ts: MASTER ATT sets
+ * MASTER 1's level), and a DJ who hears the room drop pushes TRIM to get it back.
+ */
+const ROOM_DROPS = 'This turns the room down too, so tell the DJ first.';
+
+/** The setup page's card on the mixer's USB backup, as that page numbers and titles it. */
+const USB_BACKUP: CardRef = { code: 'S6', title: 'USB backup', path: '/setup/#backup' };
+
 export const FIXES: Fix[] = [
   // ---- In the booth, on the night ----------------------------------------------------------------
   {
     // Howler doesn't publish where its light turns red (MK1 manual, FAQ): red means turn the source down.
     // Pioneer's fix for distortion is MASTER ATT (manual p.34; UTILITY table p.32), but Pioneer doesn't say
-    // MASTER ATT reaches MASTER 2, so MASTER LEVEL is the fallback. The middle meters read after it (p.31).
-    // Both turn the PA down too, so the room comes back up at the amps.
+    // MASTER ATT reaches MASTER 2, so MASTER LEVEL is the fallback, worded once in checklists.ts. The middle
+    // meters read after it (p.31). Both turn the PA down too, so the DJ hears it first and the room comes
+    // back up at the amps.
     id: 'howler-red',
     code: 'F1',
     where: 'booth',
     title: 'LEVEL light on the Howler: red',
+    short: 'Howler LEVEL: red',
     light: 'howler-red',
     condition: 'The Howler’s LEVEL light blinks red.',
     objective: 'Find where the overload starts, and fix it there.',
@@ -118,7 +153,7 @@ export const FIXES: Fix[] = [
         choose: [
           {
             finding: 'Middle meters red too',
-            action: 'It’s the mix. A quiet word with the DJ: TRIM down. Leave the record level alone.',
+            action: 'It’s the mix. Ask the DJ, quietly, to turn TRIM down. Leave the record level alone.',
             end: true,
           },
           { finding: 'A DJ just loaded MY SETTINGS', next: 2 },
@@ -126,32 +161,34 @@ export const FIXES: Fix[] = [
         ],
       },
       {
+        before: 'Setting MASTER ATT back can turn the room down too, so tell the DJ first.',
         challenge: 'MASTER ATT and BOOTH ATT',
-        response: 'as on the tape',
-        note: 'In UTILITY. Set back any that changed.',
+        response: 'as on the REC tape',
+        note: `${OPEN_UTILITY} Set back any that changed.`,
         choose: [
           { finding: 'Green again', end: true },
           { finding: 'Still red', next: 3 },
         ],
       },
       {
+        before: ROOM_DROPS,
         challenge: 'MASTER ATT',
         response: 'down a step',
-        note: 'In UTILITY: −6 dB, then −12 dB.',
+        note: `In UTILITY: −6 dB, then −12 dB. ${OPEN_UTILITY}`,
         choose: [
           { finding: 'Green through the loudest blend', next: 5 },
           { finding: 'Still red, or no change', next: 4 },
         ],
       },
       {
-        challenge: 'MASTER LEVEL',
-        response: 'down a notch at a time',
-        note: 'Use it instead of MASTER ATT, until the light stays green through the loudest blend. The middle meters then read low, so a blend can crunch before they go red.',
+        challenge: LEVEL_FALLBACK.challenge,
+        response: LEVEL_FALLBACK.response,
+        note: `${LEVEL_FALLBACK.note} The middle meters then read low, so a blend can crunch before they go red.`,
       },
       { challenge: 'REC tape', response: 're-marked' },
       { challenge: 'Room volume', response: 'back up at the amps', note: 'The speakers dropped too.' },
     ],
-    why: 'Turning the recording down can’t take out crunch that’s already in the mix. It only records the crunch more quietly.',
+    why: 'Turning the recording down can’t take out crunch that’s already in the mix. It only records the crunch more quietly. Pioneer doesn’t say whether MASTER ATT reaches MASTER 2, so step 4 is there in case it doesn’t.',
     see: '#record-level',
   },
   {
@@ -160,6 +197,7 @@ export const FIXES: Fix[] = [
     code: 'F2',
     where: 'booth',
     title: 'Channel meters: red',
+    short: 'Channels: red',
     light: 'meters-red',
     condition: 'A channel meter reaches its red light.',
     objective: 'Stop the channel clipping, and take any extra volume from the amps.',
@@ -167,10 +205,10 @@ export const FIXES: Fix[] = [
       {
         challenge: 'TRIM',
         response: 'eased back by the DJ',
-        note: 'Have a quiet word. The loudest bits go on the first or second orange light, and red stays dark.',
+        note: 'Have a quiet word. The loudest parts belong on the first or second orange light.',
       },
       {
-        if: 'If the DJ wants it louder, offer the amps instead. Turn the amps up, never their channels.',
+        if: 'If the DJ wants it louder, turn up the gain on both amps instead. Leave MASTER LEVEL and the DJ’s channels alone.',
         next: 'not-loud',
       },
     ],
@@ -184,6 +222,7 @@ export const FIXES: Fix[] = [
     code: 'F3',
     where: 'booth',
     title: 'CLIP light above the middle meters: blinking',
+    short: 'CLIP: blinking',
     light: 'clip',
     condition: 'The CLIP light above the middle meters blinks.',
     objective: 'Bring the mix back down from the top with the DJ’s faders or TRIMs.',
@@ -217,6 +256,7 @@ export const FIXES: Fix[] = [
     code: 'F4',
     where: 'booth',
     title: 'The room isn’t loud enough',
+    short: 'Room too quiet',
     condition: 'A DJ says the room isn’t loud enough.',
     objective: 'Turn the room up at the amps, and leave the mixer alone.',
     steps: [
@@ -227,7 +267,7 @@ export const FIXES: Fix[] = [
         choose: [
           {
             finding: 'Knobs already at 0, fully up',
-            action: 'That’s all the amps have. Tell the DJ kindly, and keep their channels where they are.',
+            action: 'That’s all the amps have. Tell the DJ kindly, and leave the DJ’s channels where they are.',
             end: true,
           },
           {
@@ -254,6 +294,7 @@ export const FIXES: Fix[] = [
     code: 'F5',
     where: 'booth',
     title: 'The DJ pushes harder, but the room gets no louder',
+    short: 'Pushed, no louder',
     condition: 'The DJ turns the mix up, and the room stays as loud as it was.',
     objective: 'Stop the crunch, and find which part of the rig is at its limit.',
     steps: [
@@ -268,7 +309,7 @@ export const FIXES: Fix[] = [
         choose: [
           {
             finding: 'DriveRack TH lights red',
-            action: 'Its limiters are holding the speakers at their limit. A hotter mix only means more limiting.',
+            action: 'Its limiters are holding the speakers at their limit. Pushing harder only means more limiting.',
             end: true,
           },
           {
@@ -295,12 +336,13 @@ export const FIXES: Fix[] = [
     code: 'F6',
     where: 'booth',
     title: 'CLIP lights on the DriveRack: lit',
+    short: 'DriveRack CLIP',
     light: 'driverack-clip',
     condition: 'The CLIP lights by the DriveRack’s INPUT meters come on.',
     objective: 'Stop the DriveRack’s input clipping, and keep MASTER LEVEL fully up.',
     steps: [
       {
-        challenge: 'Its input switch, on the back',
+        challenge: 'DriveRack input switch, on the back',
         response: '+4 dBu',
         choose: [
           {
@@ -316,11 +358,11 @@ export const FIXES: Fix[] = [
         challenge: 'Middle meters',
         response: 'check',
         choose: [
-          { finding: 'Middle meters red', action: 'It’s the mix. A quiet word with the DJ: TRIM down.', end: true },
+          { finding: 'Middle meters red', action: 'It’s the mix. Ask the DJ, quietly, to turn TRIM down.', end: true },
           { finding: 'Not red', next: 3 },
         ],
       },
-      { challenge: 'MASTER ATT', response: 'down a step', note: 'In UTILITY.' },
+      { before: ROOM_DROPS, challenge: 'MASTER ATT', response: 'down a step', note: OPEN_UTILITY },
       { challenge: 'REC tape', response: 're-marked' },
       { challenge: 'Room volume', response: 'back up at the amps' },
     ],
@@ -334,25 +376,26 @@ export const FIXES: Fix[] = [
     code: 'F7',
     where: 'booth',
     title: 'A DJ loaded MY SETTINGS from USB',
+    short: 'MY SETTINGS',
     condition: 'A DJ loaded their own settings from a USB stick, with MY SETTINGS.',
-    objective: 'Get both ATTs back to the tape, without making the room jump.',
+    objective: 'Get both ATTs back to the REC tape, without making the room jump.',
     steps: [
       {
         challenge: 'MASTER ATT and BOOTH ATT',
-        response: 'check against the tape',
-        note: 'In UTILITY.',
+        response: 'check against the REC tape',
+        note: OPEN_UTILITY,
         choose: [
-          { finding: 'Both as on the tape', end: true },
+          { finding: 'Both as on the REC tape', end: true },
           { finding: 'Either changed', next: 2 },
         ],
       },
       {
-        if: 'If a set is playing, leave it for the changeover, or the room would jump. Watch the Howler light till then.',
+        if: 'If a set is playing, leave it for the changeover, or the room would jump. Watch the LEVEL light until then.',
       },
       {
         challenge: 'The ATT that changed',
-        response: 'set back to the tape',
-        note: 'Then wait 10 seconds before anyone switches off, so it saves.',
+        response: 'set back to the REC tape',
+        note: 'Then wait 10 seconds before anyone switches the mixer off, so the setting saves.',
       },
     ],
     why: 'MY SETTINGS brings back a DJ’s own UTILITY settings, and both ATTs are UTILITY settings.',
@@ -366,6 +409,7 @@ export const FIXES: Fix[] = [
     code: 'F8',
     where: 'booth',
     title: 'The generator cut out',
+    short: 'Generator cut out',
     condition: 'The generator stops, and the rig loses power.',
     objective: 'Bring the rig back in the order dbx gives, and keep the recording.',
     steps: [
@@ -374,10 +418,15 @@ export const FIXES: Fix[] = [
       {
         challenge: 'Mixer and DriveRack',
         response: 'on, once the power is back',
-        note: 'Check MASTER LEVEL on its REC mark, both ATTs against the tape, and the Howler still recording.',
+        note: 'Check MASTER LEVEL on its REC mark, both ATTs against the REC tape, and the Howler still recording.',
       },
       { challenge: 'Amps', response: 'on last, about 10 seconds later' },
-      { if: 'If MASTER REC was running, press it again for a new file. The one from before the cut may not open.' },
+      {
+        // MASTER REC records the mix onto a USB stick in the USB2 slot (Pioneer manual p.12): the mixer's own
+        // backup, set up in S6. Its first mention on the night page, so it says what it is.
+        if: 'If the USB backup (MASTER REC) was running, press MASTER REC again for a new file. The one from before the cut may not open.',
+        see: USB_BACKUP,
+      },
     ],
     why: 'dbx says the amps go on last and off first. Switched off, they can’t come back on before the gear that feeds them.',
   },
@@ -388,8 +437,9 @@ export const FIXES: Fix[] = [
     id: 'crunch',
     code: 'F9',
     where: 'recording',
-    title: 'The recording crunches, but the Howler light stayed green',
-    condition: 'You hear crunch on a recording, and the Howler’s LEVEL light stayed green.',
+    title: 'The recording crunches, but the Howler’s LEVEL light stayed green',
+    short: 'Crunch in the file',
+    condition: 'You hear crunch on a recording, and the LEVEL light stayed green.',
     objective: 'Find where the crunch came in, so the next set is clean.',
     steps: [
       { challenge: 'Record level', response: 'leave it alone', note: 'The crunch came from the mix.' },
@@ -400,11 +450,12 @@ export const FIXES: Fix[] = [
           {
             finding: 'On the blends',
             action:
-              'Two tracks added up past the top. Remind that DJ: watch the middle meters, one bassline at a time.',
+              'Two tracks added up past the top. Remind that DJ to watch the middle meters and play one bassline at a time.',
           },
           {
             finding: 'All through a track',
-            action: 'A hot TRIM or an EQ boost. Remind them: first or second orange on the channel meters.',
+            action:
+              'TRIM too high, or an EQ boost. Remind them to keep the channel meters on the first or second orange.',
           },
           {
             finding: 'The meters stayed out of the red',
@@ -423,9 +474,11 @@ export const FIXES: Fix[] = [
     code: 'F10',
     where: 'recording',
     title: 'Hum or buzz on the recording',
+    short: 'Hum or buzz',
     condition: 'You hear hum or buzz under the music on a recording.',
     objective: 'Get rid of the hum, with every earth still connected.',
-    warning: 'Never lift an earth. The mains earth is what stops a faulty case giving someone a shock.',
+    warning:
+      'Never disconnect an earth: no ground-lift adapters, no taped or cut earth pins. The mains earth is what stops a faulty case giving someone a shock.',
     steps: [
       { challenge: 'Isolation transformer', response: 'on the Howler’s lead' },
       { if: 'If it’s still there, plug all the sound gear into one supply, one power strip if the load allows.' },
@@ -440,6 +493,7 @@ export const FIXES: Fix[] = [
     code: 'F11',
     where: 'recording',
     title: 'The recording sounds hollow or one-sided',
+    short: 'Hollow sound',
     condition: 'A recording sounds hollow, or one side is quiet or missing.',
     objective: 'Get both sides of the mix into the Howler, the right way up.',
     steps: [

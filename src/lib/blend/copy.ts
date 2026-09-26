@@ -125,7 +125,7 @@ export function explainBlend(s: BlendSettings, r: BlendAnalysis): string {
 
   if (hot) {
     if (boosted) return 'The LOW boost adds level to the kick before the two meet, so the stack goes higher still.';
-    if (!s.aligned) return 'Even with the kicks apart, two hot tracks add up. Bring a TRIM or a fader down.';
+    if (!s.aligned) return 'Even with the kicks apart, two loud tracks add up. Bring a TRIM or a fader down.';
     if (eased === 2) return `Both faders are down a little, but the kicks ${still}.`;
     if (eased === 1 && s.deck2.fader < FADER.max) return 'The kicks stack higher as deck 2 comes in.';
     if (eased === 1) return `Deck 1 is only a little lower, so the kicks ${still}.`;
@@ -203,10 +203,10 @@ export function guessReveal(guess: number, actual: number): string {
 /** The Kicks switch: lined up (a beatmatched blend) or apart (deck 2 a 16th note late). */
 export const KICKS = { legend: 'Kicks', lined: 'Lined up', apart: 'Apart', apartDetail: 'not beatmatched' } as const;
 
-/** The two sets of pads: ways into the red, and ways out of it. */
-export const PRESET_GROUPS: Record<PresetGroup, string> = { push: 'Push it', out: 'Ways out' };
+/** The two sets of pads, named for what they are: blends that go red, and fixes for them. */
+export const PRESET_GROUPS: Record<PresetGroup, string> = { push: 'Blends that hit the red', out: 'Fixes' };
 
-/** Where the ways out wait until the reader has hit the red. */
+/** Where the fixes wait until the reader has hit the red. */
 export const WAYS_OUT_WAIT = 'They show up once you’ve hit the red.';
 export const WAYS_OUT_SHOW = 'Show them now';
 
@@ -225,7 +225,7 @@ export function challengeMessage(status: ChallengeStatus): string | null {
       return 'The red light is dark, but CLIP is lit, so in this model the mix is about to distort.';
     case 'hot1':
     case 'hot2':
-      return `The middle meters are clear, but deck ${status === 'hot1' ? 1 : 2}’s own meter is in the red, so it distorts before its fader.`;
+      return `The middle meters are clear, but deck ${status === 'hot1' ? 1 : 2}’s channel meter is in the red, so it distorts before its fader.`;
     case 'apart':
       return 'Out of the red, but only because the kicks are apart. Line them up and try again.';
     case 'cut':
@@ -249,9 +249,9 @@ export function verdictLine(r: BlendAnalysis, status: ChallengeStatus): string {
   const hot = hotDecks(r);
   const channels =
     hot.length === 2
-      ? ' Both decks’ own meters are in the red.'
+      ? ' Both channel meters are in the red.'
       : hot.length === 1
-        ? ` Deck ${hot[0]}’s own meter is in the red.`
+        ? ` Deck ${hot[0]}’s channel meter is in the red.`
         : '';
   return `${meters}${clip}${channels}`;
 }
@@ -267,7 +267,7 @@ export function presetLine(s: BlendSettings, r: BlendAnalysis, status: Challenge
 }
 
 export const TEACHING_NOTE =
-  'The side meters read each track before its fader, so they don’t move when you move a fader. Only the middle meters show the blend.';
+  'The channel meters read each track before its fader, so they don’t move when you move a fader. Only the middle meters show the blend.';
 
 /** Under each TRIM: its number is a channel meter reading, not the knob's gain (RANGES.trim tops out at +9). */
 export const trimHint = (n: 1 | 2): string => `Peak on CH${n}`;
@@ -283,8 +283,8 @@ export const LISTEN_NOTE = 'Starts quietly. If you hear nothing, check your volu
 export const BARELY_OVER_NOTE =
   'At the red, the ceiling only shaves the tips of the kicks, too little to hear on these loops. There’s no room left for anything louder. Press Both tracks hot to hear what going past it does.';
 
-/** Shown under Listen when the browser can't make sound at all (same words as the listening test). */
-export const NO_SOUND = 'Sound is blocked or missing in this browser. Try another one.';
+/** Shown under Listen when the browser can't make sound at all (the same words as every lab). */
+export const NO_SOUND = 'This browser can’t play the sound. Everything else works; try another browser to hear it.';
 
 /** What the page-wide Stop bar calls this demo while it plays. */
 export const PLAYER_LABEL = 'Blend lab';

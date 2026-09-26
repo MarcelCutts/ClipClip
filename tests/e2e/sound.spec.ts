@@ -1,4 +1,14 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
+
+/** The first Listen key, once it and the Stop bar have woken up: a press before then does nothing. */
+async function firstListen(page: Page) {
+  const listen = page.getByRole('button', { name: /^Listen/ }).first();
+  await listen.scrollIntoViewIfNeeded();
+  const islands = page.locator('astro-island');
+  await expect(islands.filter({ has: listen }).first()).not.toHaveAttribute('ssr');
+  await expect(islands.filter({ has: page.locator('.sound-bar') })).not.toHaveAttribute('ssr');
+  return listen;
+}
 
 // The one page with sound, the guide: pressing Listen shows the page-wide Stop bar, and Stop or
 // Escape silences everything. Nothing plays on load.
@@ -8,14 +18,17 @@ for (const path of ['']) {
     const bar = page.locator('.sound-bar');
     await expect(bar).toBeHidden();
 
-    const listen = page.getByRole('button', { name: /^Listen/ }).first();
-    await listen.scrollIntoViewIfNeeded();
+    const listen = await firstListen(page);
     await listen.click();
     await expect(bar).toBeVisible();
     await expect(bar.getByRole('button', { name: 'Stop' })).toBeVisible();
+    // Screen readers hear what started, and that it stopped, from a polite status of its own.
+    const status = page.getByRole('status').filter({ hasText: /^Playing/ });
+    await expect(status).toHaveText(/^Playing: \S/);
 
     await bar.getByRole('button', { name: 'Stop' }).click();
     await expect(bar).toBeHidden();
+    await expect(page.locator('[data-sound-status]')).toHaveText('Sound stopped');
 
     await listen.click();
     await expect(bar).toBeVisible();
@@ -28,8 +41,7 @@ for (const path of ['']) {
 // the page, so the page makes room for the bar: the footer's links still show when focused.
 test('the Stop bar never hides a focused link at the foot of the page', async ({ page }) => {
   await page.goto('');
-  const listen = page.getByRole('button', { name: /^Listen/ }).first();
-  await listen.scrollIntoViewIfNeeded();
+  const listen = await firstListen(page);
   await listen.click();
   const bar = page.locator('.sound-bar');
   await expect(bar).toBeVisible();

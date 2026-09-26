@@ -28,6 +28,9 @@ export const STOPS = [
 /** Where the widget starts: club level, the state DJs know. */
 export const START_DB = CLUB_BASS_DB_SPL;
 
+/** The x axis's title, printed under the ticks: what the dB figures along the bottom measure. */
+export const X_TITLE = 'Bass level in the room (dB SPL)';
+
 export const bassPhon = (db: number): number => phonForSpl(BASS_HZ, db);
 export const crunchPhon = (db: number): number => phonForSpl(CRUNCH_HZ, db - CRUNCH_BELOW_DB);
 
@@ -101,8 +104,8 @@ export const CHART = {
   inset: { left: 40, right: 16 },
   /** The plot's top edge and height inside the chart box. */
   plot: { top: 38, height: 196 },
-  /** Room under the plot for the x ticks and their names. */
-  axisHeight: 58,
+  /** Room under the plot for the x ticks, their names and the axis title under them. */
+  axisHeight: 84,
   phon: { min: 20, max: 90 },
   grid: [20, 40, 60, 80],
   /** The y axis title's top-left corner. */

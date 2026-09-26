@@ -1,9 +1,10 @@
 ---
 /**
- * Things DJs say about the red, set out as a reference table: what people say, and what's true,
- * with the part of the claim that's fair, what actually happens, what to do instead and the
- * manufacturer's page where one backs it. Everything is visible: a sceptic scans the left column
- * for their own belief. On phones each row stacks.
+ * Things DJs say about the red, set out as a reference table: what people say, and what's true.
+ * The belief is quoted in italic; what's true follows at the same weight, then one paragraph with
+ * the part of the claim that's fair, what actually happens and what to do instead, and the maker's
+ * page where one backs it. Everything is visible: a sceptic scans the left column for their own
+ * belief. On phones each row stacks.
  */
 import type { Myth } from '../lib/myths';
 
@@ -12,6 +13,11 @@ interface Props {
 }
 
 const { myths } = Astro.props;
+
+type Source = NonNullable<Myth['source']>;
+const link = (source: Source) => (source.page ? `${source.url}#page=${source.page}` : source.url);
+/** The source line's closing stop, unless the title already ends a sentence ("…mastered?"). */
+const stop = (source: Source) => (source.page || !/[?!.]$/.test(source.title) ? '.' : '');
 ---
 
 <div class="myths">
@@ -22,13 +28,15 @@ const { myths } = Astro.props;
     <p class="claim"><span class="visually-hidden">What people say: </span>“{m.claim}”</p>
     <div class="true">
       <p class="truth"><span class="visually-hidden">What’s true: </span>{m.truth}</p>
-      <p>{m.fair} {m.actually}</p>
-      <p class="instead"><strong>So:</strong> {m.instead}</p>
-      {m.source && (
+      <p>{m.fair} {m.actually} {m.instead}</p>
+      {m.source?.publisher && (
       <p class="source">
-        Source: <a href={m.source.page ? `${m.source.url}#page=${m.source.page}` : m.source.url} rel="external"
-          >{m.source.title}</a
-        >{m.source.page && `, page ${m.source.page}`}.
+        Source: {m.source.publisher}, “<a href={link(m.source)} rel="external">{m.source.title}</a>”{stop(m.source)}
+      </p>
+    )}
+      {m.source && !m.source.publisher && (
+      <p class="source">
+        Source: <a href={link(m.source)} rel="external">{m.source.title}</a>{m.source.page && `, page\u00a0${m.source.page}`}{stop(m.source)}
       </p>
     )}
     </div>
@@ -58,12 +66,13 @@ const { myths } = Astro.props;
     gap: 0.5rem;
     padding-block: 0.9rem;
     border-bottom: 1px solid var(--rule);
-    scroll-margin-top: 4rem;
   }
 
+  /* What people say, in their words: quoted, and set back from what's true. */
   .claim {
-    font-weight: 700;
-    line-height: 1.4;
+    font-style: italic;
+    line-height: 1.45;
+    color: var(--ink-2);
   }
 
   .true {
@@ -75,8 +84,8 @@ const { myths } = Astro.props;
 
   .truth {
     font-size: var(--text-base);
-    font-weight: 700;
-    line-height: 1.4;
+    line-height: 1.45;
+    color: var(--ink-bright);
   }
 
   .source {

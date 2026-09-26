@@ -106,7 +106,15 @@ describe('our wiring', () => {
   it('keeps MASTER LEVEL up on the night and turns the recording down with MASTER ATT', () => {
     expect(copy.ON_THE_NIGHT).toMatch(/MASTER LEVEL stays fully up/);
     expect(copy.ON_THE_NIGHT).toMatch(/MASTER ATT in UTILITY/);
+    // Pioneer doesn't say whether MASTER ATT reaches MASTER 2, so it's never stated as fact.
+    expect(copy.ON_THE_NIGHT).toMatch(/if the setup test shows it reaches MASTER 2/);
     expect(copy.successFeedback(4, at(9, -4))!.lines).toContain(copy.ON_THE_NIGHT);
+  });
+
+  it('says first that the knob stands for the record level, since MASTER LEVEL stays taped up', () => {
+    expect(copy.CONTROLS.knob.hint).toMatch(
+      /^On the night, MASTER LEVEL stays taped fully up\. Here the knob stands for the record level\./,
+    );
   });
 });
 
@@ -147,7 +155,7 @@ describe('the guided steps', () => {
   it('asks for everything step 3 checks: Clean, the red light dark and the Howler green', () => {
     expect(copy.STEPS[3].body).toMatch(/Clean/);
     expect(copy.STEPS[3].body).toMatch(/red light dark/);
-    expect(copy.STEPS[3].body).toMatch(/Howler light green/);
+    expect(copy.STEPS[3].body).toMatch(/Howler’s LEVEL light green/);
   });
 
   it('never calls the top orange light fine', () => {
@@ -172,6 +180,15 @@ describe('the quick check', () => {
 describe('readouts', () => {
   it('says what waits for a guess, and what to do once there is one', () => {
     expect(copy.WAITING).toEqual({ before: 'Guess first', after: 'Press Next' });
+  });
+
+  it('names the last step plainly, and says what still works without sound', () => {
+    expect(copy.STEPS[5].title).toBe('Free play');
+    expect(copy.NAV).toMatchObject({ skip: 'Skip to free play', restart: 'Start the lab again' });
+    expect(copy.SOUND.unavailable).toBe(
+      'This browser can’t play the sound. Everything else works; try another browser to hear it.',
+    );
+    expect(copy.HOWLER_WORDS.red.meaning).toBe('Level too high');
   });
 
   it('puts the channel meter into words beside its lights', () => {
@@ -219,7 +236,7 @@ describe('feedback', () => {
   });
 
   it('points out the green Howler light only when it is green', () => {
-    expect(copy.revealFeedback(at(18, -12), null, null).lines.join(' ')).toMatch(/Howler light stayed green/);
+    expect(copy.revealFeedback(at(18, -12), null, null).lines.join(' ')).toMatch(/LEVEL light stayed green/);
     expect(copy.revealFeedback(at(18, 0), null, null).lines.join(' ')).not.toMatch(/stayed green/);
   });
 

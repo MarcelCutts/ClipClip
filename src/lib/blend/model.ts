@@ -337,7 +337,7 @@ export function sameSettings(x: BlendSettings, y: BlendSettings): boolean {
  * "Bring deck 2 all the way up without the middle meter going red." It only counts as a blend
  * if the kicks are lined up and deck 1 is still audibly in the mix (fader at 4, about −20 dB, or
  * higher), and CLIP has to stay dark too, since a slow blink means it's about to distort. The
- * side meters have to stay out of the red as well: a red channel is cut flat before its fader,
+ * channel meters have to stay out of the red as well: a red channel is cut flat before its fader,
  * so easing that fader after it can't make the blend clean.
  */
 export const CHALLENGE = { deck1MinFader: 4 } as const;

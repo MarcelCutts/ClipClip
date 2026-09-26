@@ -26,6 +26,7 @@
     shownPhon,
     speakLevel,
     worthAnnouncing,
+    X_TITLE,
     xFrac,
     yPx,
   } from '../lib/headroom/homeVsClub';
@@ -192,7 +193,6 @@
             {#each CHART.grid as phon (phon)}
               <line class="grid" x1="0" x2="100" y1={yPx(phon)} y2={yPx(phon)} />
             {/each}
-            <rect class="bass-zone" x={xFrac(CROSSING_DB)} y="0" width={100 - xFrac(CROSSING_DB)} height={PLOT_H} />
             <line class="divider" x1={xFrac(CROSSING_DB)} x2={xFrac(CROSSING_DB)} y1="0" y2={PLOT_H} />
             <polyline class="series crunch" points={crunchLine} />
             <polyline class="series bass" points={bassLine} />
@@ -233,6 +233,7 @@
             ><span class="num">{s.db}&nbsp;dB</span><span class="name">{s.name}</span></span
           >
         {/each}
+        <span class="x-title" aria-hidden="true">{X_TITLE}</span>
       </div>
 
       <div class="controls">
@@ -267,14 +268,14 @@
         <table>
           <caption class="visually-hidden">How loud the bass and the crunch sound, in phon, at three listening levels</caption>
           <thead>
-            <tr><th scope="col">Listening level</th><th scope="col">Bass</th><th scope="col">Crunch</th></tr>
+            <tr><th scope="col">Listening level</th><th scope="col">Bass (phon)</th><th scope="col">Crunch (phon)</th></tr>
           </thead>
           <tbody>
             {#each STOPS as s (s.id)}
               <tr>
                 <th scope="row">{s.name}, bass at {s.db}&nbsp;dB</th>
-                <td>{bassPhon(s.db).toFixed(1)}&nbsp;phon</td>
-                <td>{crunchPhon(s.db).toFixed(1)}&nbsp;phon</td>
+                <td>{bassPhon(s.db).toFixed(1)}</td>
+                <td>{crunchPhon(s.db).toFixed(1)}</td>
               </tr>
             {/each}
           </tbody>
@@ -289,7 +290,6 @@
         </li>
         <li>
           <strong>Phon</strong> measures how loud a tone seems, as the level of a 1&nbsp;kHz tone that sounds just as loud.
-          The dB figures along the bottom are the bass’s sound level in the room.
         </li>
       </ul>
     </div>
@@ -376,8 +376,20 @@
   .ytick,
   .equal,
   .readout,
-  .xtick {
+  .xtick,
+  .x-title {
     pointer-events: none;
+  }
+
+  /* Under the tick names, centred on the plot, like the y axis's title over its ticks. */
+  .x-title {
+    position: absolute;
+    left: var(--inset-left);
+    right: var(--inset-right);
+    bottom: 0.3rem;
+    font-weight: 700;
+    text-align: center;
+    text-wrap: balance;
   }
 
   .axis-title {
@@ -416,10 +428,6 @@
     stroke: var(--screen-grid);
     stroke-width: 1;
     vector-effect: non-scaling-stroke;
-  }
-
-  .bass-zone {
-    fill: color-mix(in oklab, var(--sig) 7%, transparent);
   }
 
   .divider {

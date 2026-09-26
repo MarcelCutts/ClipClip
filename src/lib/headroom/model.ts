@@ -23,7 +23,7 @@ import { mixStems, normaliseLoop, renderLoop } from '../dsp/synth';
 import { HOWLER_NOISE_GUESS_DBFS, KICKS_TOGETHER_DB, TARGET } from '../model';
 import { RANGES } from '../xdj';
 
-/** The "How hot we recorded" slider: a loud track's peak level relative to the top of the file. */
+/** The "Recording peak" slider: a loud track's peak level relative to the top of the file. */
 export const RECORD_RANGE = { min: -24, max: 6, step: 1 } as const;
 export const DEFAULT_PEAK_DBFS = -12;
 
@@ -64,8 +64,8 @@ export const XDJ_STANDARD_BELOW_RATED_DB = 18;
 /**
  * So with the music at the standard level, the mixer's own hiss rides about this far under it.
  * The model treats the hiss as part of the signal the recorder receives, so it moves with the
- * music. Trimming the recording (MASTER ATT) after the point where the hiss is made would leave the
- * hiss where it is, a little closer to the music; the page's note says so.
+ * music. Turning the recording down (MASTER ATT) after the point where the hiss is made would leave
+ * the hiss where it is, a little closer to the music; the page's note says so.
  */
 export const XDJ_HISS_BELOW_MUSIC_DB = XDJ_SN_DB - XDJ_STANDARD_BELOW_RATED_DB;
 

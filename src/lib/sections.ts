@@ -1,6 +1,6 @@
 /**
  * The guide's sections, in order, with the numbers a quick reference handbook gives them. One
- * list, so the index, the headings and every "See 2.1" cross-reference agree.
+ * list, so the index, the headings, the tabs and every "See 2.1" cross-reference agree.
  */
 export interface Section {
   id: string;
@@ -11,23 +11,27 @@ export interface Section {
 }
 
 export interface GuidePart extends Section {
+  /** One word for the part's thumb tab on phones, under its number. */
+  tab: string;
+  /** Reading time for the index, labs included. */
   minutes?: number;
   sections: Section[];
 }
 
 export const GUIDE: GuidePart[] = [
-  { id: 'why', number: '1', title: 'Why it matters', minutes: 1, sections: [] },
+  { id: 'why', number: '1', title: 'Why it matters', tab: 'Why', minutes: 1, sections: [] },
   {
     id: 'playing',
     number: '2',
     title: 'Playing a set',
-    minutes: 5,
+    tab: 'Playing',
+    minutes: 10,
     sections: [
       { id: 'trim', number: '2.1', title: 'Set TRIM on cue' },
       { id: 'meters', number: '2.2', title: 'Read the right meter', short: 'The meters' },
-      { id: 'blends', number: '2.3', title: 'Watch the middle meters in a blend', short: 'Blends' },
-      { id: 'knobs', number: '2.4', title: 'Whose knobs are whose', short: 'Whose knobs' },
-      { id: 'self-check', number: '2.5', title: 'Check yourself' },
+      { id: 'knobs', number: '2.3', title: 'Whose knobs are whose', short: 'Whose knobs' },
+      { id: 'blends', number: '2.4', title: 'Watch the middle meters in a blend', short: 'Blends' },
+      { id: 'self-check', number: '2.5', title: 'Meter check' },
       { id: 'myths', number: '2.6', title: 'What people say about the red', short: 'What people say' },
     ],
   },
@@ -35,7 +39,8 @@ export const GUIDE: GuidePart[] = [
     id: 'rig',
     number: '3',
     title: 'The rig and the recording',
-    minutes: 8,
+    tab: 'Rig',
+    minutes: 10,
     sections: [
       { id: 'signal', number: '3.1', title: 'What goes where' },
       { id: 'two-ceilings', number: '3.2', title: 'Two ceilings' },
@@ -47,6 +52,7 @@ export const GUIDE: GuidePart[] = [
     id: 'hood',
     number: '4',
     title: 'Under the hood',
+    tab: 'Hood',
     minutes: 10,
     sections: [
       { id: 'worse', number: '4.1', title: 'Why the recording sounds worse', short: 'Why it sounds worse' },
@@ -60,6 +66,19 @@ export const GUIDE: GuidePart[] = [
     ],
   },
 ];
+
+/**
+ * The guide's parts as thumb tabs (Tabs.astro): the part's number over its one word, named in
+ * full for screen readers. There's no tab for the drills: they're on the night page, and the
+ * index's F row and the header go there.
+ */
+export const GUIDE_TABS = GUIDE.map((p) => ({
+  code: p.number,
+  label: p.tab,
+  title: p.title,
+  href: `#${p.id}`,
+  target: p.id,
+}));
 
 const all = GUIDE.flatMap((p) => [p, ...p.sections]);
 

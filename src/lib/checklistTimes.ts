@@ -9,6 +9,9 @@
  *
  * Storage keeps the format `serialiseTicks` writes (checklists.ts): `{ at, done }`, where `at` is when
  * the ticks last changed. A list's lifetime runs from `at`, so a finished list's `at` is when it finished.
+ *
+ * Clearing a list offers Undo with no time limit (WCAG 2.2.1): it stays until the next tick, or until
+ * the cleared ticks' own lifetime would have run out.
  */
 import type { Checklist, ChecklistId } from './checklists';
 
@@ -30,9 +33,6 @@ export const TICK_LIFETIMES: Readonly<Record<ChecklistId, number>> = {
 export const NEXT_RUN: Readonly<Partial<Record<ChecklistId, string>>> = {
   changeover: 'Start the next changeover',
 };
-
-/** How long Undo stays on offer after the ticks are cleared. */
-export const UNDO_MS = 8_000;
 
 /** A run saved on this device: when its ticks last changed, and which items are ticked. */
 export interface SavedRun {

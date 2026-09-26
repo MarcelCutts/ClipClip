@@ -55,7 +55,9 @@
           aria-valuetext={valueText}
         >
           {#each METER_SEGMENTS as seg, i (seg.db)}
-            <span class="led" data-zone={seg.zone} data-on={i < lit}></span>
+            {@const before = METER_SEGMENTS[i - 1]}
+            <!-- A printed break where the colour changes, as on the lab's upright meters. -->
+            <span class="led" class:zone-start={before !== undefined && before.zone !== seg.zone} data-zone={seg.zone} data-on={i < lit}></span>
           {/each}
         </span>
         <span class="zone" aria-hidden="true">{levelWords(channels)}</span>
@@ -123,9 +125,10 @@
     color: var(--hw-label);
   }
 
+  /* The meter's printed name, big enough to read as one (14px). */
   dt.hw-label {
-    font-size: 0.72rem;
-    line-height: 1.35;
+    font-size: 0.875rem;
+    line-height: 1.1;
   }
 
   dd {
@@ -163,6 +166,11 @@
     width: 0.45rem;
     height: 0.85rem;
     background: var(--led-off);
+  }
+
+  /* The printed break between colour zones, so they read apart without their colours. */
+  .led.zone-start {
+    margin-left: var(--zone-break, 3px);
   }
 
   .led[data-on='true'][data-zone='green'] {

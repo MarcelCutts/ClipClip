@@ -4,6 +4,7 @@
    * keeps volume and Stop one tap away, wherever you've scrolled. It also says why sound stopped
    * when the device interrupted it.
    */
+  import { untrack } from 'svelte';
   import { audio } from '../lib/audio/engine.svelte';
 
   let height = $state(0);
@@ -15,6 +16,10 @@
     const root = document.documentElement;
     const body = document.body;
     root.style.scrollPaddingBottom = playing ? `${height + 16}px` : '';
+    // Anything that rides along the bottom of the screen (the signal path's readout on a phone)
+    // sits on top of the bar instead of under it.
+    if (playing) root.style.setProperty('--sound-bar', `${height}px`);
+    else root.style.removeProperty('--sound-bar');
     if (playing && height > 0) {
       // Scroll padding can't scroll past the end of the page, so leave room for the bar there too,
       // or the footer's links sit under it. The bar's own padding already covers the safe area.
@@ -26,6 +31,7 @@
     }
     return () => {
       root.style.scrollPaddingBottom = '';
+      root.style.removeProperty('--sound-bar');
       body.style.paddingBottom = '';
     };
   });
@@ -35,6 +41,29 @@
     if (!audio.notice) return;
     const t = window.setTimeout(() => {
       audio.notice = null;
+    }, 8000);
+    return () => window.clearTimeout(t);
+  });
+
+  // Screen readers often stay quiet when a focused key's name changes from Listen to Stop, so a
+  // polite status says what started ("Playing: Two ceilings lab") and when the sound stops. A stop
+  // the engine explains itself (an interruption, a blocked sound) is left to its notice. The words
+  // clear after a while, so nothing stale is found later when reading down the page.
+  let spoken = $state('');
+  let heard: string | null = null;
+  $effect(() => {
+    const owner = audio.owner;
+    const label = audio.ownerLabel;
+    if (owner === heard) return;
+    const was = heard;
+    heard = owner;
+    if (owner) spoken = label ? `Playing: ${label}` : 'Playing';
+    else if (was) spoken = untrack(() => audio.notice) ? '' : 'Sound stopped';
+  });
+  $effect(() => {
+    if (!spoken) return;
+    const t = window.setTimeout(() => {
+      spoken = '';
     }, 8000);
     return () => window.clearTimeout(t);
   });
@@ -59,6 +88,7 @@
 </div>
 
 <p class="notice" role="status">{audio.notice ?? ''}</p>
+<p class="visually-hidden" role="status" data-sound-status>{spoken}</p>
 
 <style>
   .sound-bar {

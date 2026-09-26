@@ -92,7 +92,7 @@ export const SOURCES: SourceGroup[] = [
         title: 'XDJ-RX2 mixer layout',
         publisher: 'VirtualDJ',
         url: 'https://virtualdj.com/manuals/hardware/pioneer/xdjrx2/layout/mixer.html',
-        note: 'Side meters show each channel before its fader.',
+        note: 'Channel meters show each channel before its fader.',
       },
       {
         title: 'XDJ-RX2 recording levels',

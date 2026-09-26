@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { LEVEL_FALLBACK } from '../checklists';
 import { prng } from '../dsp/synth';
 import { HOWLER_CEILING_AT_FULL_KNOB_DB, KICKS_TOGETHER_DB, MIXER_CEILING_DB } from '../model';
 import { RANGES } from '../xdj';
@@ -20,7 +21,6 @@ import {
   LEVEL_NOTCHES,
   levelMessage,
   lightFor,
-  MARGIN,
   MATERIAL_IDS,
   MATERIALS,
   MATERIALS_NOTE,
@@ -148,14 +148,13 @@ describe('where each step should leave the rig', () => {
     expect(targetAtt(HOWLER_LIMIT + 7)).toEqual({ att: 0, green: true });
   });
 
-  it('turns MASTER LEVEL down only when MASTER ATT runs out: first steady green, then two notches down', () => {
+  it('turns MASTER LEVEL down only when MASTER ATT runs out, a notch at a time until green', () => {
     expect(targetAtt(TIGHT)).toEqual({ att: -12, green: false });
     // Coming down from fully up with MASTER ATT at −12 dB: red, red, then the first steady green.
     expect(lightFor(rig('blend', 0, -12), TIGHT)).toBe('red');
     expect(lightFor(rig('blend', -3, -12), TIGHT)).toBe('red');
-    expect(firstGreen(-12, TIGHT)).toBe(-6);
-    expect(targetLevel(TIGHT)).toEqual({ level: -12, fullyUp: false });
-    expect(-6 - targetLevel(TIGHT).level).toBe(2 * NOTCH_DB);
+    expect(firstGreen(-12, TIGHT)).toBe(-2 * NOTCH_DB);
+    expect(targetLevel(TIGHT)).toEqual({ level: -6, fullyUp: false });
   });
 });
 
@@ -179,7 +178,7 @@ describe('judging step 2: the loudest blend', () => {
     );
     expect(judgePlay(rig('blend', 0), 0)).toEqual({ kind: 'seen', light: 'red' });
     expectText(playMessage(judgePlay(rig('blend', 0), 0))).toBe(
-      'The light blinks red on the loudest blend, so the feed is too hot for the Howler.',
+      'The light blinks red on the loudest blend, so the feed is too loud for the Howler.',
     );
     expect(judgePlay(rig('blend', 0, -12), 0)).toEqual({ kind: 'seen', light: 'green' });
   });
@@ -212,7 +211,9 @@ describe('judging step 3: MASTER ATT', () => {
   it('keeps MASTER LEVEL out of it while MASTER ATT has steps left', () => {
     const v = judgeAtt(rig('blend', -6, 0), 0);
     expect(v).toEqual({ kind: 'level-moved', tape: 0 });
-    expectText(attMessage(v)).toContain('Turned down, it hides a hot blend from the DJs, so trim with MASTER ATT.');
+    expectText(attMessage(v)).toBe(
+      'Leave MASTER LEVEL fully up, on its tape. Turned down, the middle meters read low and hide a blend that’s too loud, so turn the recording down with MASTER ATT.',
+    );
   });
 
   it('asks for the loudest blend', () => {
@@ -259,27 +260,25 @@ describe('judging step 4: MASTER LEVEL, only if still red', () => {
     expect(judgeLevel(rig('loud', 0, -12), -12)).toEqual({ kind: 'not-blend' });
   });
 
-  it('wants the first steady green, then two notches down', () => {
+  it('wants the first notch that stays green', () => {
     const at = (level: number) => judgeLevel(rig('blend', level, -12), -12, TIGHT);
     expect(at(0)).toEqual({ kind: 'still-red' });
     expect(at(-3)).toEqual({ kind: 'still-red' });
-    expect(at(-6)).toEqual({ kind: 'edge' });
-    expect(at(-9)).toEqual({ kind: 'edge' });
-    expect(at(-12)).toEqual({ kind: 'set', level: -12, blendDbfs: -9, metersLowDb: 12 });
-    expect(at(-15)).toEqual({ kind: 'too-low' });
+    expect(at(-6)).toEqual({ kind: 'set', level: -6, blendDbfs: -3, metersLowDb: 6 });
+    expect(at(-9)).toEqual({ kind: 'too-low' });
     expect(at(OFF)).toEqual({ kind: 'off' });
-    expectText(levelMessage(at(-12))).toBe(
-      'Marked REC at −12 dB. In the file, the blend peaks at −9 dBFS. The middle meters now read 12 dB low, so a blend can clip before they go red. Bring the room back up at the amps.',
+    expectText(levelMessage(at(-6))).toBe(
+      'Marked REC at −6 dB. In the file, the blend peaks at −3 dBFS. The middle meters now read 6 dB low, so a blend can clip before they go red. Bring the room back up at the amps.',
     );
   });
 
-  it('words the safety margin the same way every time', () => {
-    expect(MARGIN).toBe('first steady green, then two notches down');
-    for (const kind of ['off', 'still-red', 'edge', 'too-low'] as const) {
-      expectText(levelMessage({ kind }).toLowerCase(), kind).toContain(MARGIN);
+  it('words the fallback the same way every time: a notch at a time until green', () => {
+    expect(LEVEL_FALLBACK.how).toBe('a notch at a time until green');
+    for (const kind of ['off', 'still-red', 'too-low'] as const) {
+      expectText(levelMessage({ kind }), kind).toContain(`down ${LEVEL_FALLBACK.how}.`);
     }
-    expectText(levelMessage({ kind: 'edge' })).toBe(
-      'The light is green, but only just. Aim for the first steady green, then two notches down.',
+    expectText(levelMessage({ kind: 'still-red' })).toBe(
+      'Still red. Keep turning it down a notch at a time until green.',
     );
   });
 });
@@ -298,9 +297,9 @@ describe('judging step 5: the test', () => {
     );
   });
 
-  it('reports the test clip as a recording would show it', () => {
+  it('reports the test recording as the file would show it', () => {
     expectText(recordedMessage({ level: 0, att: -12 })).toBe(
-      'Test clip recorded. The loudest blend peaks at −6 dBFS, and the light stayed green.',
+      'Recorded 2 minutes. The loudest blend peaks at −6 dBFS, and the light stayed green.',
     );
   });
 });
@@ -346,19 +345,19 @@ describe('the practice round', () => {
 
 describe('the status sentence', () => {
   it('says what plays, what the light does and where it lands', () => {
-    expectText(statusSentence(rig(null, 0))).toBe('Nothing playing. The Howler light is dark.');
+    expectText(statusSentence(rig(null, 0))).toBe('Nothing playing. The Howler’s LEVEL light is dark.');
     expectText(statusSentence(rig('blend', 0, -12))).toBe(
-      'The loudest blend playing. The Howler light blinks green. It peaks at −6 dBFS in the file.',
+      'The loudest blend playing. The Howler’s LEVEL light blinks green. It peaks at −6 dBFS in the file.',
     );
     expectText(statusSentence(rig('blend', 0))).toContain('6 dB over the top');
     expectText(statusSentence(rig('blend', OFF))).toBe(
-      'The loudest blend playing, but MASTER LEVEL is off. The Howler light is dark.',
+      'The loudest blend playing, but MASTER LEVEL is off. The LEVEL light is dark.',
     );
   });
 
   it('calls a peak of exactly 0 dBFS right at the top, as the file ladder does', () => {
     expectText(statusSentence(rig('blend', 0, -6))).toBe(
-      'The loudest blend playing. The Howler light blinks red. It peaks right at the top in the file.',
+      'The loudest blend playing. The Howler’s LEVEL light blinks red. It peaks right at the top in the file.',
     );
   });
 });
@@ -370,9 +369,9 @@ describe('what the live region says', () => {
   });
 
   it('says when the light changes', () => {
-    expectText(newsSince(rigNews(rig('blend', -6)), rig('blend', -9))).toBe('The Howler light is now blinking green.');
+    expectText(newsSince(rigNews(rig('blend', -6)), rig('blend', -9))).toBe('The LEVEL light is now blinking green.');
     expectText(newsSince(rigNews(rig('blend', -9)), rig('blend', -6))).toBe(
-      'The Howler light is now blinking red, too hot.',
+      'The LEVEL light is now blinking red, too loud.',
     );
   });
 
@@ -383,10 +382,10 @@ describe('what the live region says', () => {
 
   it('says what MASTER ATT did to the peak, and whether it’s where step 3 set it', () => {
     expectText(newsSince(rigNews(rig('blend', 0, 0)), rig('blend', 0, -6))).toBe(
-      'MASTER ATT at −6 dB. The Howler light is still blinking red, too hot. The loudest blend now peaks right at the top in the file.',
+      'MASTER ATT at −6 dB. The LEVEL light is still blinking red, too loud. The loudest blend now peaks right at the top in the file.',
     );
     expectText(newsSince(rigNews(rig('blend', 0, -6)), rig('blend', 0, -12))).toBe(
-      'MASTER ATT at −12 dB. The Howler light is now blinking green. The loudest blend now peaks at −6 dBFS in the file.',
+      'MASTER ATT at −12 dB. The LEVEL light is now blinking green. The loudest blend now peaks at −6 dBFS in the file.',
     );
     expectText(newsSince(rigNews(rig('blend', 0, -12)), rig('blend', 0, -6), -12)).toMatch(
       /That’s not where you set it\.$/,
@@ -427,7 +426,7 @@ describe('typography', () => {
       upMessage(judgeUp(rig(null, -9))),
       attMessage(judgeAtt(rig('blend', 0, -12), 0)),
       attMessage(judgeAtt(rig('blend', 0, -12), 0, ROOMY)),
-      levelMessage(judgeLevel(rig('blend', -12, -12), -12, TIGHT)),
+      levelMessage(judgeLevel(rig('blend', -6, -12), -12, TIGHT)),
       levelMessage({ kind: 'att-changed', att: -12 }),
       holdMessage({ kind: 'att-changed', att: -12 }),
       recordedMessage({ level: 0, att: -12 }),

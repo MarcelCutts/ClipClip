@@ -374,7 +374,7 @@ describe('challenge: bring deck 2 all the way up without the red', () => {
     }
   });
 
-  it('does not count a side meter in the red, even with the middle meter clear', () => {
+  it('does not count a channel meter in the red, even with the middle meters clear', () => {
     // Deck 1 trimmed into the red, then eased to about −12 dB: MASTER is orange, CH1 is red.
     const s: BlendSettings = {
       deck1: { trim: 12, low: 0, fader: 6 },

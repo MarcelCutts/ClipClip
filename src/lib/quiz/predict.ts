@@ -1,11 +1,13 @@
 /**
  * The home page's prediction hook (W7b): one question, then a before/after pair of scopes.
  *
- *   before: a channel pushed past the mixer's ceiling. The tops are cut flat.
- *   after:  the same signal with the record level turned down 12 dB. Smaller, still flat.
+ *   before: a channel pushed past the mixer's ceiling, as recorded. The tops are cut flat.
+ *   after:  the same file turned down 12 dB the next day. Smaller, still flat.
  *
- * The picture is drawn from the site's model: the ceiling is a hard clip at ±1 (the red LED),
- * and an output knob can only scale what reaches it (src/lib/model.ts, BUILD-SPEC §3).
+ * It asks about the file, after the night, so it doesn't repeat the two-ceilings lab's own
+ * prediction (3.2), which asks about the record level on the night. Both rest on the same fact:
+ * the picture is drawn from the site's model, where the ceiling is a hard clip at ±1 (the red
+ * LED) and anything after it can only scale what reaches it (src/lib/model.ts, BUILD-SPEC §3).
  */
 import { clip, type FlatRun, runsAtCeiling } from '../dsp/analysis';
 import { dbToGain } from '../dsp/db';
@@ -16,13 +18,14 @@ import type { Confidence } from './cards';
 export { clip, type FlatRun, runsAtCeiling as flatRuns } from '../dsp/analysis';
 
 export const PREDICT = {
-  lead: 'Quick question.',
+  /** The card's title strip: the situation, as a drill names the light you're looking at. */
+  title: 'Crunch in the recording',
   question:
-    'A track is crunching because its channel is in the red. You turn the record level down. What happens to the crunch?',
-  // The same answers as the lab's prediction (src/lib/lab/copy.ts), short enough for one line each.
+    'Your recording crunches on a track whose channel was in the red. At home, you turn the whole file down. What happens to the crunch?',
+  // Worded like the lab's prediction (src/lib/lab/copy.ts), short enough for one line each.
   choices: [
     { id: 'away', label: 'Goes away' },
-    { id: 'quieter', label: 'Gets quieter, stays' },
+    { id: 'quieter', label: 'Gets quieter but stays' },
     { id: 'unsure', label: 'Not sure' },
   ],
   correct: 'quieter',
@@ -30,8 +33,9 @@ export const PREDICT = {
   wrong: 'away',
   /** Picking this one skips "How sure are you?": the reader has already told us. */
   unsure: 'unsure',
-  reveal: 'It gets quieter and the flat tops stay, because the channel clipped before the record level.',
-  learn: { path: '/#two-ceilings', text: 'Try it yourself in the two-ceilings lab' },
+  reveal:
+    'It gets quieter and the flat tops stay. The mixer cut the peaks off before the file was made, and turning down only shrinks what’s left.',
+  learn: { path: '/#two-ceilings', text: 'Try it with the record level in the two-ceilings lab' },
 } as const;
 
 /**
@@ -48,7 +52,7 @@ export function surpriseLine(choice: string | undefined, confidence: Confidence 
 
 /** How far past the mixer's ceiling the channel is pushed in the picture. */
 export const DRIVE_DB = 3;
-/** How far the record level comes down. */
+/** How far the file is turned down. */
 export const TURN_DOWN_DB = -12;
 
 /**
@@ -68,6 +72,8 @@ export interface Drawing {
   flats: string;
   /** Where to hang the "still flat" label: the middle of the widest flat top. */
   label: { x: number; value: number };
+  /** Where the first cut-off peak at the top ends, to hang its "cut off" label beside it. */
+  cut: { x: number } | null;
 }
 
 /**
@@ -94,7 +100,7 @@ export function mergeRuns(runs: readonly FlatRun[], gap: number): FlatRun[] {
 
 /**
  * Draw a signal pushed `driveDb` past the ceiling and clipped, scaled by `gainDb` afterwards
- * (0 for the mixer's view, TURN_DOWN_DB for what reaches the recorder).
+ * (0 for the file as recorded, TURN_DOWN_DB for the file turned down).
  */
 export function drawClipped(
   source: ArrayLike<number>,
@@ -141,8 +147,10 @@ export function drawClipped(
     cap += `M${px(run.start, run.sign * after)}L${points.join('L')}L${px(run.end, run.sign * after)}Z`;
   }
 
-  const widest = peaks.filter((r) => r.sign === 1).sort((a, b) => b.end - b.start - (a.end - a.start))[0];
+  const tops = peaks.filter((r) => r.sign === 1);
+  const widest = [...tops].sort((a, b) => b.end - b.start - (a.end - a.start))[0];
   const label = { x: widest ? x((widest.start + widest.end) / 2) : geometry.width / 2, value: after };
+  const first = tops[0];
 
-  return { signal: scopePath(clipped, geometry), ghost, cap, flats, label };
+  return { signal: scopePath(clipped, geometry), ghost, cap, flats, label, cut: first ? { x: x(first.end) } : null };
 }

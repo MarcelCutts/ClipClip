@@ -19,7 +19,7 @@ export const GLOSSARY = {
   },
   level: {
     term: 'Level',
-    gloss: 'How big the signal is at one point. Not how loud the room is.',
+    gloss: 'The signal’s size at one point. The room’s volume is set at the amps.',
   },
   meter: {
     term: 'Meter',
@@ -27,11 +27,11 @@ export const GLOSSARY = {
   },
   channelMeter: {
     term: 'Channel meter',
-    gloss: 'The side meters, one per deck. They show each track before its fader.',
+    gloss: 'The meter on each channel, showing that deck before its fader (Pioneer: channel level indicator).',
   },
   middleMeter: {
     term: 'Middle meters',
-    gloss: 'The master meters between the channels. They show the mix, so blends show here.',
+    gloss: 'The pair between the channels. They show the mix, blends included (Pioneer: master level indicator).',
   },
   peak: {
     term: 'Peak',
@@ -39,11 +39,11 @@ export const GLOSSARY = {
   },
   trim: {
     term: 'TRIM',
-    gloss: 'Top knob on each channel (GAIN on some mixers). Sets how hot tracks come in.',
+    gloss: 'Top knob on each channel (GAIN on some mixers). Sets how loud tracks come in.',
   },
   eq: {
     term: 'EQ',
-    gloss: 'HI, MID and LOW knobs. Turning one up also adds level: up to 6 dB.',
+    gloss: 'HI, MID and LOW knobs. Turning one up adds level too, up to 6 dB.',
   },
   blend: {
     term: 'Blend',
@@ -59,7 +59,7 @@ export const GLOSSARY = {
   },
   booth: {
     term: 'BOOTH',
-    gloss: 'Short for BOOTH MONITOR: the DJ’s own knob for the booth monitors.',
+    gloss: 'Short for BOOTH MONITOR, the DJ’s own knob for the booth monitors.',
   },
   monitor: {
     term: 'Monitor',
@@ -91,7 +91,7 @@ export const GLOSSARY = {
   },
   limiter: {
     term: 'Limiter',
-    gloss: 'An automatic brake on peaks. Ours, in the DriveRack, guards the speakers, never the recording.',
+    gloss: 'An automatic brake on peaks. Ours, in the DriveRack, guards the speakers only.',
   },
   normalise: {
     term: 'Normalise',
@@ -107,7 +107,7 @@ export const GLOSSARY = {
   },
   att: {
     term: 'ATT',
-    gloss: 'Turns an output down 6 or 12 dB, in UTILITY. MASTER ATT trims the recording.',
+    gloss: 'Turns an output down, in UTILITY. MASTER ATT may lower the recording too (test T2).',
   },
   balanced: {
     term: 'Balanced lead',
@@ -115,7 +115,7 @@ export const GLOSSARY = {
   },
   ceiling: {
     term: 'Ceiling',
-    gloss: 'A point where the sound can clip: inside the mixer, or at the recorder’s input.',
+    gloss: 'A point where the sound can clip, inside the mixer or at the recorder’s input.',
   },
 } as const satisfies Record<string, { term: string; gloss: string }>;
 

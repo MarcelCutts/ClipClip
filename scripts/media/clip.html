@@ -1,63 +1,195 @@
 <!doctype html>
-<html><head><meta charset="utf-8">
+<html lang="en-GB"><head><meta charset="utf-8">
+<!-- The ten-second chat clip (public/media/turn-it-down.mp4, 1080×1080 drawn, 720×720 encoded), for people who
+     won't open a link. It needs no sound. The cockpit display, with a lab panel as the site draws one: its scope,
+     TRIM as a flat fader with the channel meter, and the recording's volume afterwards, as an editor would turn
+     it down. MASTER LEVEL is taped fully up at REC, so it never moves here. render.mjs asks for the dark theme, so
+     tokens.css gives the night values, and calls window.frame(t) for each frame. Sizes are the site's scaled up
+     for a phone screen showing the video small; radii and hairlines are the site's at the video's own 720 px. -->
+<link rel="stylesheet" href="/src/styles/tokens.css">
 <style>
+@font-face{font-family:B612;src:url(/node_modules/@fontsource/b612/files/b612-latin-400-normal.woff2) format("woff2");font-weight:400}
+@font-face{font-family:B612;src:url(/node_modules/@fontsource/b612/files/b612-latin-700-normal.woff2) format("woff2");font-weight:700}
 @font-face{font-family:Archivo;src:url(/node_modules/@fontsource-variable/archivo/files/archivo-latin-wdth-normal.woff2) format("woff2");font-weight:100 900;font-stretch:62% 125%}
-@font-face{font-family:BSS;src:url(/node_modules/@fontsource-variable/big-shoulders-stencil/files/big-shoulders-stencil-latin-opsz-normal.woff2) format("woff2");font-weight:100 900}
-html,body{margin:0;width:1080px;height:1080px;background:repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 3px),#16181a;overflow:hidden;font-family:Archivo;color:#e9edef}
-.top{position:absolute;left:72px;right:72px;top:64px}
-.kicker{font-stretch:62%;font-weight:850;font-size:84px;line-height:.9;margin:0;text-transform:uppercase;color:#f3f6f7}
-.cap{font-size:40px;line-height:1.25;font-weight:600;margin:22px 0 0;min-height:100px}
-.screen{position:absolute;left:72px;right:72px;top:360px;height:420px;background:#0a0e12;border-radius:22px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.05)}
+@font-face{font-family:"Big Shoulders Stencil";src:url(/node_modules/@fontsource-variable/big-shoulders-stencil/files/big-shoulders-stencil-latin-opsz-normal.woff2) format("woff2");font-weight:100 900}
+:root{--font-body:B612,sans-serif;--font-label:Archivo,sans-serif;--font-stencil:"Big Shoulders Stencil",sans-serif}
+html,body{margin:0;width:1080px;height:1080px;overflow:hidden}
+body{background:var(--paper);color:var(--ink);font-family:var(--font-body);-webkit-font-smoothing:antialiased}
+
+.top{position:absolute;left:72px;right:72px;top:62px}
+h1{margin:0;font-weight:700;font-size:64px;line-height:1.15;letter-spacing:-.01em;color:var(--ink-bright)}
+.cap{margin:14px 0 0;font-size:40px;line-height:1.34;color:var(--ink-2);text-wrap:balance}
+
+/* The hardware panel: flat, with its printed outline against the dark display. */
+.panel{position:absolute;left:72px;right:72px;top:300px;padding:30px;background:var(--hw);border:1.5px solid var(--panel-edge);border-radius:9px;color:var(--hw-label)}
+.key{display:flex;gap:40px;font-weight:700;font-size:27px;line-height:1.2}
+.key span{display:flex;align-items:center;gap:14px}
+.key i{width:46px;height:4px}
+.key .k-sig{background:var(--sig)}
+.key .k-ceil{height:2.5px;background:repeating-linear-gradient(to right,var(--screen-text) 0 12px,transparent 12px 20px)}
+.key .k-dmg{height:2.5px;background:repeating-linear-gradient(to right,var(--dmg) 0 6px,transparent 6px 12px)}
+
+/* The scope, as on the lab's screens: fixed scale, a faint graticule, the ceiling dashed in the screen's text
+   colour. Signal in --sig; flat tops stroked in --dmg, with what they cut off as a dashed ghost over a faint wash. */
+.screen{position:relative;margin-top:16px;height:360px;overflow:hidden;background:var(--screen);border-radius:6px}
 svg{position:absolute;inset:0;width:100%;height:100%}
-.knob{position:absolute;left:72px;right:72px;top:820px;display:flex;align-items:center;gap:28px}
-.lbl{font-stretch:75%;font-weight:800;font-size:28px;letter-spacing:.14em;text-transform:uppercase;color:#c7ced2;min-width:190px}
-.trk{flex:1;height:14px;border-radius:9px;background:#111518;position:relative}
-.fill{position:absolute;left:0;top:0;bottom:0;border-radius:9px;background:#56616a}
-.cap2{position:absolute;top:-17px;width:34px;height:48px;border-radius:6px;background:linear-gradient(#6b747b,#3b4247);border:2px solid #0b0d0f;transform:translateX(-50%)}
-.val{font-weight:700;font-size:34px;min-width:150px;text-align:right;font-variant-numeric:tabular-nums}
-/* The tape sits across the top edge of the screen, above its ceiling line: a video player's controls cover the bottom of the frame. */
-.tape{position:absolute;left:72px;top:318px;background:#e4e1d8;color:#1b1f22;font-family:BSS;font-weight:800;font-size:40px;text-transform:uppercase;padding:18px 32px 16px;rotate:-1deg;opacity:var(--tape,0);
+svg path,svg line{fill:none;stroke-linejoin:round;stroke-linecap:round}
+.grid{stroke:var(--screen-grid);stroke-width:1.5}
+.axis{stroke:var(--screen-axis);stroke-width:1.5}
+.ceiling{stroke:var(--screen-text);stroke-width:2.5;stroke-dasharray:12 8;stroke-linecap:butt}
+svg .cut{fill:var(--dmg);fill-opacity:.14;stroke:none}
+.ghost{stroke:var(--dmg);stroke-width:2.5;stroke-dasharray:6 6;stroke-linecap:butt}
+.trace{stroke:var(--sig);stroke-width:4}
+.flat{stroke:var(--dmg);stroke-width:6}
+
+/* Two faders as ui/Fader.svelte draws them: a slot with a printed rim, lit up to the cap, and a flat cap with its
+   white index line. TRIM is on the gear, so its name is printed as on the panel, and it carries the channel meter
+   in place of a number. The recording's volume isn't a knob on the mixer: it's turned down later, on a computer,
+   so it's named in words, like the site's own controls. */
+.faders{display:grid;grid-template-columns:1fr 1fr;column-gap:48px;margin-top:30px}
+.head{display:flex;align-items:center;justify-content:space-between;height:40px}
+.hw-label{font-family:var(--font-label);font-stretch:75%;font-weight:800;font-size:26px;line-height:1;letter-spacing:.14em;text-transform:uppercase;color:var(--hw-label)}
+.name{font-weight:700;font-size:27px;line-height:1;color:var(--hw-label)}
+.val{font-weight:700;font-size:32px;line-height:1;font-variant-numeric:tabular-nums;color:var(--hw-bright)}
+.slot{--x:50%;position:relative;height:70px;margin-top:10px}
+.slot::before{content:"";position:absolute;left:0;right:0;top:29px;height:12px;box-sizing:border-box;border:1.5px solid var(--hw-label-2);background:linear-gradient(to right,var(--cap-travel) 0 var(--x),var(--hw-sunk) var(--x) 100%)}
+.slot i{position:absolute;top:0;left:var(--x);width:36px;height:70px;box-sizing:border-box;translate:-50% 0;border:1.5px solid var(--cap-edge);border-radius:6px;background:linear-gradient(to right,transparent 42%,var(--cap-line) 42% 58%,transparent 58%),var(--cap-top)}
+.meter{display:flex;gap:4px;padding:5px;border-radius:6px;background:var(--hw-sunk)}
+.meter i{width:21px;height:22px;box-sizing:border-box;border-radius:3px;background:var(--led-g-off)}
+.meter i.a{background:var(--led-a-off)}
+.meter i.r{background:var(--led-r-off);border:1.5px solid var(--led-r-rim)}
+.meter i.g.on{background:var(--led-g)}
+.meter i.a.on{background:var(--led-a)}
+.meter i.r.on{background:var(--led-r);border-color:var(--led-r)}
+
+/* The tape goes on over the heading at the end, opaque, from the left, the way tape is stuck on: the top of the
+   frame, clear of a video player's controls. */
+.land{position:absolute;left:62px;top:30px;rotate:-1.2deg;clip-path:inset(-8px calc((1 - var(--land,0)) * 100%) -8px -8px)}
+.tape{background:var(--tape);color:var(--tape-ink);font-family:var(--font-stencil);font-optical-sizing:auto;font-weight:800;font-size:50px;line-height:1.05;text-transform:uppercase;letter-spacing:.02em;padding:.48em 1.05em .44em;
 clip-path:polygon(0 5%,2.5% 0,5% 5%,7.5% 0,100% 0,98.5% 14%,100% 28%,98% 43%,100% 58%,98.5% 74%,100% 89%,98% 100%,5% 100%,2.5% 95%,0 100%,1.6% 82%,0 66%,2% 50%,0 34%,1.4% 18%)}
 </style></head><body>
-<div class="top"><p class="kicker" id="kicker">Out of the red</p><p class="cap" id="cap"></p></div>
-<div class="screen"><svg viewBox="0 0 936 420" preserveAspectRatio="none">
-<line x1="0" y1="210" x2="936" y2="210" stroke="#18202a" stroke-width="2"/>
-<line id="ceilT" x1="0" x2="936" stroke="#8fa0ae" stroke-width="3" stroke-dasharray="14 10"/>
-<line id="ceilB" x1="0" x2="936" stroke="#8fa0ae" stroke-width="3" stroke-dasharray="14 10"/>
-<path id="ghost" fill="none" stroke="#e5574d" stroke-width="3" stroke-dasharray="6 6" opacity=".8"/>
-<path id="wave" fill="none" stroke="#3d8fe6" stroke-width="5" stroke-linejoin="round"/>
-</svg></div>
-<div class="knob"><span class="lbl" id="klbl">Channel</span><div class="trk"><div class="fill" id="fill"></div><div class="cap2" id="capk"></div></div><span class="val" id="val"></span></div>
-<div class="tape" id="tape">Keep channel meters out of the red</div>
+<div class="top"><h1 id="head"></h1><p class="cap" id="cap"></p></div>
+<div class="panel">
+  <div class="key"><span><i class="k-sig"></i>Your music</span><span><i class="k-ceil"></i>Ceiling</span><span><i class="k-dmg"></i>Cut off</span></div>
+  <div class="screen"><svg viewBox="0 0 876 360" preserveAspectRatio="none">
+    <path class="grid" id="grid"/>
+    <line class="axis" x1="0" x2="876" y1="180" y2="180"/>
+    <path class="cut" id="cut"/>
+    <line class="ceiling" id="ceilT" x1="0" x2="876"/>
+    <line class="ceiling" id="ceilB" x1="0" x2="876"/>
+    <path class="ghost" id="ghost"/>
+    <path class="trace" id="trace"/>
+    <path class="flat" id="flat"/>
+  </svg></div>
+  <div class="faders">
+    <div><div class="head"><span class="hw-label">TRIM</span><span class="meter" id="meter"></span></div><div class="slot" id="trim"><i></i></div></div>
+    <div><div class="head"><span class="name">Recording, later</span><span class="val" id="rval"></span></div><div class="slot" id="rec"><i></i></div></div>
+  </div>
+</div>
+<div class="land" id="tape"><div class="tape">Keep channel meters out of the red</div></div>
 <script>
-const W=936,H=420,MID=210,AMP=150; // AMP = ceiling height in px
-const sig=t=>0.8*Math.sin(2*Math.PI*1.5*t)+0.2*Math.sin(2*Math.PI*21*t);
-let pk=0;for(let i=0;i<2000;i++)pk=Math.max(pk,Math.abs(sig(i/2000)));
-const clip=v=>Math.max(-1,Math.min(1,v));
-const ease=x=>x<0?0:x>1?1:x*x*(3-2*x);
-// timeline (seconds): 0-2 clean, 2-4.5 push to +8 dB, 4.5-6 hold, 6-8.5 turn down to -12 dB, 8.5-10 hold + tape
-// push is dB against the mixer's ceiling (its red light). It starts at -9, the second orange light, where the DJ
-// rule puts the loudest bits. The words say "past the ceiling", never "into the red": Pioneer only says red may distort.
-window.frame=(time)=>{
-  let push=0,down=0,cap='',kicker='A channel in the orange',lbl='Channel',tape=0;
-  if(time<2){push=-9;cap='Plenty of room under the ceiling.';}
-  else if(time<4.5){push=-9+17*ease((time-2)/2.5);kicker='Past the ceiling';cap='Push it too far and the tops get sliced flat.';}
-  else if(time<6){push=8;kicker='Past the ceiling';cap='That flat top is the crunch. It’s in the mix now.';}
-  else if(time<8.5){push=8;down=-12*ease((time-6)/2.5);lbl='Recorder';kicker='Turn it down?';cap='Turn the recorder down afterwards…';}
-  else {push=8;down=-12;lbl='Recorder';kicker='Still flat';cap='…and it’s quieter, but the tops stay flat.';tape=ease((time-8.5)/0.6);}
-  const g1=10**(push/20),g2=10**(down/20);
-  let d='',gh='';
-  for(let x=0;x<=W;x+=3){const t=x/W;const v=sig(t)/pk*g1;const c=clip(v)*g2;d+=(x?'L':'M')+x+' '+(MID-c*AMP).toFixed(1);gh+=(x?'L':'M')+x+' '+(MID-Math.max(-1.35,Math.min(1.35,v*g2))*AMP).toFixed(1);}
-  document.getElementById('wave').setAttribute('d',d);
-  document.getElementById('ghost').setAttribute('d',(push>0&&time>=2)?gh:'');
-  // The ceiling lines stay put, in the site's screen-text grey (red is for damage). Once the recorder knob turns
-  // down, the flat tops sit below them: quieter, still flat.
-  for(const [id,y] of [['ceilT',MID-AMP],['ceilB',MID+AMP]]){const el=document.getElementById(id);el.setAttribute('y1',y);el.setAttribute('y2',y);}
-  const knobDb=lbl==='Channel'?push:down; const pos=lbl==='Channel'?(push+12)/24:(down+24)/24;
-  document.getElementById('fill').style.width=(pos*100)+'%';document.getElementById('capk').style.left=(pos*100)+'%';
-  document.getElementById('val').textContent = lbl==='Channel' ? (push<=0?'Orange':'Red') : ('−'+Math.abs(knobDb).toFixed(0)+' dB');
-  document.getElementById('klbl').textContent=lbl;document.getElementById('kicker').textContent=kicker;document.getElementById('cap').textContent=cap;
-  document.getElementById('tape').style.setProperty('--tape',tape);
+// The scope: a fixed scale in the mixer's units, where ±1 is the ceiling (AMP px from the middle). Never
+// rescaled, so the quiet wave looks small and the pushed one's ghost still fits on the screen.
+const W = 876, H = 360, MID = H / 2, AMP = 100;
+const sig = (t) => 0.8 * Math.sin(2 * Math.PI * 1.5 * t) + 0.2 * Math.sin(2 * Math.PI * 21 * t);
+let pk = 0;
+for (let i = 0; i < 2000; i++) pk = Math.max(pk, Math.abs(sig(i / 2000)));
+const ease = (x) => (x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x));
+const gain = (db) => 10 ** (db / 20);
+
+// push is dB against the mixer's ceiling (its red light). It starts at −9, the second orange light, where the DJ
+// rule puts the loudest parts, and TRIM takes it 4.5 dB past the ceiling. The tops are cut in the mixer, so they're
+// in the recording. Then the recording is turned down 9 dB afterwards, which puts the flat tops where the clean
+// peaks were: quieter, still flat. MASTER LEVEL stays taped fully up throughout, as it is on the night.
+// The words say "past the ceiling", never "into the red": Pioneer only says red may distort.
+// Timeline (seconds): 0–2 clean, 2–4.5 TRIM up, 4.5–6 hold, 6–8.5 the recording turned down, then the tape goes on.
+const PUSH = { from: -9, to: 4.5 };
+const DOWN = -9;
+const CARDS = [
+  { at: 0, head: 'A channel in the orange', cap: 'The peaks sit under the ceiling, with room to spare.' },
+  { at: 2, head: 'Past the ceiling', cap: 'If you turn TRIM up too far, the mixer slices the tops flat, which adds crunch.' },
+  { at: 6, head: 'Turned down afterwards', cap: 'The recording only gets quieter. The tops stay flat, and the crunch stays in the file.' },
+];
+
+// The XDJ-RX2's channel meter (src/lib/xdj.ts): a light is lit once the level reaches its mark. The ceiling is
+// the red light, +12 on the meter's scale.
+const MARKS = [-24, -18, -15, -12, -9, -6, -3, 0, 3, 6, 9, 12];
+const meter = document.getElementById('meter');
+for (const db of MARKS) {
+  const led = document.createElement('i');
+  led.className = db >= 12 ? 'r' : db >= 0 ? 'a' : 'g';
+  meter.append(led);
+}
+
+let grid = '';
+for (let i = 1; i < 10; i++) grid += `M${(i * W) / 10} 0V${H}`;
+document.getElementById('grid').setAttribute('d', grid);
+for (const [id, y] of [['ceilT', MID - AMP], ['ceilB', MID + AMP]]) {
+  const el = document.getElementById(id);
+  el.setAttribute('y1', y);
+  el.setAttribute('y2', y);
+}
+
+/** Draws the wave at `push` dB against the ceiling, clipped there, then scaled by `down` dB. */
+function draw(push, down) {
+  const g1 = gain(push), g2 = gain(down);
+  const y = (v) => (MID - v * g2 * AMP).toFixed(1);
+  let trace = '', ghost = '', flat = '', cut = '';
+  let run = null;
+  const close = () => {
+    if (!run) return;
+    const fy = y(run.sign);
+    flat += `M${run.pts[0][0]} ${fy}H${run.pts.at(-1)[0]}`;
+    ghost += run.pts.map(([x, v], i) => `${i ? 'L' : 'M'}${x} ${y(v)}`).join('');
+    cut += `M${run.pts[0][0]} ${fy}` + run.pts.map(([x, v]) => `L${x} ${y(v)}`).join('') + `L${run.pts.at(-1)[0]} ${fy}Z`;
+    run = null;
+  };
+  for (let x = 0; x <= W; x += 2) {
+    const v = (sig(x / W) / pk) * g1;
+    trace += `${x ? 'L' : 'M'}${x} ${y(Math.max(-1, Math.min(1, v)))}`;
+    const sign = v > 1 ? 1 : v < -1 ? -1 : 0;
+    if (run && run.sign !== sign) close();
+    if (sign && !run) run = { sign, pts: [] };
+    if (run) run.pts.push([x, v]);
+  }
+  close();
+  document.getElementById('trace').setAttribute('d', trace);
+  document.getElementById('ghost').setAttribute('d', ghost);
+  document.getElementById('flat').setAttribute('d', flat);
+  document.getElementById('cut').setAttribute('d', cut);
+}
+
+/** Puts a fader's cap at `frac` of its travel: its centre stops half a cap in from each end, as on the site. */
+function fader(id, frac) {
+  document.getElementById(id).style.setProperty('--x', `calc(18px + (100% - 36px) * ${frac.toFixed(4)})`);
+}
+
+window.frame = (t) => {
+  let push = PUSH.from, down = 0;
+  if (t >= 2) push = PUSH.from + (PUSH.to - PUSH.from) * ease((t - 2) / 2.5);
+  if (t >= 6) down = DOWN * ease((t - 6) / 2.5);
+  draw(push, down);
+
+  // TRIM from about 12 o'clock to near the top; the recording's volume from as recorded (0 dB) down.
+  fader('trim', 0.45 + 0.4 * ((push - PUSH.from) / (PUSH.to - PUSH.from)));
+  fader('rec', 1 + down / 24);
+  const level = push + 12;
+  meter.querySelectorAll('i').forEach((led, i) => led.classList.toggle('on', level >= MARKS[i]));
+  const d = Math.round(-down);
+  document.getElementById('rval').textContent = d === 0 ? '0 dB' : `−${d} dB`;
+
+  // Each card fades in over a quarter of a second. At the end the heading fades out and the tape goes on over it.
+  const card = CARDS.findLast((c) => t >= c.at);
+  const fade = card.at === 0 ? 1 : ease((t - card.at) / 0.25);
+  const gone = ease((t - 8.5) / 0.3);
+  const tape = ease((t - 8.7) / 0.5);
+  const head = document.getElementById('head');
+  const cap = document.getElementById('cap');
+  head.textContent = card.head;
+  cap.textContent = card.cap;
+  head.style.opacity = String(fade * (1 - gone));
+  cap.style.opacity = String(fade);
+  document.getElementById('tape').style.setProperty('--land', String(tape));
 };
 window.frame(0);
 </script></body></html>

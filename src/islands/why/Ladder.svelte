@@ -6,9 +6,11 @@
    * recorder's own noise), which all move together when the file is normalised.
    *
    * The target band means what it means on the crew page: a loud track peaks at up to −12 dBFS
-   * (the solid part, the stretch the slider marks), and blends may rise into the lighter part
-   * above it, up to −6. The top of the file is drawn like every ceiling on the site, dashed in the
-   * screen's text colour; red is for what the ceiling cuts off.
+   * (the darker part, the stretch the slider marks), and blends may rise into the lighter part
+   * above it, up to −6, which gets its own mark and label. The band is printed in the screen's
+   * neutral grey, like the record-level strip's: blue is only ever the signal (your peaks). The top
+   * of the file is drawn like every ceiling on the site, dashed in the screen's text colour; red is
+   * for what the ceiling cuts off.
    *
    * Text is HTML laid over the drawing, so it stays the same size at any width. The drawing uses
    * CSS px throughout: the ladder has a fixed height, and each drawn column a fixed width.
@@ -54,7 +56,6 @@
   const y = (db: number) => PAD_TOP + (TOP_DB - Math.max(BOTTOM_DB, Math.min(TOP_DB, db))) * PX_PER_DB;
   const dbfs = (db: number, decimals = 0) => formatDb(db, { decimals, unit: 'dBFS' });
   const size = (db: number) => formatDb(db, { signed: false });
-  const bare = (db: number) => formatDb(db, { unit: '' });
 
   /** One notch per bit: every 6 dB from the top of the file to the 24-bit floor. */
   const notches = Array.from({ length: 25 }, (_, i) => -6 * i);
@@ -62,17 +63,14 @@
   // The file's own frame: fixed.
   const frame = [
     { id: 'top', at: 0, main: 'Top of the file', sub: dbfs(0) },
-    {
-      id: 'target',
-      at: TARGET_BAND.ideal,
-      main: `Target ${bare(TARGET_BAND.ideal)}`,
-      sub: `loudest blend ${bare(TARGET_BAND.top)}`,
-    },
+    { id: 'blend', at: TARGET_BAND.top, main: 'Loudest blend', sub: dbfs(TARGET_BAND.top) },
+    { id: 'target', at: TARGET_BAND.ideal, main: 'Target', sub: dbfs(TARGET_BAND.ideal) },
     { id: 'floor', at: FLOOR_24_BIT_DBFS, main: '24-bit floor', sub: dbfs(FLOOR_24_BIT_DBFS) },
   ];
+  // Under the column's heading, like the recording's labels.
   const frameY = spreadLabels(
     frame.map((f) => ({ at: y(f.at), size: LABEL })),
-    0,
+    PAD_TOP - 6,
     HEIGHT,
   );
 
@@ -166,14 +164,16 @@
 
     <rect class="track" x="0" y={y(TOP_DB) - 4} width={RAIL} height={y(BOTTOM_DB) - y(TOP_DB) + 8} rx="4" />
     <rect class="over-zone" x="0" y={y(TOP_DB)} width={RAIL} height={y(0) - y(TOP_DB)} />
-    {#each notches as n (n)}
-      <line class="notch" x1="0" x2={n % 24 === 0 ? 9 : 5} y1={y(n)} y2={y(n)} />
-    {/each}
-
-    <!-- The file's frame -->
+    <!-- The file's frame: the band first, so the notches print over it -->
     <rect class="blend-room" x="0" y={y(TARGET_BAND.top)} width={RAIL} height={y(TARGET_BAND.ideal) - y(TARGET_BAND.top)} />
     <rect class="target" x="0" y={y(TARGET_BAND.ideal)} width={RAIL} height={y(TARGET_BAND.bottom) - y(TARGET_BAND.ideal)} />
+    {#each notches as n (n)}
+      <line class="notch" x1="0" x2={n % 24 === 0 ? 10 : 6} y1={y(n)} y2={y(n)} />
+    {/each}
+    <!-- The band's edges, printed across the rail: the loudest blend on top, the target in the middle -->
+    <line class="band-edge" x1="-3" x2={RAIL + 3} y1={y(TARGET_BAND.top)} y2={y(TARGET_BAND.top)} />
     <line class="target-mid" x1="0" x2={RAIL} y1={y(TARGET_BAND.ideal)} y2={y(TARGET_BAND.ideal)} />
+    <line class="band-foot" x1="0" x2={RAIL} y1={y(TARGET_BAND.bottom)} y2={y(TARGET_BAND.bottom)} />
     <line class="ceiling" x1="-3" x2={RAIL + 3} y1={y(0)} y2={y(0)} />
     <line class="floor" x1="-3" x2={RAIL + 3} y1={y(FLOOR_24_BIT_DBFS)} y2={y(FLOOR_24_BIT_DBFS)} />
 
@@ -275,7 +275,7 @@
     color: var(--hw-bright);
   }
 
-  /* Ink like every other chart label: the blue span line beside it carries the colour. */
+  /* The room's size, printed brightest after your peaks: it's the chart's point. */
   .label[data-id='room'] .main {
     font-size: 0.95rem;
     color: var(--hw-bright);
@@ -308,24 +308,37 @@
     fill: color-mix(in oklab, var(--dmg) 14%, transparent);
   }
 
+  /* One notch per bit, printed like a scale's ticks (about 4:1 on the screen). */
   .notch {
-    stroke: var(--screen-axis);
+    stroke: color-mix(in oklab, var(--screen-text) 60%, transparent);
     stroke-width: 1;
   }
 
+  /* The target band in the screen's grey: blue stays the signal's colour. */
   .target {
-    fill: color-mix(in oklab, var(--sig) 26%, transparent);
+    fill: color-mix(in oklab, var(--screen-text) 30%, transparent);
   }
 
   /* Room for blends above a loud track's target, up to the loudest blend. */
   .blend-room {
-    fill: color-mix(in oklab, var(--sig) 11%, transparent);
+    fill: color-mix(in oklab, var(--screen-text) 14%, transparent);
+  }
+
+  /* The loudest blend, −6: its own mark, solid across the rail. */
+  .band-edge {
+    stroke: var(--screen-text);
+    stroke-width: 1.5;
   }
 
   .target-mid {
-    stroke: color-mix(in oklab, var(--sig) 70%, var(--hw-bright));
+    stroke: var(--hw-bright);
     stroke-width: 1;
     stroke-dasharray: 2 2;
+  }
+
+  .band-foot {
+    stroke: color-mix(in oklab, var(--screen-text) 70%, transparent);
+    stroke-width: 1;
   }
 
   /* As on every scope: a dashed line in the screen's text colour. Red is for the damage. */
@@ -344,8 +357,9 @@
     color: var(--screen-text);
   }
 
+  /* The room from your peaks down to the noise: a dimension line, in the screen's grey. */
   .span {
-    stroke: color-mix(in oklab, var(--sig) 45%, transparent);
+    stroke: color-mix(in oklab, var(--screen-text) 55%, transparent);
     stroke-width: 2;
   }
 
@@ -395,6 +409,13 @@
       fill: none;
       stroke: CanvasText;
       stroke-dasharray: 2 2;
+    }
+
+    .band-edge,
+    .band-foot,
+    .target-mid,
+    .span {
+      stroke: CanvasText;
     }
 
     .blend-room {

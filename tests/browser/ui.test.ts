@@ -177,6 +177,66 @@ test('the meter shows red at the ceiling', async () => {
   expect(document.querySelectorAll('.led[data-on="true"][data-zone="red"]')).toHaveLength(2);
 });
 
+test('the meter prints its scale like the panel, with 0 in bold and a break between colour zones', async () => {
+  const screen = await render(LedMeter, { label: 'CH1', level: 3 });
+  const ticks = [...screen.container.querySelectorAll('.tick')];
+  expect(ticks.map((t) => t.textContent)).toEqual([
+    '+12',
+    '+9',
+    '+6',
+    '+3',
+    '0',
+    '−3',
+    '−6',
+    '−9',
+    '−12',
+    '−15',
+    '−18',
+    '−24',
+  ]);
+  const weight = (t: Element) => Number(getComputedStyle(t).fontWeight);
+  const zero = ticks.find((t) => t.textContent === '0')!;
+  expect(ticks.filter((t) => t !== zero).every((t) => weight(t) < weight(zero))).toBe(true);
+  // The gap under the red light and under the 0 light is wider than between lights of one colour.
+  const rows = [...screen.container.querySelectorAll('.row')].map((r) => r.getBoundingClientRect());
+  const gaps = rows.slice(1).map((r, i) => r.top - rows[i]!.bottom);
+  // Top down: +12 over +9 is red over orange, 0 over −3 is orange over green, −3 over −6 is green over green.
+  const [redToOrange, orangeToGreen, greenToGreen] = [gaps[0]!, gaps[4]!, gaps[5]!];
+  expect(redToOrange).toBeGreaterThanOrEqual(greenToGreen + 2);
+  expect(orangeToGreen).toBeGreaterThanOrEqual(greenToGreen + 2);
+});
+
+test('the meter’s name and CLIP legend are big enough to read as names', async () => {
+  const screen = await render(LedMeter, { label: 'MASTER', level: 0, stereo: true, clip: 'off' });
+  for (const el of screen.container.querySelectorAll('.name, .clip')) {
+    expect(Number.parseFloat(getComputedStyle(el).fontSize), el.textContent ?? '').toBeGreaterThanOrEqual(14);
+  }
+});
+
+test('a fader prints a hardware name at 14px or more', async () => {
+  const screen = await render(Fader, { id: 'trim-size', label: 'TRIM', value: 0, min: -12, max: 9 });
+  const label = screen.container.querySelector('label')!;
+  expect(Number.parseFloat(getComputedStyle(label).fontSize)).toBeGreaterThanOrEqual(14);
+});
+
+test('a neutral fader zone is printed in the panel’s grey, not a chart colour', async () => {
+  const screen = await render(Fader, {
+    id: 'neutral',
+    label: 'Neutral',
+    value: -24,
+    min: -24,
+    max: 6,
+    zones: [{ from: -18, to: -12, tone: 'neutral' }],
+  });
+  screen.container.style.width = '400px';
+  const at = await slotColour(screen.getByRole('slider', { name: 'Neutral' }));
+  const band = at(0.3);
+  const plain = at(0.6);
+  // Lighter than the bare slot, and grey: no channel stands out the way blue or red would.
+  expect(band.r + band.g + band.b).toBeGreaterThan(plain.r + plain.g + plain.b + 30);
+  expect(Math.max(band.r, band.g, band.b) - Math.min(band.r, band.g, band.b)).toBeLessThan(20);
+});
+
 test('a pressed pad lights: a white one lights all over, a level preset only lights its LED', async () => {
   const white = await render(Pad, { pressed: true, children: words('Normalise') });
   const red = await render(Pad, { pressed: true, tone: 'red', children: words('Channels in the red') });

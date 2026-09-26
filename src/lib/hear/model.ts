@@ -1,13 +1,13 @@
 /**
  * The model behind "Can you hear it?", a blind listening test.
  *
- * Each round plays the same loop of track A twice: once clean, once pushed into the mixer's
+ * Each round plays the same loop of track A twice: once clean, once pushed past the mixer's
  * ceiling and hard-clipped there, the way a digital mixer clips (no oversampling). The clipped
  * copy is then turned down until both are equally loud (BS.1770 K-weighted loudness), because
  * a louder copy nearly always sounds "better" and would give the answer away.
  *
  * Levels: sample value 1.0 is the mixer's ceiling (the red LED, see xdj.ts). The clean loop
- * peaks exactly there, so "pushed 12 dB into the ceiling" means its peaks would have reached
+ * peaks exactly there, so "pushed 12 dB past the ceiling" means its peaks would have reached
  * 12 dB past it. Nothing we play goes above 1.0.
  */
 import { hardClip, peak, runsAtCeiling, scaled } from '../dsp/analysis';
@@ -88,7 +88,7 @@ export interface Versions {
   beatLength: number;
   /** One loop of track A, peaking exactly at the ceiling. */
   clean: Float32Array;
-  /** Per round: pushed into the ceiling and clipped, as the mixer leaves it (as loud as it gets). */
+  /** Per round: pushed past the ceiling and clipped, as the mixer leaves it (as loud as it gets). */
   natural: Float32Array[];
   /** Per round: the clipped copy turned down to the clean loop's loudness. What the test plays. */
   matched: Float32Array[];

@@ -5,20 +5,29 @@ import {
   CHECKLIST_ORDER,
   CHECKLISTS,
   type ChecklistId,
+  drillText,
   howToRun,
   isChecklistId,
+  LEVEL_FALLBACK,
+  OPEN_UTILITY,
   progressText,
   serialiseTicks,
   storageKey,
 } from './checklists';
+import { drill } from './fixes';
 
 const lists = Object.values(CHECKLISTS);
 const allCopy = lists.flatMap((l) => [
   l.title,
   l.when,
   l.call,
-  ...l.items.flatMap((i) => [i.check, i.target, i.note ?? '']),
+  ...l.items.flatMap((i) => [i.check, i.target, i.note ?? '', i.drill ? drillText(i.drill) : '']),
 ]);
+const itemOf = (id: ChecklistId, item: string) => {
+  const found = CHECKLISTS[id].items.find((i) => i.id === item);
+  if (!found) throw new Error(`${id} has no ${item}`);
+  return found;
+};
 const lineOf = (id: ChecklistId, item: string) => {
   const found = CHECKLISTS[id].items.find((i) => i.id === item);
   if (!found) throw new Error(`${id} has no ${item}`);
@@ -91,8 +100,50 @@ describe('one wiring: the Howler on MASTER 2', () => {
     const level = CHECKLISTS.setup.items.find((i) => i.id === 'record-level');
     expect(level?.target).toMatch(/blinking green on the loudest blend/);
     expect(level?.note).toMatch(/^If it blinks red, set MASTER ATT/);
-    // Pioneer doesn't say MASTER ATT reaches MASTER 2, so MASTER LEVEL is the fallback.
-    expect(level?.note).toMatch(/MASTER LEVEL down a notch at a time/);
+    // Pioneer doesn't say MASTER ATT reaches MASTER 2, so MASTER LEVEL is the fallback, in the one rule.
+    expect(level?.note).toContain(LEVEL_FALLBACK.text);
+    expect(level?.note).toMatch(/MASTER LEVEL down a notch at a time until green/);
+    // Settings save 10 seconds after a change (Pioneer manual p.35).
+    expect(level?.note).toMatch(/Wait 10\sseconds before anyone switches the mixer off, so the settings save\./);
+  });
+
+  it('words the MASTER LEVEL fallback once, from its parts', () => {
+    const { challenge, response, how, text } = LEVEL_FALLBACK;
+    expect(response).toBe('down a notch at a time');
+    expect(how.startsWith(response.replace(/^down /, ''))).toBe(true);
+    expect(text).toContain(`${challenge} down ${how}`);
+    expect(text).toMatch(/re-mark the REC tape\.$/);
+  });
+
+  it('says how to open UTILITY wherever a list sends the crew into it', () => {
+    const into = lists.flatMap((l) => l.items.filter((i) => /UTILITY/.test(i.note ?? '')));
+    expect(into.map((i) => i.id)).toEqual(['record-level', 'att']);
+    for (const item of into) expect(item.note, item.id).toContain(OPEN_UTILITY);
+  });
+
+  it('has the crew write both attenuators on the REC tape, and check them against it', () => {
+    expect(itemOf('setup', 'tags').note).toMatch(
+      /Write both ATT settings, MASTER ATT and BOOTH ATT, on the REC tape\./,
+    );
+    expect(lineOf('doors', 'att')).toBe('Both ATTs as on the REC tape');
+    expect(allCopy.join(' ')).not.toMatch(/\bthe tape\b/);
+  });
+
+  it('sends the Howler lines on C1 and C2 to F1 when its light blinks red', () => {
+    for (const [list, item] of [
+      ['doors', 'howler'],
+      ['changeover', 'light'],
+    ] as const) {
+      const ref = itemOf(list, item).drill;
+      expect(ref, `${list} ${item}`).toEqual({ if: 'If it blinks red', id: 'howler-red', code: 'F1' });
+      if (ref) expect(drillText(ref)).toBe('If it blinks red, see F1.');
+    }
+  });
+
+  it('copies each drill’s code as the drill has it', () => {
+    for (const item of lists.flatMap((l) => l.items)) {
+      if (item.drill) expect(item.drill.code, item.id).toBe(drill(item.drill.id).code);
+    }
   });
 
   it('sets the room at the amps, and tags every knob', () => {
@@ -131,10 +182,15 @@ describe('responses are target states', () => {
     const note = CHECKLISTS.after.items.find((i) => i.id === 'flat-tops')?.note ?? '';
     expect(note).toMatch(/at any height/);
     expect(note).toMatch(/headphones/);
+    expect(note).toMatch(/Audacity’s Show Clipping only marks the file’s top, so it misses mixer clipping/);
+    expect(lineOf('after', 'normalise')).toMatch(/−1\sdB true peak/);
   });
 
   it('names the controls the way the gear and the tape do', () => {
     const doors = CHECKLISTS.doors.items.map((i) => `${i.check} ${i.target}`).join(' ');
+    // The same words as the setup's test: a test recording, never a test clip.
+    expect(doors).toContain('Test recording clean on headphones, no hum');
+    expect(allCopy.join(' ')).not.toMatch(/test clip/i);
     expect(doors).toContain('MASTER LEVEL fully up, on the REC mark');
     expect(doors).toContain('Amps on last, knobs on RIG');
     expect(doors).not.toMatch(/BOOTH knob/);
@@ -153,7 +209,7 @@ describe('copy', () => {
 
   it('writes a line that only sometimes applies as “If …”, never as a question', () => {
     for (const text of allCopy) expect(text, text).not.toContain('?');
-    expect(lineOf('changeover', 'settings')).toMatch(/^If a DJ loaded MY SETTINGS both ATTs as on the tape$/);
+    expect(lineOf('changeover', 'settings')).toMatch(/^If a DJ loaded MY SETTINGS both ATTs as on the REC tape$/);
   });
 
   it('keeps each response to a state, with anything more in its note', () => {

@@ -1,15 +1,28 @@
 <script lang="ts">
   /**
    * A labelled range input styled as a hardware fader. Native <input type="range"> underneath,
-   * so keyboard, touch and screen readers work without extra code. A horizontal fader can also
+   * so keyboard and screen readers work without extra code. On a touch screen it moves only when
+   * you drag its cap (thumbDrag), so a scroll that starts on it never changes it. A horizontal fader can also
    * carry a marked scale: tinted zones along the slot, tick labels under it, and an inset that
    * lines the cap up with a chart axis.
    */
+  import { thumbDrag } from './thumbDrag';
+
   interface Zone {
     from: number;
     to: number;
-    tone: 'sig' | 'dmg';
+    /**
+     * 'sig' and 'dmg' tint a stretch in a chart colour, 'neutral' in the panel's printing: use it
+     * for a target band, so blue stays the signal's own colour.
+     */
+    tone: 'sig' | 'dmg' | 'neutral';
   }
+
+  const TONE: Record<Zone['tone'], string> = {
+    sig: 'color-mix(in oklab, var(--sig) 38%, var(--hw-sunk))',
+    dmg: 'color-mix(in oklab, var(--dmg) 38%, var(--hw-sunk))',
+    neutral: 'color-mix(in oklab, var(--hw-label-2) 40%, var(--hw-sunk))',
+  };
 
   interface Tick {
     at: number;
@@ -111,7 +124,7 @@
   const zoned = $derived.by(() => {
     if (!zones) return undefined;
     const stops = zones.flatMap(({ from, to, tone }) => {
-      const colour = `color-mix(in oklab, var(--${tone}) 38%, var(--hw-sunk))`;
+      const colour = TONE[tone];
       return [`transparent ${along(from)}`, `${colour} ${along(from)}`, `${colour} ${along(to)}`, `transparent ${along(to)}`];
     });
     return stops.length > 0 ? `linear-gradient(to right, ${stops.join(', ')}), var(--hw-sunk)` : 'var(--hw-sunk)';
@@ -142,7 +155,7 @@
     <span class="value" aria-hidden="true">{format(value)}</span>
   </div>
   <!-- Vertical faders put + first, so the tab order runs top to bottom like the column. -->
-  <div class="track" class:steppers>
+  <div class="track" class:steppers use:thumbDrag={{ value, vertical: orientation === 'vertical' }}>
     {#if steppers}
       {@render stepper(orientation === 'vertical' ? 1 : -1)}
     {/if}
@@ -204,6 +217,13 @@
     align-items: baseline;
     justify-content: space-between;
     gap: 0.75rem;
+  }
+
+  /* A name printed on the hardware (TRIM, LOW): silk-screen lettering, big enough (14px) to read as
+     the name of the control you're about to move. */
+  .fader-head .hw-label {
+    font-size: 0.875rem;
+    line-height: 1.1;
   }
 
   .plain-label {

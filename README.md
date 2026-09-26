@@ -66,7 +66,7 @@ The writing style is UK English, second person, short sentences, and hardware na
 
 The demos simulate the rig, so a few assumptions are baked in. They live in `src/lib/model.ts` and `src/lib/xdj.ts`, and the site states them where they matter.
 
-- **The meters** copy the XDJ-RX2: twelve LEDs from −24 to +12 dB, green to −3, orange from 0 to +9, red at +12. The side meters show each channel before its fader; the middle meters show the mix.
+- **The meters** copy the XDJ-RX2: twelve LEDs from −24 to +12 dB, green to −3, orange from 0 to +9, red at +12. The channel meters show each channel before its fader; the middle meters show the mix.
 - **Ceiling 1**, inside the mixer, sits at the red light. Pioneer only says red "may" distort and doesn't publish the margin, so the site treats red as the top.
 - **Ceiling 2**, the Howler's input, isn't published anywhere. The demos assume it overloads 6 dB below the mixer's red with MASTER LEVEL fully up. The setup page has a test to find the real point.
 - **Knobs after the mix** (MASTER LEVEL, BOOTH MONITOR) run from off to unity and can't add gain.
@@ -77,6 +77,27 @@ Nothing plays until a button is pressed. Sound starts quietly, fades in, stops w
 ## Share image and chat clip
 
 `public/og.png` (the link preview) and `public/media/turn-it-down.mp4` (a ten-second silent clip for group chats) are rendered from `scripts/media/og.html` and `scripts/media/clip.html` with the site's own fonts. After changing either page, run `node scripts/media/render.mjs` (it needs Chromium from Playwright and `ffmpeg`).
+
+## Checking a recording for clipping
+
+`pnpm clipcheck` reads WAV files and says whether they clipped, where, and at what level. It reads a file a piece at a time, so a whole night off the Howler is fine: the analysis takes a few seconds per hour of audio, and reading the card takes longer than that.
+
+```sh
+pnpm clipcheck "/Volumes/HOWLER/Howler recordings/"*.WAV
+pnpm clipcheck set.wav --minutes   # every minute with a mark, not just the worst
+pnpm clipcheck set.wav --json      # the findings as JSON
+```
+
+It looks for two marks:
+
+- **The recorder overloading:** three or more samples in a row at full scale, the same test as Audacity's Find Clipping.
+- **Clipping before the recorder**, most likely the mixer past its red: flat tops at one level below full scale, again and again. On the way to the recorder the analogue stages tilt the flat tops and add noise, so no two samples are the same, and Audacity's Show Clipping and the SoX or ffmpeg stats read these files as clean. The check smooths out the converters' ringing, fits a straight line to the middle of each top, pairs each flat top with its neighbour on the other side of the wave to cancel the drift, and looks for a pile of them at the top of the file.
+
+It also gives the file's levels against the guide's target (`TARGET` in `src/lib/model.ts`), and the minutes to listen to.
+
+What it can't do: tell a track that was mastered with flat tops from the mixer when both sit at the top of the file in one stretch (the report says so and gives the times to listen); find very light clipping (in tests with real tracks it finds clipping once the loudest moments go about 2 dB past the mixer's ceiling); or find clipping that the mixer rounds off instead of flattening. The Howler MK1 splits a night into files of about 3.5 hours (4 GB), so check them all, and don't trust the MK1's file dates.
+
+The code is in `src/lib/clipcheck/` and has no dependencies, so a page on the site could use it too. Its tests build recordings from the site's synth and pass them through a model of the analogue stages.
 
 ## How it's built
 
@@ -94,9 +115,11 @@ src/
   lib/dsp/      signal maths: dB, peaks, loudness, the synth and the test tone, ISO 226 equal-loudness
   lib/audio/    the shared audio engine and loop player
   lib/          content data and the simulation model
+  lib/clipcheck/ the recording checker behind pnpm clipcheck
   styles/       design tokens and global CSS
 tests/browser/  Vitest browser-mode tests for the Svelte components and the audio engine
 tests/e2e/      Playwright tests against the built site
+scripts/        the share image and clip renderer, and the recording checker
 docs/DESIGN.md  the design system
 ```
 
@@ -105,4 +128,5 @@ docs/DESIGN.md  the design system
 A few answers change the advice, and only the kit can give them. The setup page lists the one-off tests; the big ones are:
 
 - Where does the Howler's light turn red, as a reading on the XDJ's middle meters?
-- Does MASTER ATT reach MASTER 2? Pioneer doesn't say. If it doesn't, the recording is trimmed with MASTER LEVEL instead, and the middle meters read low.
+- Does MASTER ATT reach MASTER 2? Pioneer doesn't say. If it doesn't, the recording is turned down with MASTER LEVEL instead, and the middle meters read low.
+- Where does the mixer's ceiling land in the Howler's file? Record a test that goes into the red on purpose (setup S3) and run `pnpm clipcheck` on it: the level its flat tops pile up at is the mixer's ceiling as the Howler sees it, which the demos currently assume (`HOWLER_BELOW_RED_DB` in `src/lib/model.ts`).

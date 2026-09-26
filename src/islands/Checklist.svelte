@@ -3,8 +3,9 @@
    * A crew checklist, set as a quick reference handbook's checklist card: a black title strip with the
    * list's code, title and time budget, then each line as a challenge and its response joined by leader
    * dots, the response in the action colour, and the call to say at the end. Native checkboxes, a live
-   * "3 of 7 done" count and a Reset you can undo. It's a printed card, not a piece of the rig, so it
-   * wears the page's colours: white by day, the cockpit display by night.
+   * "3 of 7 done" count and a Clear ticks key you can undo until the next tick. A line whose drill
+   * covers what's wrong says so: "If it blinks red, see F1." It's a printed card, not a piece of the
+   * rig, so it wears the page's colours: white by day, the cockpit display by night.
    *
    * Ticks are kept on this device for as long as one run of the list lasts (checklistTimes.ts), so a
    * reload or a locked phone doesn't lose them, and an old run never passes for this one. A finished
@@ -33,8 +34,9 @@
     type SavedRun,
     startingTicks,
     TICK_LIFETIMES,
-    UNDO_MS,
   } from '../lib/checklistTimes';
+  import { drillAnchor } from '../lib/fixes';
+  import { href } from '../lib/url';
 
   interface Props {
     /** Which list: 'setup', 'doors', 'changeover' or 'after'. */
@@ -59,7 +61,7 @@
   let lastRun = $state<number | null>(null);
   /** Finished by the reader just now, so the status prompts the call. */
   let calling = $state(false);
-  /** What was cleared, while Undo is on offer. */
+  /** What was cleared, while Undo is on offer: until the next tick, or until those ticks would have gone. */
   let undo = $state.raw<{ done: string[]; at: number | null; lastRun: number | null } | null>(null);
   /** Whether this device keeps ticks. The line that says so waits for the island. */
   let kept = $state(true);
@@ -127,10 +129,23 @@
     awake = true;
   }
 
+  /** Take Undo off offer. If it had the focus, Clear ticks takes it back. */
+  async function dropUndo(): Promise<void> {
+    if (!undo) return;
+    const focused = document.activeElement === undoKey;
+    undo = null;
+    if (focused) {
+      await tick();
+      resetKey?.focus();
+    }
+  }
+
   /** Back on the page (a locked phone, another tab, the back button), or a lifetime has run out. */
   function refresh(): void {
     if (!awake) return;
     const now = Date.now();
+    // Cleared ticks can't come back once they'd have gone anyway.
+    if (undo && undo.at !== null && now - undo.at > lifetime) void dropUndo();
     const saved = kept ? read(now) : undefined;
     if (saved === undefined) {
       // Nothing saved to go by, but ticks on the page still go stale.
@@ -143,6 +158,8 @@
       lastRun = finishedAt(run);
       return;
     }
+    // Ticked elsewhere, in another tab: what was cleared here is out of date.
+    void dropUndo();
     settle(run.done, run.at, finishedAt(run));
   }
 
@@ -166,7 +183,7 @@
   async function reset(): Promise<void> {
     const focused = document.activeElement === resetKey;
     clear();
-    // Undo takes Reset's place, so the focus goes with it.
+    // Undo takes Clear ticks' place, so the focus goes with it.
     if (undo && focused) {
       await tick();
       undoKey?.focus();
@@ -191,24 +208,12 @@
     }
   }
 
-  // Undo is on offer for a few seconds, then Reset comes back in its place.
+  // Ticks go when their lifetime runs out, even on a page that stays open, and so does the offer to
+  // bring back cleared ones. Undo has no timer of its own: it stays until the next tick.
   $effect(() => {
-    if (!undo) return;
-    const timer = setTimeout(async () => {
-      const focused = document.activeElement === undoKey;
-      undo = null;
-      if (focused) {
-        await tick();
-        resetKey?.focus();
-      }
-    }, UNDO_MS);
-    return () => clearTimeout(timer);
-  });
-
-  // Ticks go when their lifetime runs out, even on a page that stays open.
-  $effect(() => {
-    if (at === null) return;
-    const timer = setTimeout(refresh, Math.max(0, at + lifetime - Date.now()) + 1_000);
+    const since = at ?? undo?.at ?? null;
+    if (since === null) return;
+    const timer = setTimeout(refresh, Math.max(0, since + lifetime - Date.now()) + 1_000);
     return () => clearTimeout(timer);
   });
 
@@ -261,7 +266,7 @@
               id={inputId}
               data-item={item.id}
               bind:checked={ticked[item.id]}
-              aria-describedby={item.note ? `${inputId}-note` : undefined}
+              aria-describedby={item.note || item.drill ? `${inputId}-note` : undefined}
               onchange={(event) => changed(item.id, event.currentTarget.checked)}
             />
             <svg class="tick" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
@@ -274,19 +279,23 @@
               <span class="target">{item.target}</span>
             </span>
           </label>
-          {#if item.note}
-            <p class="item-note" id="{inputId}-note">{item.note}</p>
+          {#if item.note || item.drill}
+            <!-- What to do if the line isn't so: the note, then the drill that covers it. The link
+                 sits outside the row's label, so following it never ticks the box. -->
+            <p class="item-note" id="{inputId}-note">
+              {#if item.note}{item.note}{/if}
+              {#if item.drill}
+                {item.drill.if}, <a class="ref" href={href(`/night/#${drillAnchor(item.drill.id)}`)}
+                  >see {item.drill.code}</a
+                >.
+              {/if}
+            </p>
           {/if}
         </li>
       {/each}
     </ul>
 
-    <p class="call">
-      <svg class="call-tick" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-        <path d="M3.4 8.6l3 3 6.2-7.2" />
-      </svg>
-      Say: “{list.call}”
-    </p>
+    <p class="call">Say: “{list.call}”</p>
 
     <footer class="foot">
       <p class="count" role="status">
@@ -298,11 +307,11 @@
         <!-- The space sits outside the hidden span: Svelte trims whitespace at the edges of an element. -->
         {#if undo}
           <button type="button" class="key" bind:this={undoKey} onclick={restore}>
-            Undo <span class="visually-hidden">reset, {list.title}</span>
+            Undo <span class="visually-hidden">clear ticks, {list.title}</span>
           </button>
         {:else}
           <button type="button" class="key" bind:this={resetKey} onclick={reset}>
-            Reset <span class="visually-hidden">{list.title}</span>
+            Clear ticks<span class="visually-hidden">, {list.title}</span>
           </button>
         {/if}
       </div>
@@ -320,7 +329,6 @@
     border: 2px solid var(--ink);
     background: var(--paper);
     color: var(--ink);
-    scroll-margin-top: var(--anchor-offset, 1rem);
   }
 
   /* Black by day; by night a raised display header, never a glaring white bar. */
@@ -446,8 +454,7 @@
     outline-offset: 3px;
   }
 
-  .tick,
-  .call-tick {
+  .tick {
     fill: none;
     stroke: currentColor;
     stroke-width: 2.4;
@@ -511,6 +518,12 @@
     text-wrap: pretty;
   }
 
+  /* "See F1": a link to the drill, underlined like any link on the page. */
+  .ref {
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
   /* A ticked line steps back, so the eye lands on the next one. The styles read the box itself, so
      they're right before the island wakes too. An unticked line keeps full strength. */
   .item:has(.box:checked) .check,
@@ -521,9 +534,6 @@
 
   /* The call, said out loud when every line is true. It waits in grey until then. */
   .call {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
     margin: 0;
     font-size: var(--text-rule);
     font-weight: 700;
@@ -531,24 +541,9 @@
     color: var(--ink-3);
   }
 
-  .call-tick {
-    flex: none;
-    width: 1.5rem;
-    height: 1.5rem;
-    padding: 0.15rem;
-    border: 2px solid var(--rule);
-    border-radius: 50%;
-    color: transparent;
-  }
-
-  /* Every box ticked: the call is live. */
+  /* Every box ticked: the call is live, in the action colour, since saying it is the last thing to do. */
   .checklist:not(:has(.box:not(:checked))) .call {
-    color: var(--ink);
-  }
-
-  .checklist:not(:has(.box:not(:checked))) .call-tick {
-    border-color: var(--ink);
-    color: var(--ink);
+    color: var(--action);
   }
 
   .foot {
@@ -646,7 +641,12 @@
       color: HighlightText;
     }
 
-    .checklist:not(:has(.box:not(:checked))) .call-tick {
+    /* System colours flatten grey and the action colour into one, so the waiting call is greyed. */
+    .call {
+      color: GrayText;
+    }
+
+    .checklist:not(:has(.box:not(:checked))) .call {
       color: CanvasText;
     }
 
@@ -675,10 +675,14 @@
     }
 
     .tick,
-    .call-tick,
     .last-run,
     .foot {
       display: none;
+    }
+
+    /* On paper, the call is always there to say. */
+    .call {
+      color: CanvasText;
     }
   }
 </style>

@@ -8,7 +8,6 @@ import {
   type SavedRun,
   startingTicks,
   TICK_LIFETIMES,
-  UNDO_MS,
 } from './checklistTimes';
 
 const MINUTE = 60_000;
@@ -33,10 +32,6 @@ describe('tick lifetimes', () => {
 
   it('only repeats lists whose ticks go before the night is out', () => {
     for (const id of CHECKLIST_ORDER.filter((id) => NEXT_RUN[id])) expect(TICK_LIFETIMES[id]).toBeLessThan(HOUR);
-  });
-
-  it('offers Undo for about 8 seconds', () => {
-    expect(UNDO_MS).toBe(8_000);
   });
 });
 

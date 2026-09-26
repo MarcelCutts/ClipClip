@@ -2,12 +2,16 @@
   /**
    * Where each thing the night can play lands in the Howler's file, in dBFS, at the current
    * setting: what a test recording opened in an editor would show. One knob moves all three
-   * together, 6 dB apart, so the job is to fit the whole night into the target band.
+   * together, 6 dB apart, so the job is to fit the whole night into the target band. The caption
+   * says what the chart shows: whether they fit, and if not, which one doesn't.
    *
    * Two drawings of the same scale, and CSS shows one: a tall ladder beside the rig on a wide
    * panel, and a strip on phones, under the controls, with what's playing spelled out above it.
+   * The strip names each peak and gives its value above its dot; on the client the labels are
+   * measured and spread so they never overlap or run off the screen.
    */
   import { formatDb } from '../../lib/dsp/db';
+  import { fileFinding, spreadLabels } from '../../lib/record/ladder';
   import { type MaterialId, material, TARGET } from '../../lib/record/model';
 
   interface Props {
@@ -21,16 +25,43 @@
   const TOP = 6;
   const BOTTOM = -42;
   const TICKS = [0, -6, -12, -18, -24, -30, -36, -42];
-  /** The strip is short on room, so it numbers every other line. */
+  /** The strip is short on room, so it marks every other line. */
   const STRIP_TICKS = [0, -12, -24, -36];
+  /** Its numbers stop short of the zones, which are named instead: every dot carries its own value. */
+  const STRIP_NUMS = [-24, -36];
   /** How far down the scale a level sits, 0 at the top and 1 at the bottom. */
   const at = (db: number) => ((TOP - Math.max(BOTTOM, Math.min(TOP, db))) / (TOP - BOTTOM)).toFixed(4);
+  /** How far along the strip a level sits, 0 at the quiet end and 1 at the loud end. */
+  const along = (db: number) => 1 - Number(at(db));
+  const middle = (a: number, b: number) => at((a + b) / 2);
 
   const tick = (db: number) => formatDb(db, { unit: '', signed: false });
   const value = (db: number) => formatDb(db, { unit: '', signed: true });
   const silent = $derived(peaks.every((p) => !Number.isFinite(p.dbfs)));
   const shown = $derived(peaks.filter((p) => Number.isFinite(p.dbfs)));
+  /** The strip's labels, quiet end first, as they sit along it. */
+  const ordered = $derived([...shown].sort((a, b) => a.dbfs - b.dbfs));
   const now = $derived(peaks.find((p) => p.id === playing) ?? null);
+  const finding = $derived(fileFinding(peaks));
+
+  // The strip's labels, measured once they're on screen. Until then, and on the server, each sits
+  // at its dot and leans inwards at the ends (its anchor slides along it), so none leaves the strip.
+  let stripWidth = $state(0);
+  let barWidth = $state(0);
+  let labelWidths = $state<number[]>([]);
+  const centres = $derived.by(() => {
+    const widths = labelWidths.slice(0, ordered.length);
+    if (barWidth === 0 || widths.length < ordered.length || widths.some((w) => !w)) return null;
+    // The labels may use the strip's inset at either end, but not the last few pixels of it.
+    const inset = Math.max(0, (stripWidth - barWidth) / 2 - 3);
+    return spreadLabels(
+      ordered.map((p) => along(p.dbfs) * barWidth),
+      widths,
+      -inset,
+      barWidth + inset,
+      6,
+    );
+  });
 
   const where = (dbfs: number) =>
     dbfs > 0
@@ -59,6 +90,7 @@
 <figure class="ladder">
   <figcaption class="title">
     In the file<span class="unit">{' '}(dBFS)</span>{#if headline}<span class="headline">: {headline}</span>{/if}
+    <span class="finding">{finding}</span>
   </figcaption>
 
   <!-- Wide panel: the tall ladder. -->
@@ -84,14 +116,24 @@
     </div>
   </div>
 
-  <!-- Phones: the same scale on its side, louder to the right, names above and numbers below. -->
-  <div class="screen plot strip" role="img" aria-label={summary}>
-    <div class="names" aria-hidden="true">
-      {#each shown as p (p.id)}
-        <span class="name" class:on={p.id === playing} style:--at={at(p.dbfs)}>{material(p.id).short}</span>
+  <!-- Phones: the same scale on its side, louder to the right. Each dot's name and value sit above
+       it; the zones are named below. -->
+  <div class="screen plot strip" role="img" aria-label={summary} bind:clientWidth={stripWidth}>
+    <div class="labels" aria-hidden="true">
+      {#each ordered as p, i (p.id)}
+        <span
+          class="mark"
+          class:on={p.id === playing}
+          bind:clientWidth={labelWidths[i]}
+          style:left={centres ? `${centres[i]}px` : `${along(p.dbfs) * 100}%`}
+          style:translate={centres ? '-50% 0' : `${-along(p.dbfs) * 100}% 0`}
+        >
+          <span class="name">{material(p.id).short}</span>
+          <span class="value">{value(p.dbfs)}</span>
+        </span>
       {/each}
     </div>
-    <div class="bar">
+    <div class="bar" bind:clientWidth={barWidth}>
       <div class="zone clip" style:--from={at(TOP)} style:--to={at(0)}></div>
       <div class="zone band" style:--from={at(TARGET.band.top)} style:--to={at(TARGET.band.bottom)}></div>
       {#each STRIP_TICKS as t (t)}
@@ -107,9 +149,11 @@
       {/each}
     </div>
     <div class="nums" aria-hidden="true">
-      {#each STRIP_TICKS as t (t)}
-        <span class="num" class:aim={t === TARGET.normal} style:--at={at(t)}>{tick(t)}</span>
+      {#each STRIP_NUMS as t (t)}
+        <span class="num" style:--at={at(t)}>{tick(t)}</span>
       {/each}
+      <span class="num zone-name" style:--at={middle(TARGET.band.top, TARGET.band.bottom)}>Target</span>
+      <span class="num zone-name" style:--at={middle(TOP, 0)}>Over</span>
     </div>
   </div>
   <p class="note">What a test recording shows</p>
@@ -145,6 +189,14 @@
     color: var(--hw-bright);
     font-weight: 700;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* What the chart shows, in a sentence: under the title, in the panel's own words colour. */
+  .finding {
+    display: block;
+    margin-top: 0.2rem;
+    font-weight: 400;
+    color: var(--hw-label);
   }
 
   /* The headline carries its own unit. */
@@ -194,19 +246,22 @@
     padding: 0.45rem var(--inset) 0.4rem;
   }
 
-  .names,
+  .labels,
   .nums,
   .bar {
     position: relative;
   }
 
-  .names,
+  /* Two lines: the name, and its value over the dot. */
+  .labels {
+    height: 1.7rem;
+  }
+
   .nums {
     height: 0.8rem;
   }
 
   /* Louder to the right, like a meter lying down. */
-  .name,
   .nums .num,
   .strip .dot,
   .strip .tick {
@@ -215,15 +270,27 @@
     translate: -50% 0;
   }
 
-  .name {
+  /* Placed from the script: at its dot, or spread from its neighbours. */
+  .mark {
+    position: absolute;
     top: 0;
+    display: grid;
+    justify-items: center;
+    row-gap: 0.1rem;
     color: var(--screen-text);
     font-size: 0.6875rem;
     white-space: nowrap;
   }
 
-  .name.on {
+  .mark .value {
+    font-weight: 700;
+  }
+
+  .mark.on {
     color: var(--hw-bright);
+  }
+
+  .mark.on .name {
     font-weight: 700;
   }
 
@@ -231,11 +298,12 @@
     top: 0;
     color: var(--screen-text);
     font-size: 0.6875rem;
+    white-space: nowrap;
   }
 
-  .nums .num.aim {
+  /* The zones' names: what the tinted stretches of the bar are. */
+  .nums .zone-name {
     color: var(--hw-label);
-    font-weight: 700;
   }
 
   .bar {
@@ -286,8 +354,8 @@
   .tall {
     --num-w: 2.1rem;
     --dot-x: calc(var(--num-w) + 0.85rem);
-    /* A strip on the right for the zone names. */
-    --strip: 1.1rem;
+    /* A column on the right for the zone names. (Not --strip: that's the title strips' colour.) */
+    --names-w: 1.1rem;
     display: none;
     flex: 1;
     min-height: 12rem;
@@ -324,7 +392,7 @@
     position: absolute;
     top: calc(var(--at) * 100%);
     left: 0;
-    right: var(--strip);
+    right: var(--names-w);
     height: 0;
     border-top: 1px solid var(--screen-grid);
     margin-left: var(--num-w);
@@ -361,7 +429,7 @@
     position: absolute;
     top: calc(var(--at) * 100%);
     left: var(--dot-x);
-    right: var(--strip);
+    right: var(--names-w);
     height: 0;
     display: flex;
     align-items: center;

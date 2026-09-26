@@ -10,7 +10,7 @@
     light: 'green' | 'red';
     /** "Blinking green", "Blinking red". */
     state: string;
-    /** "Level OK", "Too hot". */
+    /** "Level OK", "Level too high". */
     meaning: string;
   }
 

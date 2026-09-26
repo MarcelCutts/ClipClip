@@ -2,12 +2,15 @@
   /**
    * Before and after, on two small oscilloscope screens with one fixed scale and the mixer's
    * ceiling drawn in both:
-   *   left:  a channel pushed past the mixer's ceiling, tops cut flat;
-   *   right: the same signal after the record level comes down 12 dB. A quarter of the
-   *          height, well under the ceiling, and still flat.
+   *   left:  the file as recorded, from a channel pushed past the mixer's ceiling: tops cut flat,
+   *          with what the ceiling cut off shaded and labelled;
+   *   right: the same file turned down 12 dB. A quarter of the height, well under the ceiling,
+   *          and still flat.
    * The right-hand screen always rests at its true size, so a still frame (no JavaScript, a
    * screenshot, reduced motion) tells the truth. As the reveal appears, it plays the turn-down
    * once: the wave starts at the left-hand size and shrinks, and the flat tops survive it.
+   *
+   * The screens are gear, dark in both themes; the captions above them are printed on the card.
    */
   import { dbToGain } from '../../lib/dsp/db';
   import { drawClipped, PREDICT_SCOPE, pictureSource, TURN_DOWN_DB } from '../../lib/quiz/predict';
@@ -49,12 +52,12 @@
 <div class="wrap">
 <div class="pair">
   <figure class="scope">
-    <figcaption>Channel in the red</figcaption>
+    <figcaption>As recorded</figcaption>
     <svg
       class="screen"
       viewBox="0 0 {g.width} {g.height}"
       role="img"
-      aria-label="Inside the mixer: the wave’s tops are cut flat at the mixer’s ceiling."
+      aria-label="As recorded, the wave’s tops are flat where the mixer’s ceiling cut them off."
     >
       <line class="axis" x1="0" x2={g.width} y1={mid} y2={mid} />
       <line class="ceiling" x1="0" x2={g.width} y1={top} y2={top} />
@@ -64,16 +67,20 @@
       <path class="signal" d={before.signal} />
       <path class="flat" d={before.flats} />
       <text class="note" x={g.width - 6} y={top - 5} text-anchor="end">mixer’s ceiling</text>
+      {#if before.cut}
+        <!-- The shading's key, written beside the first peak it shades. -->
+        <text class="note" x={before.cut.x + 5} y={top - 5}>cut off</text>
+      {/if}
     </svg>
   </figure>
 
   <figure class="scope">
-    <figcaption>Record level down {down}</figcaption>
+    <figcaption>Turned down {down}</figcaption>
     <svg
       class="screen"
       viewBox="0 0 {g.width} {g.height}"
       role="img"
-      aria-label="After the record level comes down: {down} quieter, well under the mixer’s ceiling, with the same flat tops."
+      aria-label="The same file turned down {down}: smaller, well under the mixer’s ceiling, with the same flat tops."
     >
       <line class="axis" x1="0" x2={g.width} y1={mid} y2={mid} />
       <line class="ceiling" x1="0" x2={g.width} y1={top} y2={top} />
@@ -115,11 +122,12 @@
     min-width: 0;
   }
 
+  /* Printed on the card above each screen, so in the page's ink. */
   figcaption {
     margin-bottom: 0.35rem;
-    font-size: var(--text-xs);
+    font-size: var(--text-sm);
     font-weight: 700;
-    color: var(--hw-label);
+    color: var(--ink);
   }
 
   svg {
@@ -171,7 +179,8 @@
   }
 
   /* 12 viewBox units: about 11px with the screens side by side, 13px stacked on a phone. Any
-     larger and "mixer’s ceiling" runs into the second cut-off peak on the left-hand screen. */
+     larger and "mixer’s ceiling" runs into the second cut-off peak on the left-hand screen, and
+     "cut off" into the gap between the first two. */
   .note {
     font-family: var(--font-body);
     font-size: 12px;
@@ -185,7 +194,14 @@
     transform-origin: 50% 50%;
   }
 
+  /* System colours: the screens take the system's ground, as the listening test's do, so the
+     trace in the text colour shows on them. */
   @media (forced-colors: active) {
+    svg {
+      background: Canvas;
+      outline: 1px solid CanvasText;
+    }
+
     .signal {
       stroke: CanvasText;
     }
@@ -193,6 +209,19 @@
     .flat,
     .ghost {
       stroke: Highlight;
+    }
+
+    .cap {
+      fill: none;
+    }
+
+    .axis,
+    .ceiling {
+      stroke: GrayText;
+    }
+
+    .note {
+      fill: CanvasText;
     }
   }
 </style>

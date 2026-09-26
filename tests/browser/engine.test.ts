@@ -1,4 +1,6 @@
 import { afterEach, expect, test, vi } from 'vitest';
+import { render } from 'vitest-browser-svelte';
+import SoundBar from '../../src/islands/SoundBar.svelte';
 import { AudioEngine, audio } from '../../src/lib/audio/engine.svelte';
 import { LoopPlayer } from '../../src/lib/audio/loopPlayer';
 
@@ -110,4 +112,19 @@ test('an interruption stops the demo at once and says how to start again', async
   // Every demo can act on the notice: the listening test has no Listen button.
   expect(audio.notice).toMatch(/interrupted/);
   expect(audio.notice).not.toMatch(/Listen/);
+});
+
+test('the Stop bar tells screen readers what started playing, and that it stopped', async () => {
+  const screen = await render(SoundBar);
+  // A polite status of its own, apart from the visible notice.
+  const status = screen.container.querySelector('[data-sound-status]')!;
+  expect(status.getAttribute('role')).toBe('status');
+  expect(status.textContent).toBe('');
+  const p = new LoopPlayer('announced', () => {}, 'Two ceilings lab');
+  await p.start(tone);
+  await expect.poll(() => status.textContent, settled).toBe('Playing: Two ceilings lab');
+  await expect.poll(() => document.documentElement.style.getPropertyValue('--sound-bar'), settled).toMatch(/px$/);
+  p.stop();
+  await expect.poll(() => status.textContent, settled).toBe('Sound stopped');
+  expect(document.documentElement.style.getPropertyValue('--sound-bar')).toBe('');
 });

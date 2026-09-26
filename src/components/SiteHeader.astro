@@ -3,17 +3,19 @@ import { href } from '../lib/url';
 
 const here = Astro.url.pathname.replace(/\/+$/, '');
 const isCurrent = (path: string) => here === href(path).replace(/\/+$/, '');
+// The guide's own title is the site's name, so on the guide the header doesn't repeat it.
+const home = isCurrent('/');
 // The guide teaches; the other three are tools for doing the job.
 const links = [
   { path: '/', label: 'Guide' },
   { path: '/night/', label: 'On the night' },
-  { path: '/setup/', label: 'Set up' },
-  { path: '/print/', label: 'Print' },
+  { path: '/setup/', label: 'Setting up' },
+  { path: '/print/', label: 'Print kit' },
 ];
 ---
 
 <header class="site-header">
-  <a class="mark" href={href('/')}>Out of the red</a>
+  {!home && <a class="mark" href={href('/')}>Out of the red</a>}
   <nav aria-label="Site">
     <ul>
       {links.map((l) => (
@@ -51,10 +53,11 @@ const links = [
     text-decoration: none;
   }
 
+  /* All four on one line from a 360px phone up. */
   ul {
     display: flex;
     flex-wrap: wrap;
-    gap: 0 1.35rem;
+    gap: 0 1.25rem;
     list-style: none;
     padding: 0;
   }
@@ -82,6 +85,16 @@ const links = [
     text-underline-offset: 0.45em;
   }
 
+  /* Where the name and the links share a line, the links stay at the right, with or without it. */
+  @media (min-width: 48rem) {
+    nav {
+      margin-inline-start: auto;
+    }
+
+    ul {
+      gap: 0 1.35rem;
+    }
+  }
 
   @media (min-width: 80rem) {
     .site-header {

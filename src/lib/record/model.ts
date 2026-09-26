@@ -3,8 +3,8 @@
  * how each step of setting it is judged.
  *
  * The Howler records from MASTER 2, so MASTER LEVEL is the record level. It also sets the speakers,
- * and the middle meters read after it, so it stays fully up: turned down, it hides a hot blend from
- * the DJs. MASTER ATT, in UTILITY, trims the feed instead.
+ * and the middle meters read after it, so it stays fully up: turned down, the meters read low and
+ * hide a blend that's too loud from the DJs. MASTER ATT, in UTILITY, turns the feed down instead.
  *
  * Levels come in two scales. Mix peaks are on the XDJ meter's own dB scale (the red LED is +12),
  * as the middle meters show them with MASTER LEVEL fully up. File peaks are in dBFS, where 0 is the
@@ -13,6 +13,7 @@
  * at 0 dBFS. Every function that depends on it takes it as `limit`, so a test can try another
  * Howler; the walkthrough itself only ever uses the site's.
  */
+import { LEVEL_FALLBACK } from '../checklists';
 import { formatDb, speakDb } from '../dsp/db';
 import { HOWLER_CEILING_AT_FULL_KNOB_DB, KICKS_TOGETHER_DB, TARGET_PEAK_DB } from '../model';
 import { RANGES } from '../xdj';
@@ -147,14 +148,14 @@ export function firstGreen(att: AttDb, limit = HOWLER_LIMIT): number | null {
 }
 
 /**
- * Step 4: where MASTER LEVEL ends up. Fully up if MASTER ATT got the light green. Still red with
- * MASTER ATT at its lowest? First steady green, then two notches down.
+ * Step 4: where MASTER LEVEL ends up. Fully up if MASTER ATT got the light green. If it's still red
+ * with MASTER ATT at its lowest step, MASTER LEVEL comes down a notch at a time until the light is
+ * green: the first steady green.
  */
 export function targetLevel(limit = HOWLER_LIMIT): { level: number; fullyUp: boolean } {
   const { att, green } = targetAtt(limit);
   if (green) return { level: LEVEL.max, fullyUp: true };
-  const first = firstGreen(att, limit);
-  return { level: first === null ? LEVEL.lowest : Math.max(LEVEL.lowest, first - 2 * NOTCH_DB), fullyUp: false };
+  return { level: firstGreen(att, limit) ?? LEVEL.lowest, fullyUp: false };
 }
 
 /* ---------------------------------------------------------------------------------------------
@@ -216,11 +217,10 @@ export type LevelVerdict =
   | { kind: 'put-back-up' }
   | { kind: 'off' }
   | { kind: 'still-red' }
-  | { kind: 'edge' }
   | { kind: 'too-low' }
   | { kind: 'set'; level: number; blendDbfs: number; metersLowDb: number };
 
-/** Step 4: only if still red at MASTER ATT's lowest step, first steady green, then two notches down. */
+/** Step 4: only if still red at MASTER ATT's lowest step, down a notch at a time until green. */
 export function judgeLevel(rig: Rig, att: AttDb, limit = HOWLER_LIMIT): LevelVerdict {
   if (rig.material !== 'blend') return { kind: 'not-blend' };
   if (rig.att !== att) return { kind: 'att-changed', att };
@@ -228,7 +228,6 @@ export function judgeLevel(rig: Rig, att: AttDb, limit = HOWLER_LIMIT): LevelVer
   if (target.fullyUp) return rig.level === LEVEL.max ? { kind: 'stays-up' } : { kind: 'put-back-up' };
   if (!Number.isFinite(rig.level)) return { kind: 'off' };
   if (lightFor(rig, limit) === 'red') return { kind: 'still-red' };
-  if (rig.level > target.level) return { kind: 'edge' };
   if (rig.level < target.level) return { kind: 'too-low' };
   return {
     kind: 'set',
@@ -258,9 +257,6 @@ export function judgeHold(rig: Rig, tape: number, att: AttDb): HoldVerdict {
 const dbfs = (v: number) => formatDb(v, { unit: 'dBFS', signed: false });
 const bare = (v: number) => formatDb(v, { unit: '', signed: false });
 const db = (v: number) => formatDb(v, { signed: false });
-
-/** The safety margin, worded the same everywhere. */
-export const MARGIN = 'first steady green, then two notches down';
 
 /** Where MASTER LEVEL is, in words: "at −9 dB", "off". */
 export const levelWords = (level: number) => (Number.isFinite(level) ? `at ${db(level)}` : 'off');
@@ -292,7 +288,7 @@ export function playMessage(v: PlayVerdict): string {
         : 'That’s one track. Two with their kicks lined up peak higher, so play the loudest blend.';
     case 'seen':
       return v.light === 'red'
-        ? 'The light blinks red on the loudest blend, so the feed is too hot for the Howler.'
+        ? 'The light blinks red on the loudest blend, so the feed is too loud for the Howler.'
         : 'The light stays green, even on the loudest blend.';
   }
 }
@@ -302,7 +298,7 @@ export function attMessage(v: AttVerdict): string {
     case 'not-blend':
       return NOT_BLEND;
     case 'level-moved':
-      return 'Leave MASTER LEVEL fully up, on its tape. Turned down, it hides a hot blend from the DJs, so trim with MASTER ATT.';
+      return 'Leave MASTER LEVEL fully up, on its tape. Turned down, the middle meters read low and hide a blend that’s too loud, so turn the recording down with MASTER ATT.';
     case 'still-red':
       return v.att === ATT_VALUES[0]
         ? 'The light is red, so set MASTER ATT down a step.'
@@ -329,13 +325,11 @@ export function levelMessage(v: LevelVerdict): string {
     case 'put-back-up':
       return 'The light is green with MASTER LEVEL fully up, so put it back there, on its tape. Turned down, the middle meters read low.';
     case 'off':
-      return `MASTER LEVEL is off, so nothing reaches the Howler. Turn it up until the light blinks red, then back down to the ${MARGIN}.`;
+      return `MASTER LEVEL is off, so nothing reaches the Howler. Turn it up until the light blinks red, then back down ${LEVEL_FALLBACK.how}.`;
     case 'still-red':
-      return `Still red. Keep turning it down to the ${MARGIN}.`;
-    case 'edge':
-      return `The light is green, but only just. Aim for the ${MARGIN}.`;
+      return `Still red. Keep turning it down ${LEVEL_FALLBACK.how}.`;
     case 'too-low':
-      return `Lower than it needs to be. Turn it up until the light blinks red, then back down to the ${MARGIN}.`;
+      return `Lower than it needs to be. Turn it up until the light blinks red, then back down ${LEVEL_FALLBACK.how}.`;
     case 'set':
       return `Marked REC at ${db(v.level)}. In the file, the blend peaks at ${dbfs(v.blendDbfs)}. The middle meters now read ${db(v.metersLowDb)} low, so a blend can clip before they go red. Bring the room back up at the amps.`;
   }
@@ -352,10 +346,10 @@ export function holdMessage(v: HoldVerdict): string {
   }
 }
 
-/** The test clip, as a test recording would show it. */
+/** The test recording, as the file would show it. */
 export function recordedMessage(feed: Feed, limit = HOWLER_LIMIT): string {
   const blend = filePeakDbfs(material('blend').mixDb, feed, limit);
-  return `Test clip recorded. The loudest blend peaks at ${dbfs(blend)}, and the light stayed green.`;
+  return `Recorded 2\u00a0minutes. The loudest blend peaks at ${dbfs(blend)}, and the light stayed green.`;
 }
 
 export const DONE_MESSAGE = 'Done. The record level is set, taped and tested.';
@@ -379,16 +373,16 @@ export function settingsMessage(tape: number, att: AttDb, limit = HOWLER_LIMIT):
 export const LIGHT_WORDS: Record<Light, string> = {
   off: 'dark, no sound reaching it',
   green: 'blinking green',
-  red: 'blinking red, too hot',
+  red: 'blinking red, too loud',
 };
 
 /** The sentence a screen reader hears when something new starts playing. */
 export function statusSentence(rig: Rig, limit = HOWLER_LIMIT): string {
-  if (!rig.material) return 'Nothing playing. The Howler light is dark.';
+  if (!rig.material) return 'Nothing playing. The Howler’s LEVEL light is dark.';
   const m = material(rig.material);
-  if (!Number.isFinite(rig.level)) return `${m.name} playing, but MASTER LEVEL is off. The Howler light is dark.`;
+  if (!Number.isFinite(rig.level)) return `${m.name} playing, but MASTER LEVEL is off. The LEVEL light is dark.`;
   const peak = filePeakDbfs(m.mixDb, rig, limit);
-  return `${m.name} playing. The Howler light blinks ${lightFor(rig, limit)}. It peaks ${peakPlace(peak)} in the file.`;
+  return `${m.name} playing. The Howler’s LEVEL light blinks ${lightFor(rig, limit)}. It peaks ${peakPlace(peak)} in the file.`;
 }
 
 /** The parts of the rig the live region reports on. MASTER LEVEL's position is spoken by its slider. */
@@ -417,7 +411,7 @@ export function newsSince(before: RigNews, rig: Rig, att: AttDb | null = null, l
   const light = lightFor(rig, limit);
   const attMoved = rig.att !== before.att;
   if (!attMoved && light === before.light) return null;
-  const lightWords = `The Howler light is ${light === before.light ? 'still' : 'now'} ${LIGHT_WORDS[light]}.`;
+  const lightWords = `The LEVEL light is ${light === before.light ? 'still' : 'now'} ${LIGHT_WORDS[light]}.`;
   if (!attMoved) return lightWords;
   const m = material(rig.material);
   const peak = filePeakDbfs(m.mixDb, rig, limit);

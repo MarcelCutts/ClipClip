@@ -1,8 +1,8 @@
 ---
 /**
  * One part of the guide, opened like a section of a quick reference handbook: a black bar with the
- * part's number and title, then how long it takes and who it's for, then its objective, what a
- * reader can do by the end. The guide gets deeper part by part.
+ * part's number and title, then one plain sentence on what a reader can do by the end. Reading
+ * times are in the index. The guide gets deeper part by part.
  *
  * Left unnamed, so it isn't a landmark: the h2 is how readers jump here, and the index links to it.
  *
@@ -15,13 +15,11 @@ interface Props {
   /** Its place in the guide, like 2. Leave out for the reference section at the end. */
   number?: number;
   title: string;
-  /** "About 5 minutes, for anyone at the mixer." */
-  meta?: string;
-  /** What a reader can do by the end of the part. */
+  /** What a reader can do by the end of the part, as one plain sentence. */
   objective?: string;
 }
 
-const { id, number, title, meta, objective } = Astro.props;
+const { id, number, title, objective } = Astro.props;
 ---
 
 <section class="part subflow" id={id}>
@@ -29,12 +27,7 @@ const { id, number, title, meta, objective } = Astro.props;
     {number && <span class="no">{number}</span>}
     <span>{title}</span>
   </h2>
-  {(meta || objective) && (
-  <div class="lines">
-    {meta && <p class="meta">{meta}</p>}
-    {objective && <p class="objective"><em>Objective.</em> {objective}</p>}
-  </div>
-)}
+  {objective && <p class="standfirst">{objective}</p>}
   <slot />
 </section>
 
@@ -46,41 +39,27 @@ const { id, number, title, meta, objective } = Astro.props;
     margin-block-start: var(--space-section);
   }
 
+  /* The strip's edge shows by night, lifting the bar off the display. */
   .bar {
     display: flex;
     align-items: baseline;
     gap: 0.75em;
     padding: 0.5rem 0.8rem;
+    border-top: 2px solid var(--strip-edge);
     background: var(--strip);
     color: var(--on-strip);
     font-size: var(--text-h2);
     line-height: 1.2;
-    scroll-margin-top: 4rem;
   }
 
-  .lines {
-    display: grid;
-    gap: 0.35rem;
-  }
-
-  .meta {
-    font-size: var(--text-sm);
-    color: var(--ink-3);
-  }
-
-  .objective {
+  .standfirst {
     font-size: var(--text-lede);
     line-height: 1.45;
-  }
-
-  .objective em {
-    font-weight: 700;
   }
 
   /* Subsections: a little air above, like the headings in a manual. */
   .part > :global(h3) {
     margin-block-start: 1.5rem;
-    scroll-margin-top: 4rem;
   }
 
   @media (min-width: 80rem) {
@@ -88,16 +67,12 @@ const { id, number, title, meta, objective } = Astro.props;
       /* Beside the guide's index rail, never under it. */
       grid-column: rail-end / full-end;
     }
-
-    .bar,
-    .part > :global(h3) {
-      scroll-margin-top: 1.5rem;
-    }
   }
 
   @media (forced-colors: active) {
     .bar {
       forced-color-adjust: none;
+      border-top-color: CanvasText;
       background: CanvasText;
       color: Canvas;
     }

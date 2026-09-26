@@ -6,6 +6,7 @@
  * fully up and carries REC. BOOTH MONITOR sets only the booth monitors, so it's the DJ's: MONITOR.
  * The room's volume comes from the amps' gain knobs, taped RIG.
  */
+import { DJ_RULES } from './rules';
 
 export interface ShortTag {
   /** The big word on the tape. */
@@ -14,13 +15,20 @@ export interface ShortTag {
   owner: string;
   /** Where the tag goes. */
   where: string;
+  /** Settings the crew write on the tape by hand, printed as labelled blanks. */
+  blanks?: readonly string[];
 }
 
-/** On MASTER LEVEL: the recording (and the PA) are set by the crew. */
+/**
+ * On MASTER LEVEL: the recording (and the PA) are set by the crew. The night's checklists check
+ * both attenuators against this tape ("both ATTs as on the REC tape"), so it has a blank for each.
+ */
 export const REC_TAG: ShortTag = {
   name: 'REC',
   owner: 'set by crew',
-  where: 'Next to MASTER LEVEL, which stays fully up. It sets the speakers and the recording.',
+  where:
+    'Next to MASTER LEVEL, which stays fully up. It sets the speakers and the recording. Once the record level is set, write MASTER ATT and BOOTH ATT in the blanks.',
+  blanks: ['MASTER ATT', 'BOOTH ATT'],
 };
 
 /** On BOOTH MONITOR: the DJ's own knob for the booth monitors. */
@@ -39,10 +47,13 @@ export const RIG_TAG: ShortTag = {
 
 export const SHORT_TAGS: readonly ShortTag[] = [REC_TAG, MONITOR_TAG, RIG_TAG];
 
+/** The DJ rule for a louder room, word for word, so the tape under the knob says what the guide says. */
+const ASK_THE_CREW = DJ_RULES.find((r) => r.label === 'RIG')!.text;
+
 /** The long tag under MASTER LEVEL: what the knob does, and who to ask for more. */
 export const MASTER_TAG = {
   name: 'SPEAKERS + RECORDING',
-  lines: ['Turning it changes both, so leave it.', 'Want it louder? Ask the crew.'],
+  lines: ['Turning it changes both, so leave it.', ASK_THE_CREW],
   /** Printed width in millimetres. */
   width: 90,
   where: 'Under MASTER LEVEL, where a DJ reads it before turning the knob.',

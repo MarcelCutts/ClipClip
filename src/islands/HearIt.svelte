@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
    * W5 "Can you hear it?": a blind listening test. Three rounds of the same loop, clean against
-   * clipped (pushed 12, 6, then 3 dB into the mixer's ceiling), with the clipped copy turned
+   * clipped (pushed 12, 6, then 3 dB past the mixer's ceiling), with the clipped copy turned
    * down to the same loudness so volume can't give it away. Pick the clipped one, say how sure
    * you are, then see both waveforms. A device switch changes the explanation, never the sound.
    *

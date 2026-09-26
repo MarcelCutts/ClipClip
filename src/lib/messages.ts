@@ -97,7 +97,7 @@ export function chatMessages(link: LinkTo): ChatMessage[] {
       title: 'Meter check reminder',
       when: 'To the DJs, a day or two before the next night.',
       text: [
-        '*If you’re playing at the next night*, test yourself on the XDJ meters first. It’s five questions and takes about a minute.',
+        '*If you’re playing at the next night*, try the meter check first. It’s five questions about the meters and takes about a minute.',
         `Meter check: ${link(REVIEW_PATH)}`,
       ].join('\n'),
     },

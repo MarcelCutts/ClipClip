@@ -7,10 +7,13 @@
     box-sizing: border-box;
   }
 
+  /* Jumps and focus land clear of whatever sticks at the top of the screen (a page's tab strip sets
+     --sticky-top to its height), with a little air. Components don't add scroll margins of their
+     own. */
   html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    scroll-padding-top: 1.5rem;
+    scroll-padding-top: calc(var(--sticky-top, 0px) + 1rem);
   }
 
   @media (prefers-reduced-motion: no-preference) {

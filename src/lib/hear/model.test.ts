@@ -25,7 +25,7 @@ import {
 const v48 = versionsFor(48_000);
 
 describe('rounds', () => {
-  it('runs obvious to subtle: 12, 6, then 3 dB into the ceiling', () => {
+  it('runs obvious to subtle: 12, 6, then 3 dB past the ceiling', () => {
     expect([...ROUND_PUSHES_DB]).toEqual([12, 6, 3]);
     expect(FIXED_ROUNDS.map((r) => r.pushDb)).toEqual([12, 6, 3]);
   });

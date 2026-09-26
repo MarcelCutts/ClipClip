@@ -2,10 +2,12 @@
   /**
    * The loudest kick of the set, as it sits in the file, on a fixed scale: the dashed lines are the
    * top of the file (0 dBFS), drawn like every ceiling on the site. Never auto-scaled, so a quiet
-   * recording looks small and a normalised one nearly reaches the lines. When the file has been
-   * turned up or down, the recording as it was stays behind as a faint trace, and anything the top
-   * of the file cut off shows as a red ghost.
+   * recording looks small and a normalised one nearly reaches the lines. As on every scope on the
+   * site, the flat tops the top of the file made are stroked thick in the damage colour, and what
+   * it cut off hangs beyond them as a dashed red ghost. When the file has been turned up or down,
+   * the recording as it was stays behind as a fainter trace, named in the key under the screen.
    */
+  import { runsAtCeiling } from '../../lib/dsp/analysis';
   import { dbToGain } from '../../lib/dsp/db';
   import { RECORD_RANGE, recorded, scaled, type Zone } from '../../lib/headroom/model';
   import { type ScopeGeometry, scopePath, scopeY } from '../../lib/viz/scope';
@@ -37,6 +39,25 @@
   const ghost = $derived(zone === 'over' ? scopePath(scaled(music, peak + gain), GEO) : '');
   const flatTop = $derived(dbToGain(gain));
   const ceilingPct = (v: number) => `${((scopeY(v, GEO) / GEO.height) * 100).toFixed(2)}%`;
+
+  /** Where sample i lands across the screen, matching scopePath's columns. */
+  function xOf(i: number, n: number): number {
+    if (n <= GEO.width * 2) return (i / Math.max(1, n - 1)) * GEO.width;
+    const columns = Math.round(GEO.width);
+    return (Math.min(columns - 1, Math.floor((i * columns) / n)) / (columns - 1)) * GEO.width;
+  }
+
+  // The flat tops: every run of samples the top of the file held at 0 dBFS, at the level the file
+  // is shown (after any gain).
+  const flats = $derived.by(() => {
+    if (zone !== 'over') return '';
+    let d = '';
+    for (const run of runsAtCeiling(file, 1, 1e-6)) {
+      const y = scopeY(run.sign * flatTop, GEO).toFixed(1);
+      d += `M${xOf(run.start, file.length).toFixed(1)} ${y}H${xOf(run.end, file.length).toFixed(1)}`;
+    }
+    return d;
+  });
 </script>
 
 <figure class="wave">
@@ -58,9 +79,17 @@
         <path class="before" d={before} />
       {/if}
       <path class="now" d={path} />
+      {#if flats}
+        <path class="flat" d={flats} />
+      {/if}
     </svg>
   </div>
-  <figcaption>{caption}</figcaption>
+  <figcaption>
+    <span>{caption}</span>
+    {#if before}
+      <span class="key"><span class="swatch" aria-hidden="true"></span>As recorded</span>
+    {/if}
+  </figcaption>
 </figure>
 
 <style>
@@ -96,9 +125,17 @@
     stroke-width: 1.75;
   }
 
+  /* The recording before the file was turned up or down: the signal's colour, fainter. */
   .before {
-    stroke: color-mix(in oklab, var(--sig) 38%, transparent);
+    stroke: color-mix(in oklab, var(--sig) 66%, transparent);
     stroke-width: 1.25;
+  }
+
+  /* The flat tops, thick and red, as on the lab's scopes. */
+  .flat {
+    stroke: var(--dmg);
+    stroke-width: 3;
+    stroke-linecap: round;
   }
 
   .ghost {
@@ -130,15 +167,41 @@
   }
 
   figcaption {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.2rem 1rem;
     font-size: var(--text-xs);
     font-weight: 700;
     color: var(--hw-label);
   }
 
+  .key {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-weight: 400;
+  }
+
+  .swatch {
+    width: 1.4rem;
+    border-top: 1.5px solid color-mix(in oklab, var(--sig) 66%, transparent);
+  }
+
   @media (forced-colors: active) {
     .now,
-    .ghost {
+    .ghost,
+    .before {
       stroke: CanvasText;
+    }
+
+    .flat {
+      stroke: Highlight;
+    }
+
+    .swatch {
+      border-top-color: CanvasText;
     }
 
     .ceiling {

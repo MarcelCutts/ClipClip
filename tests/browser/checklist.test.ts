@@ -13,7 +13,7 @@ import {
   serialiseTicks,
   storageKey,
 } from '../../src/lib/checklists';
-import { clockTime, UNDO_MS } from '../../src/lib/checklistTimes';
+import { clockTime, TICK_LIFETIMES } from '../../src/lib/checklistTimes';
 
 const MINUTE = 60_000;
 const ids = (list: ChecklistId) => CHECKLISTS[list].items.map((item) => item.id);
@@ -52,6 +52,12 @@ function token(name: string, property: 'color' | 'backgroundColor' = 'color'): s
 beforeEach(() => {
   for (const list of CHECKLIST_ORDER) localStorage.removeItem(storageKey(list));
 });
+
+/**
+ * The Clear ticks key's name: "Clear ticks, Doors open". The list's name is in a visually hidden span,
+ * which Chromium sets apart with a space, as it does the site's other "See 2.1, …" names.
+ */
+const clearTicks = (title: string) => new RegExp(`^Clear ticks ?, ${title}$`);
 
 /** A list's name, as its title strip gives it: "C3 After the night". */
 const nameOf = (list: ChecklistId) => `${CHECKLISTS[list].code} ${CHECKLISTS[list].title}`;
@@ -170,7 +176,7 @@ test('a finished changeover says when it ran, and starts the next one on request
 
   // Pressed by mistake: Undo brings the last run back as it was.
   await expect.element(screen.getByText('Ticks cleared.')).toBeVisible();
-  await screen.getByRole('button', { name: 'Undo reset, Changeover' }).click();
+  await screen.getByRole('button', { name: 'Undo clear ticks, Changeover' }).click();
   await expect.element(screen.getByText(`Last run ${clockTime(finished)}`)).toBeVisible();
   expect(saved('changeover')).toEqual({ at: finished, done: ids('changeover') });
 });
@@ -195,7 +201,7 @@ test('an open page catches up when you come back to it', async () => {
   await expect.element(screen.getByText(progressText(0, total))).toBeVisible();
 });
 
-test('Reset can be undone: Undo takes its place, focus and all, and says so politely', async () => {
+test('Clear ticks can be undone: Undo takes its place, focus and all, and says so politely', async () => {
   const total = ids('doors').length;
   const screen = await render(Checklist, { list: 'doors' });
   await screen.getByRole('checkbox').nth(0).click();
@@ -203,42 +209,90 @@ test('Reset can be undone: Undo takes its place, focus and all, and says so poli
   await expect.element(screen.getByText(progressText(2, total))).toBeVisible();
   const before = saved('doors');
 
-  screen.getByRole('button', { name: 'Reset Doors open' }).element().focus();
+  screen
+    .getByRole('button', { name: clearTicks('Doors open') })
+    .element()
+    .focus();
   await userEvent.keyboard('{Enter}');
   await expect.element(screen.getByText(progressText(0, total))).toBeVisible();
-  await expect.element(screen.getByRole('button', { name: 'Undo reset, Doors open' })).toHaveFocus();
+  await expect.element(screen.getByRole('button', { name: 'Undo clear ticks, Doors open' })).toHaveFocus();
   await expect.element(screen.getByText('Ticks cleared.')).toHaveAttribute('role', 'status');
   expect(saved('doors')).toBeNull();
 
   await userEvent.keyboard('{Enter}');
   await expect.element(screen.getByText(progressText(2, total))).toBeVisible();
-  await expect.element(screen.getByRole('button', { name: 'Reset Doors open' })).toHaveFocus();
+  await expect.element(screen.getByRole('button', { name: clearTicks('Doors open') })).toHaveFocus();
   // Their time comes back too, so the ticks' lifetime doesn't start again.
   expect(saved('doors')).toEqual(before);
   expect(screen.getByText('Ticks cleared.').query()).toBeNull();
 });
 
-test('Undo is on offer for about 8 seconds, then Reset comes back', async () => {
+test('Undo has no time limit: it stays until the next tick', async () => {
   const screen = await render(Checklist, { list: 'doors' });
-  const undo = screen.getByRole('button', { name: 'Undo reset, Doors open' });
+  const undo = screen.getByRole('button', { name: 'Undo clear ticks, Doors open' });
+  const clear = screen.getByRole('button', { name: clearTicks('Doors open') });
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   try {
     (screen.getByRole('checkbox').first().element() as HTMLElement).click();
     flushSync();
-    (screen.getByRole('button', { name: 'Reset Doors open' }).element() as HTMLElement).click();
+    (clear.element() as HTMLElement).click();
     flushSync();
     expect(undo.query()).not.toBeNull();
-    vi.advanceTimersByTime(UNDO_MS - 1_000);
+    // A crew member called away mid-list comes back to it minutes later.
+    vi.advanceTimersByTime(10 * MINUTE);
     flushSync();
     expect(undo.query()).not.toBeNull();
-    vi.advanceTimersByTime(2_000);
+    expect(screen.getByText('Ticks cleared.').query()).not.toBeNull();
+    // The next tick starts afresh, and Clear ticks is back.
+    (screen.getByRole('checkbox').nth(1).element() as HTMLElement).click();
     flushSync();
     expect(undo.query()).toBeNull();
-    expect(screen.getByRole('button', { name: 'Reset Doors open' }).query()).not.toBeNull();
+    expect(clear.query()).not.toBeNull();
     expect(screen.getByText('Ticks cleared.').query()).toBeNull();
   } finally {
     vi.useRealTimers();
   }
+});
+
+test('Undo goes once the cleared ticks would have gone anyway', async () => {
+  const screen = await render(Checklist, { list: 'changeover' });
+  const undo = screen.getByRole('button', { name: 'Undo clear ticks, Changeover' });
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+  try {
+    (screen.getByRole('checkbox').first().element() as HTMLElement).click();
+    flushSync();
+    (screen.getByRole('button', { name: clearTicks('Changeover') }).element() as HTMLElement).click();
+    flushSync();
+    expect(undo.query()).not.toBeNull();
+    vi.advanceTimersByTime(TICK_LIFETIMES.changeover + 2_000);
+    flushSync();
+    await expect.poll(() => undo.query()).toBeNull();
+    expect(screen.getByRole('button', { name: clearTicks('Changeover') }).query()).not.toBeNull();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('the Howler line sends the crew to F1 when its light blinks red', async () => {
+  const screen = await render(Checklist, { list: 'changeover' });
+  const link = screen.getByRole('link', { name: 'see F1' });
+  await expect.element(link).toBeVisible();
+  expect(link.element().getAttribute('href')).toMatch(/\/night\/#fix-howler-red$/);
+  // The note describes its box, so a screen reader hears where to go with the line.
+  const box = screen.getByRole('checkbox').first();
+  await expect.element(box).toHaveAccessibleDescription('If it blinks red, see F1.');
+  // The link sits outside the row's label: following it never ticks the box.
+  expect(link.element().closest('label')).toBeNull();
+});
+
+test('the call waits in grey, then goes live in the action colour, with no radio circle before it', async () => {
+  const screen = await render(Checklist, { list: 'changeover' });
+  const call = screen.getByText(`Say: “${CHECKLISTS.changeover.call}”`);
+  await expect.element(call).toBeVisible();
+  expect(call.element().querySelector('svg')).toBeNull();
+  expect(getComputedStyle(call.element()).color).toBe(token('--ink-3'));
+  for (const box of screen.getByRole('checkbox').all()) await box.click();
+  await expect.poll(() => getComputedStyle(call.element()).color).toBe(token('--action'));
 });
 
 test('notes read at an instruction’s strength and 15px or more, until their line is ticked', async () => {

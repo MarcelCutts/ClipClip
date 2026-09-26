@@ -54,7 +54,7 @@ export interface Card {
 export const CARDS: readonly Card[] = [
   {
     id: 'where',
-    question: 'The recording crunches, but the Howler light stayed green all night. Where did it clip?',
+    question: 'The recording crunches, but the Howler’s LEVEL light stayed green all night. Where did it clip?',
     scene: { kind: 'howler', light: 'green' },
     choices: [
       // "Most likely": Howler doesn't publish where its light turns red (gear-facts §2.2).
@@ -84,7 +84,7 @@ export const CARDS: readonly Card[] = [
     // about the fix (misconception M3), not whether red crunched. "The recording" rather than a knob:
     // the crew would use MASTER ATT, which DJs never see.
     question:
-      'The track crunches on the drop, with its channel meter in the red. The crew turns the recording down. Is it clean now?',
+      'The track crunches on the drop, with its channel meter in the red. The crew turn the recording down. Is it clean now?',
     scene: { kind: 'meters', ch1: MIXER_CEILING_DB, master: 9, ch2: Number.NEGATIVE_INFINITY },
     choices: [
       {
@@ -147,15 +147,15 @@ export const CARDS: readonly Card[] = [
     choices: [
       {
         id: 'middle',
-        label: 'The middle ones (MASTER)',
+        label: 'The middle meters (MASTER)',
         correct: true,
-        feedback: 'The side meters show each track before its fader. The middle meters show the mix.',
+        feedback: 'The channel meters show each track before its fader. The middle meters show the mix.',
       },
       {
         id: 'sides',
-        label: 'The side ones (CH1 and CH2)',
+        label: 'The channel meters (CH1 and CH2)',
         feedback:
-          'The side meters show each track before its fader, so they can’t show a blend. Watch the middle ones.',
+          'The channel meters show each track before its fader, so they can’t show a blend. Watch the middle meters.',
       },
     ],
     learn: { path: '/#meters', text: 'Which meters show what' },

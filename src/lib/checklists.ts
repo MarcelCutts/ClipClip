@@ -23,6 +23,20 @@ export type ChecklistId = 'setup' | 'doors' | 'changeover' | 'after';
 /** READ-DO: read a line, do it. DO-CONFIRM: do it all from memory, then read down and confirm. */
 export type ChecklistKind = 'read-do' | 'do-confirm';
 
+/**
+ * The drill to turn to when a line isn't so, said after its note: "If it blinks red, see F1." The code
+ * is the drill's own (fixes.ts), copied here so the checklist island doesn't carry every drill; the
+ * tests keep the two in step.
+ */
+export interface DrillRef {
+  /** When to turn to it, as a condition without its full stop: "If it blinks red". */
+  if: string;
+  /** The drill's id: it lands on /night/#fix-<id>. */
+  id: string;
+  /** The drill's code, as its title strip gives it: "F1". */
+  code: string;
+}
+
 export interface ChecklistItem {
   /** Stable key, used to remember the tick. Change it if the item's meaning changes. */
   id: string;
@@ -32,7 +46,42 @@ export interface ChecklistItem {
   target: string;
   /** One short line of how or why. */
   note?: string;
+  /** The drill for when the line isn't so. */
+  drill?: DrillRef;
 }
+
+/**
+ * How to reach the attenuators, from Pioneer's Operating Instructions: "Press the [MENU (UTILITY)]
+ * button for over 1 second. The [UTILITY] screen is displayed." (p.31, Changing the settings; the
+ * button is item 9 of the browse section, p.20). MASTER ATTENUATOR and BOOTH MONITOR ATTENUATOR are in
+ * its settings table (p.32). Said wherever a card first sends the crew into UTILITY.
+ */
+export const OPEN_UTILITY = 'To open UTILITY, hold MENU (UTILITY) for over a second.';
+
+/**
+ * The record level's last resort, if the Howler still blinks red with MASTER ATT at −12 dB, or MASTER
+ * ATT doesn't reach MASTER 2 (Pioneer doesn't say; the setup page tests it, T2). One rule, worded the
+ * same on S1, S3, T2 and F1: MASTER LEVEL down a notch at a time until green, and the REC tape
+ * re-marked. The record level walkthrough models the same thing (record/model.ts). MASTER LEVEL turns
+ * the PA down too, and the middle meters read after it, so they read low from then on.
+ */
+export const LEVEL_FALLBACK = {
+  /** As a step: the control and what to do with it. */
+  challenge: 'MASTER LEVEL',
+  response: 'down a notch at a time',
+  /** How far, in the words every card uses. */
+  how: 'a notch at a time until green',
+  /** How far, as the note under that step. */
+  note: 'Until the light stays green through the loudest blend.',
+  /** The whole rule as a sentence, for a note that carries on from MASTER ATT. */
+  text: 'If it’s still red, turn MASTER LEVEL down a notch at a time until green, and re-mark the REC tape.',
+} as const;
+
+/** A line's drill, in words: "If it blinks red, see F1." */
+export const drillText = (ref: DrillRef): string => `${ref.if}, see ${ref.code}.`;
+
+/** Where the Howler lines on C1 and C2 send the crew when its light blinks red. */
+const HOWLER_RED: DrillRef = { if: 'If it blinks red', id: 'howler-red', code: 'F1' };
 
 export interface Checklist {
   id: ChecklistId;
@@ -104,7 +153,7 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
         target: 'LEVEL blinking green on the loudest blend',
         // Pioneer's own fix for distortion is MASTER ATT (manual p.34, UTILITY table p.32), but it doesn't say
         // MASTER ATT reaches MASTER 2, so MASTER LEVEL is the fallback. Settings save 10 s after a change (p.35).
-        note: 'If it blinks red, set MASTER ATT in UTILITY to −6 dB, then −12 dB. Wait 10 seconds before switching off, so it saves. If it’s still red, turn MASTER LEVEL down a notch at a time, and re-mark REC.',
+        note: `If it blinks red, set MASTER ATT in UTILITY to −6 dB, then −12 dB. ${OPEN_UTILITY} ${LEVEL_FALLBACK.text} Wait 10 seconds before anyone switches the mixer off, so the settings save.`,
       },
       {
         id: 'amps',
@@ -118,7 +167,8 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
         id: 'tags',
         check: 'Knob tags',
         target: 'REC on MASTER LEVEL, MONITOR on BOOTH MONITOR, RIG on the amps',
-        note: 'Draw a line across each knob and onto the panel. Write the MASTER ATT setting on the REC tape.',
+        // The night's lists check both attenuators against the REC tape, so both go on it.
+        note: 'Draw a line across each knob and onto the panel. Write both ATT settings, MASTER ATT and BOOTH ATT, on the REC tape.',
       },
       {
         id: 'test-recording',
@@ -143,6 +193,7 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
         id: 'howler',
         check: 'Howler',
         target: 'recording on WAV, charging, LEVEL blinking green',
+        drill: HOWLER_RED,
       },
       {
         id: 'rec',
@@ -152,18 +203,19 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
       {
         id: 'att',
         check: 'Both ATTs',
-        target: 'as on the tape',
+        target: 'as on the REC tape',
         // A DJ's MY SETTINGS can bring their own UTILITY settings back (Pioneer manual p.31).
-        note: 'MASTER ATT and BOOTH ATT, in UTILITY. Check again if a DJ loads MY SETTINGS from USB.',
+        note: `MASTER ATT and BOOTH ATT, in UTILITY. ${OPEN_UTILITY} Check again if a DJ loads MY SETTINGS from USB.`,
       },
       {
         id: 'card',
         check: 'Howler card',
-        target: 'room for the night',
+        target: 'room for tonight',
       },
       {
+        // The id keeps its old name, so ticks made before the rename still count.
         id: 'test-clip',
-        check: 'Test clip',
+        check: 'Test recording',
         target: 'clean on headphones, no hum',
       },
       {
@@ -194,6 +246,7 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
         id: 'light',
         check: 'Howler LEVEL light',
         target: 'blinking green, not red, not off',
+        drill: HOWLER_RED,
       },
       {
         id: 'rec',
@@ -204,7 +257,7 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
         id: 'settings',
         // A DJ's MY SETTINGS can bring their own UTILITY settings back (Pioneer manual p.31).
         check: 'If a DJ loaded MY SETTINGS',
-        target: 'both ATTs as on the tape',
+        target: 'both ATTs as on the REC tape',
       },
       {
         id: 'next-dj',
@@ -257,12 +310,12 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
         target: 'checked for flat tops',
         // Clipped in the mixer but not at the Howler: the flat tops sit below the file's full scale, where a
         // 0 dBFS marker such as Audacity's Show Clipping never looks (pedagogy-ux §9).
-        note: 'Zoom in on the loudest blends for flat tops at any height, and listen on headphones. Show Clipping in Audacity misses mixer clipping, which arrives turned down.',
+        note: 'Zoom in on the loudest blends for flat tops at any height, and listen on headphones. Audacity’s Show Clipping only marks the file’s top, so it misses mixer clipping, which sits lower.',
       },
       {
         id: 'normalise',
         check: 'Copies',
-        target: 'normalised to −1 dB peak, MP3s made last',
+        target: 'normalised to −1 dB true peak, MP3s made last',
       },
       {
         id: 'files',

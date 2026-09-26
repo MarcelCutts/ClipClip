@@ -5,6 +5,8 @@
    * press), and the printed scale behind it.
    *
    * The fader's length comes from --fader-length, set by the lab to match the meters beside it.
+   * On a touch screen it moves only by its cap (ui/Fader), so a scroll that starts on the fader,
+   * which on a phone sits right where a thumb scrolls, never pushes deck 2 in by accident.
    */
   import { speakFader } from '../../lib/blend/copy';
   import { FADER, faderDb } from '../../lib/blend/model';
@@ -98,16 +100,23 @@
     flex-direction: row-reverse;
   }
 
+  /* The strip's name, at 14px: it names the fader under it. */
   .title .hw-label {
+    font-size: 0.875rem;
     white-space: nowrap;
   }
 
-  /* Narrow strips (phones): the key sits above the name, so "DECK 1" stays whole. */
+  /* Narrow strips (phones): the key sits above the name, so "DECK 1" stays whole, and the
+     lettering closes up a little to fit the strip. */
   @container strip (max-width: 5rem) {
     .title,
     [data-deck='2'] .title {
       flex-direction: column;
       gap: 0.35rem;
+    }
+
+    .title .hw-label {
+      letter-spacing: 0.06em;
     }
   }
 

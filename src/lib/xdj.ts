@@ -2,6 +2,7 @@
  * What we copy from the Pioneer DJ XDJ-RX2, from its Quick Start Guide and panel. Every widget
  * that draws the mixer takes its numbers from here, so they all agree with the real unit.
  */
+import { formatDb } from './dsp/db';
 
 export type Zone = 'green' | 'orange' | 'red';
 
@@ -29,6 +30,12 @@ export const METER_SEGMENTS: readonly MeterSegment[] = [
   { db: 9, zone: 'orange' },
   { db: 12, zone: 'red' },
 ];
+
+/**
+ * A mark on the meter's scale as the panel prints it: −24 … −3, 0, +3 … +12, with a true minus
+ * sign and a plus sign. Every meter on the site prints its scale with this.
+ */
+export const scaleLabel = (db: number): string => formatDb(db, { unit: '' });
 
 /** Control ranges printed on the panel. */
 export const RANGES = {

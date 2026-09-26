@@ -83,9 +83,12 @@ describe('chat messages', () => {
     expect(DOORS_PATH).toBe('/night/#doors');
   });
 
-  it('sends the reminder to the meter check', () => {
+  it('sends the reminder to the meter check, by the name the guide gives it', () => {
     expect(textOf('review')).toContain(`${BASE}${REVIEW_PATH}`);
     expect(REVIEW_PATH).toBe('/#check');
+    expect(textOf('review')).toMatch(/the meter check/);
+    // The middle meters and the channel meters are named as such: never "the XDJ meters".
+    expect(textOf('review')).not.toMatch(/XDJ meters/);
   });
 
   it('gives the next DJ a meter position, not just a colour', () => {

@@ -1,13 +1,18 @@
 <script lang="ts">
   /**
-   * W7 · Meter check: five retrieval cards, one at a time.
+   * W7 · Meter check: five retrieval questions, one at a time, printed as a card like the
+   * checklists: a title strip saying which question it is, the question, ruled answers, and
+   * "How sure are you?".
    *
-   * Each card is a fieldset: the scenario as its legend, a picture of the booth where it helps,
-   * two or three answers (the wrong ones are real misconceptions), then "How sure are you?".
-   * Saying how sure commits the answer; the feedback says right or wrong in words, gives the
-   * one-line why and links to where the site teaches it. At the end: the count, and a nudge
-   * when a confident answer was wrong (those are the ones people remember). No points, badges
-   * or timers. The root carries id="check" so the group chat can link straight here.
+   * Each question is a fieldset: the scenario as its legend, a picture of the booth where it
+   * helps, two or three answers (the wrong ones are real misconceptions), then the confidence
+   * scale. Saying how sure commits the answer; the feedback says right or wrong in words, gives
+   * the one-line why and links to where the guide teaches it. At the end: the count, and a nudge
+   * when a confident answer was wrong (those are the ones people remember). No points, badges or
+   * timers. The root carries id="check" so the group chat can link straight here.
+   *
+   * A card, not a panel: black is kept for the gear. The pictures of the booth (the meters, the
+   * Howler, the BOOTH MONITOR knob) are gear, so each sits on a scrap of black faceplate.
    */
   import { tick } from 'svelte';
   import {
@@ -27,9 +32,9 @@
   import BoothKnob from './quiz/BoothKnob.svelte';
   import Choices from './quiz/Choices.svelte';
   import HowlerLight from './quiz/HowlerLight.svelte';
+  import Key from './quiz/Key.svelte';
   import MeterBridge from './quiz/MeterBridge.svelte';
   import Sure from './quiz/Sure.svelte';
-  import HwButton from './ui/HwButton.svelte';
 
   const uid = $props.id();
 
@@ -65,8 +70,10 @@
     announcement = '';
     await tick();
     // Next sits at the foot of a tall card, so on a phone the new question can start above the
-    // screen. Bring the top of the panel back into view, then hand focus to the new card.
-    if (rootEl && rootEl.getBoundingClientRect().top < 0) {
+    // screen, or under the sticky tabs. Bring the top of the card back into view (the page's
+    // scroll-padding keeps it clear of the tabs), then hand focus to the new question.
+    const clear = Number.parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+    if (rootEl && rootEl.getBoundingClientRect().top < clear) {
       const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       rootEl.scrollIntoView({ block: 'start', behavior: still ? 'instant' : 'smooth' });
     }
@@ -80,152 +87,157 @@
   }
 </script>
 
-<section id="check" class="panel check" aria-labelledby="{uid}-title" bind:this={rootEl}>
-  <!-- The step header for every step-by-step widget: the count in words over the title. -->
-  <header class="top">
-    <p class="count">
-      {#if done}Done{:else}Question {index + 1} of {CARDS.length}{/if}
-    </p>
-    <p class="title" id="{uid}-title">Meter check</p>
+<!-- Named for screen readers; the guide's heading above it shows the name, so the strip shows
+     how far through you are instead of saying it twice. -->
+<section id="check" class="check" aria-label="Meter check" bind:this={rootEl}>
+  <header class="strip">
+    <p class="title">{#if done}Done{:else}Question {index + 1} of {CARDS.length}{/if}</p>
   </header>
 
-  {#if !done}
-    {@const card = CARDS[index]!}
-    {@const answer = answers[index]}
-    {#key card.id}
-      <fieldset class="card" tabindex="-1" bind:this={cardEl}>
-        <legend class="question">{card.question}</legend>
+  <div class="body">
+    {#if !done}
+      {@const card = CARDS[index]!}
+      {@const answer = answers[index]}
+      {#key card.id}
+        <fieldset class="card" tabindex="-1" bind:this={cardEl}>
+          <legend class="question">{card.question}</legend>
 
-        <div class="body" data-scene={card.scene?.kind ?? 'none'}>
-          {#if card.scene}
-            <figure class="scene" data-kind={card.scene.kind}>
-              {#if card.scene.kind === 'meters'}
-                <MeterBridge
-                  ch1={card.scene.ch1}
-                  master={card.scene.master}
-                  ch2={card.scene.ch2}
-                  hideMaster={card.scene.hideMaster === true && !answer}
-                />
-                {#if card.scene.caption}
+          <div class="qa" data-scene={card.scene?.kind ?? 'none'}>
+            {#if card.scene}
+              <figure class="scene" data-kind={card.scene.kind}>
+                <div class="plate">
+                  {#if card.scene.kind === 'meters'}
+                    <MeterBridge
+                      ch1={card.scene.ch1}
+                      master={card.scene.master}
+                      ch2={card.scene.ch2}
+                      hideMaster={card.scene.hideMaster === true && !answer}
+                    />
+                  {:else if card.scene.kind === 'howler'}
+                    <HowlerLight light={card.scene.light} />
+                  {:else if card.scene.tag}
+                    <BoothKnob tape={card.scene.tag.name} owner={card.scene.tag.owner} />
+                  {:else}
+                    <BoothKnob />
+                  {/if}
+                </div>
+                {#if card.scene.kind === 'meters' && card.scene.caption}
                   <figcaption>{card.scene.caption}</figcaption>
                 {/if}
-              {:else if card.scene.kind === 'howler'}
-                <HowlerLight light={card.scene.light} />
-              {:else if card.scene.tag}
-                <BoothKnob tape={card.scene.tag.name} owner={card.scene.tag.owner} />
-              {:else}
-                <BoothKnob />
-              {/if}
-            </figure>
-          {/if}
-
-          <div class="respond">
-            <Choices
-              name="{uid}-{card.id}"
-              choices={card.choices}
-              bind:value={picks[index]}
-              locked={answer !== undefined}
-              correct={answer ? correctChoice(card).id : undefined}
-            />
-            {#if picks[index] !== undefined || answer}
-              <Sure picked={answer?.confidence} locked={answer !== undefined} onpick={commit} />
+              </figure>
             {/if}
-          </div>
-        </div>
 
-        {#if answer}
-          {@const right = isCorrect(card, answer.choice)}
-          {@const chosen = card.choices.find((c) => c.id === answer.choice)}
-          <div class="feedback">
-            <p class="verdict">
-              {#if right}
-                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.6l3.1 3.1L13 4.8" /></svg>
-                Right.
-              {:else}
-                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" /></svg>
-                Not quite.
+            <div class="respond">
+              <Choices
+                name="{uid}-{card.id}"
+                choices={card.choices}
+                bind:value={picks[index]}
+                locked={answer !== undefined}
+                correct={answer ? correctChoice(card).id : undefined}
+              />
+              {#if picks[index] !== undefined || answer}
+                <Sure picked={answer?.confidence} locked={answer !== undefined} onpick={commit} />
               {/if}
-            </p>
-            <p class="why">{chosen?.feedback}</p>
-            <p class="learn"><a href={href(card.learn.path)}>{card.learn.text}</a></p>
+            </div>
           </div>
-        {/if}
-      </fieldset>
-    {/key}
 
-    {#if index > 0 || answer}
-    <div class="nav" bind:this={navEl}>
-      {#if index > 0}
-        <HwButton onclick={() => go(index - 1)}>
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5L5.5 8l4.5 4.5" /></svg>
-          Back
-        </HwButton>
+          {#if answer}
+            {@const right = isCorrect(card, answer.choice)}
+            {@const chosen = card.choices.find((c) => c.id === answer.choice)}
+            <div class="feedback">
+              <p class="verdict">
+                {#if right}
+                  <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.6l3.1 3.1L13 4.8" /></svg>
+                  Right.
+                {:else}
+                  <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" /></svg>
+                  Not quite.
+                {/if}
+              </p>
+              <p class="why">{chosen?.feedback}</p>
+              <p class="learn"><a href={href(card.learn.path)}>{card.learn.text}</a></p>
+            </div>
+          {/if}
+        </fieldset>
+      {/key}
+
+      {#if index > 0 || answer}
+        <div class="nav" bind:this={navEl}>
+          {#if index > 0}
+            <Key onclick={() => go(index - 1)}>
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5L5.5 8l4.5 4.5" /></svg>
+              Back
+            </Key>
+          {/if}
+          {#if answer}
+            <span class="next">
+              <Key primary onclick={() => go(index + 1)}>
+                {index === CARDS.length - 1 ? 'See how you did' : 'Next question'}
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" /></svg>
+              </Key>
+            </span>
+          {/if}
+        </div>
       {/if}
-      {#if answer}
-        <span class="next">
-          <HwButton primary onclick={() => go(index + 1)}>
-            {index === CARDS.length - 1 ? 'See how you did' : 'Next question'}
-            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" /></svg>
-          </HwButton>
-        </span>
-      {/if}
-    </div>
+    {:else}
+      <div class="summary">
+        <p class="score" tabindex="-1" bind:this={scoreEl}>{scoreLine(summary)}</p>
+        {#if sure}
+          <p class="sure-line">{sure}</p>
+        {/if}
+        {#if review.length > 0}
+          <p class="review-lead" id="{uid}-review">Go over these again</p>
+          <ul class="review" aria-labelledby="{uid}-review">
+            {#each review as link (link.path)}
+              <li><a href={href(link.path)}>{link.text}</a></li>
+            {/each}
+          </ul>
+        {/if}
+        <span class="again"><Key onclick={restart}>Start again</Key></span>
+      </div>
     {/if}
-  {:else}
-    <div class="summary">
-      <p class="score" tabindex="-1" bind:this={scoreEl}>{scoreLine(summary)}</p>
-      {#if sure}
-        <p class="sure-line">{sure}</p>
-      {/if}
-      {#if review.length > 0}
-        <p class="review-lead" id="{uid}-review">Go over these again</p>
-        <ul class="review" aria-labelledby="{uid}-review">
-          {#each review as link (link.path)}
-            <li><a href={href(link.path)}>{link.text}</a></li>
-          {/each}
-        </ul>
-      {/if}
-      <span class="again"><HwButton onclick={restart}>Start again</HwButton></span>
-    </div>
-  {/if}
+  </div>
 
   <p class="visually-hidden" role="status">{announcement}</p>
 </section>
 
 <style>
+  /*
+   * A printed card, like the checklists: a 2px ink frame whose top edge is the strip's (by night
+   * it lifts the strip off the display), the page's paper and ink, hairlines between the answers.
+   * Dropped straight into a .flow page (islands render inside a display: contents wrapper), it
+   * sits in the reading column; inside any other wrapper that does nothing.
+   */
   .check {
-    /* Dropped straight into a .flow page (islands render inside a display: contents wrapper),
-       sit in the reading column; inside any other wrapper this does nothing. */
     grid-column: content;
-    container-type: inline-size;
     display: grid;
-    gap: 1rem;
+    border: 2px solid var(--ink);
+    border-top-color: var(--strip-edge);
+    background: var(--paper);
+    color: var(--ink);
   }
 
-  /* Links are white like the lettering, told apart by the underline (the page's rule), in the
-     panel's own white so they hold up wherever the panel is shown. */
-  .check :global(a) {
-    color: var(--hw-bright);
-  }
-
-  .top {
-    display: grid;
-    gap: 0.3rem;
-  }
-
-  .count {
-    font-size: var(--text-sm);
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    color: var(--hw-label-2);
+  /* The title strip: which question this is, in words. */
+  .strip {
+    padding: 0.55rem 0.8rem;
+    background: var(--strip);
+    color: var(--on-strip);
   }
 
   .title {
+    margin: 0;
     font-family: var(--font-display);
-    font-size: clamp(1.4rem, 1.25rem + 0.6vw, 1.625rem);
+    font-size: var(--text-rule);
     font-weight: 700;
-    line-height: 1.1;
-    color: var(--hw-bright);
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .body {
+    container-type: inline-size;
+    display: grid;
+    gap: 1rem;
+    padding: 0.8rem 0.8rem 1rem;
   }
 
   .card {
@@ -235,7 +247,6 @@
     margin: 0;
     padding: 0;
     border: 0;
-    border-radius: var(--radius-panel);
   }
 
   .card:focus {
@@ -243,8 +254,8 @@
   }
 
   .card:focus-visible {
-    outline: 3px solid var(--hw-focus);
-    outline-offset: 6px;
+    outline: 3px solid var(--focus);
+    outline-offset: 4px;
   }
 
   /* Floating the legend turns it into an ordinary grid item in every engine, so it lays out
@@ -253,37 +264,40 @@
     float: left;
     width: 100%;
     padding: 0;
-    font-size: clamp(1.0625rem, 1rem + 0.35vw, 1.25rem);
+    font-size: var(--text-rule);
     font-weight: 400;
-    line-height: 1.4;
-    color: var(--hw-bright);
+    line-height: 1.45;
+    color: var(--ink);
     text-wrap: pretty;
   }
 
-  .body {
+  .qa {
     display: grid;
     gap: 1.1rem;
   }
 
-  /* The booth as drawn in a manual: straight on the panel, no plate. The meters bring their own
-     well, as on the mixer. */
   .scene {
     display: grid;
     align-self: start;
-    justify-items: center;
-    gap: 0.5rem;
+    gap: 0.45rem;
     margin: 0;
   }
 
-  .scene[data-kind='howler'] {
-    padding-top: 0.25rem;
+  /* A scrap of faceplate: the gear is drawn for the black panel it sits on, as on the drills. */
+  .plate {
+    display: grid;
+    justify-items: center;
+    align-items: center;
+    padding: 0.8rem 0.6rem;
+    border: 1px solid var(--panel-edge);
+    border-radius: var(--radius-panel);
+    background: var(--hw);
   }
 
   .scene figcaption {
-    max-width: 16rem;
-    font-size: var(--text-xs);
-    line-height: 1.4;
-    color: var(--hw-label-2);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    color: var(--ink-2);
   }
 
   .respond {
@@ -296,8 +310,8 @@
 
   /* Wide enough: the booth picture on the left, answers beside it. */
   @container (min-width: 32rem) {
-    .body:not([data-scene='none']) {
-      grid-template-columns: 12.5rem minmax(0, 1fr);
+    .qa:not([data-scene='none']) {
+      grid-template-columns: 13rem minmax(0, 1fr);
       gap: 1.5rem;
     }
   }
@@ -306,32 +320,33 @@
     display: grid;
     gap: 0.3rem;
     padding-top: 0.9rem;
-    border-top: 1px solid var(--hw-edge);
+    border-top: 1px solid var(--rule);
   }
 
+  /* Right or not, in words and a shape. */
   .verdict {
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    font-weight: 700;
     font-size: var(--text-base);
-    color: var(--hw-label);
+    font-weight: 700;
+    color: var(--ink);
   }
 
   .verdict svg {
     flex: none;
-    width: 1.1rem;
-    height: 1.1rem;
+    width: 1.15rem;
+    height: 1.15rem;
     fill: none;
     stroke: currentColor;
-    stroke-width: 2.2;
+    stroke-width: 2.4;
     stroke-linecap: round;
     stroke-linejoin: round;
   }
 
   .why {
-    max-width: 36rem;
-    color: var(--hw-label);
+    max-width: 38rem;
+    color: var(--ink-2);
   }
 
   .learn {
@@ -366,13 +381,13 @@
     gap: 0.6rem;
   }
 
-  /* The result reads like the listening test's: the display face, lit. */
+  /* The result: the display face, the biggest words on the card. */
   .score {
     font-family: var(--font-display);
     font-size: clamp(1.5rem, 1.3rem + 0.9vw, 2rem);
     font-weight: 700;
     line-height: 1.15;
-    color: var(--hw-bright);
+    color: var(--ink);
     border-radius: var(--radius-control);
   }
 
@@ -381,20 +396,20 @@
   }
 
   .score:focus-visible {
-    outline: 3px solid var(--hw-focus);
+    outline: 3px solid var(--focus);
     outline-offset: 4px;
   }
 
   .sure-line {
-    max-width: 34rem;
-    color: var(--hw-label);
+    max-width: 36rem;
+    color: var(--ink-2);
   }
 
   .review-lead {
     margin-top: 0.4rem;
     font-size: var(--text-sm);
     font-weight: 700;
-    color: var(--hw-label-2);
+    color: var(--ink);
   }
 
   .review {
@@ -404,11 +419,15 @@
     padding-left: 1.1rem;
   }
 
-  .review li::marker {
-    color: var(--hw-label-2);
-  }
-
   .again {
     margin-top: 0.6rem;
+  }
+
+  @media (forced-colors: active) {
+    .strip {
+      forced-color-adjust: none;
+      background: CanvasText;
+      color: Canvas;
+    }
   }
 </style>

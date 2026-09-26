@@ -6,7 +6,7 @@
  * sheet and C3 and S1 on the next.
  * One wiring throughout: MASTER LEVEL feeds the PA and the Howler (REC), BOOTH the booth monitors.
  * The two views are separate trees, so each can be laid out for its own medium. Its sections are
- * left unnamed, as Section.astro's are, so they aren't landmarks: the headings are how to move round.
+ * left unnamed, so they aren't landmarks: the headings are how to move round.
  */
 import PageHeader from '../components/PageHeader.astro';
 import BoothCard from '../components/print/BoothCard.astro';
@@ -45,10 +45,13 @@ const copies = (n: number) => Array.from({ length: n }, (_, i) => i);
       <ol class="steps">
         <li>Print on A4 at 100&nbsp;% scale, with “Fit to page” turned off.</li>
         <li>Cut on the dashed lines.</li>
-        <li>Laminate the cards in matte film if you can, because gloss glares under booth lights.</li>
+        <li>Laminate the cards in matt film if you can, because gloss glares under booth lights.</li>
       </ol>
       <p class="actions">
-        <button type="button" class="print-button" data-print hidden>Print this page</button>
+        <span class="print">
+          <button type="button" class="print-button" data-print hidden>Print this page</button>
+          <span class="print-hint">For just the booth card, print page 1.</span>
+        </span>
         <a href="#messages">Messages for the group chat</a>
       </p>
     </PageHeader>
@@ -60,7 +63,7 @@ const copies = (n: number) => Array.from({ length: n }, (_, i) => i);
         at setting TRIM.
       </p>
       <div class="wide stage">
-        <div class="paper cuts booth-cuts">
+        <div data-paper class="paper cuts booth-cuts">
           <BoothCard />
         </div>
       </div>
@@ -76,15 +79,15 @@ const copies = (n: number) => Array.from({ length: n }, (_, i) => i);
         {
           shortTags.map((tag) => (
             <li>
-              <div class="paper cuts">
-                <KnobTag name={tag.name} owner={tag.owner} />
+              <div data-paper class="paper cuts">
+                <KnobTag name={tag.name} owner={tag.owner} blanks={tag.blanks} />
               </div>
               <p>{tag.where}</p>
             </li>
           ))
         }
         <li>
-          <div class="paper cuts">
+          <div data-paper class="paper cuts">
             <KnobTag name={masterTag.name} lines={masterTag.lines} width={masterTag.width} />
           </div>
           <p>{masterTag.where}</p>
@@ -104,7 +107,7 @@ const copies = (n: number) => Array.from({ length: n }, (_, i) => i);
       <p>On a phone, the night page keeps your ticks for the night.</p>
       <div class="wide crew-list">
         {(['doors', 'changeover', 'after', 'setup'] as const).map((id) => (
-  <div class="sheet-preview">
+  <div data-paper class="sheet-preview">
     <ChecklistCard {...(id === 'setup' ? SETUP_CARD : { list: id })} />
   </div>
 ))}
@@ -129,9 +132,9 @@ const copies = (n: number) => Array.from({ length: n }, (_, i) => i);
         <h3 id="clip-title">A ten-second clip</h3>
         <figure>
           <figcaption id="clip-print-caption">
-            For people who won’t open a link. It needs no sound. A wave pushed past the ceiling gets flat tops, and
-            turning the recording down afterwards only makes it quieter. It ends on a strip of tape that says “Keep
-            channel meters out of the red”.
+            For people who won’t open a link. It needs no sound. Turning TRIM up pushes a wave past the ceiling, and the
+            mixer slices its tops flat. Turning the recording down afterwards only makes it quieter, and the tops stay
+            flat. It ends on a strip of tape that says “Keep channel meters out of the red”.
           </figcaption>
           <video
             controls
@@ -146,7 +149,7 @@ const copies = (n: number) => Array.from({ length: n }, (_, i) => i);
             <source src={href('/media/turn-it-down.mp4')} type="video/mp4" />
           </video>
         </figure>
-        <p><a href={href('/media/turn-it-down.mp4')} download>Download the clip (MP4, 180&nbsp;KB)</a></p>
+        <p><a href={href('/media/turn-it-down.mp4')} download>Download the clip (MP4, 150&nbsp;KB)</a></p>
       </section>
     </section>
   </div>
@@ -161,7 +164,7 @@ const copies = (n: number) => Array.from({ length: n }, (_, i) => i);
     <section class="sheet">
       <p class="sheet-head">Out of the red: tape tags for 19&nbsp;mm console tape. Cut on the dashed lines.</p>
       <div class="cuts tag-cuts short">
-        {shortTags.map((tag) => copies(6).map(() => <KnobTag name={tag.name} owner={tag.owner} />))}
+        {shortTags.map((tag) => copies(6).map(() => <KnobTag name={tag.name} owner={tag.owner} blanks={tag.blanks} />))}
       </div>
       <div class="cuts tag-cuts long">
         {copies(4).map(() => <KnobTag name={masterTag.name} lines={masterTag.lines} width={masterTag.width} />)}
@@ -241,6 +244,19 @@ const copies = (n: number) => Array.from({ length: n }, (_, i) => i);
     gap: 0.75rem 1.5rem;
   }
 
+  /* The button and how to print only the booth card, together. */
+  .print {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+  }
+
+  .print-hint {
+    font-size: var(--text-sm);
+    color: var(--ink-2);
+  }
+
   .print-button {
     min-height: 2.75rem;
     padding: 0.55rem 1.15rem;
@@ -271,11 +287,17 @@ const copies = (n: number) => Array.from({ length: n }, (_, i) => i);
     margin-block-end: 0.25rem;
   }
 
-  /* Paper: white in both themes, because paper is white. Its edges are the cut lines. */
-  .paper {
-    color-scheme: light;
-    background: Canvas;
+  /* Paper is white in both themes, because paper is white. So what's printed on it keeps the day's
+     page colours by night, as the printout does: the data-paper attribute (tokens.css). Without it,
+     the dark-theme preview shows grey card strips and tabs, and a booth card without its yellow. */
+  .paper,
+  .sheet-preview {
     color: CanvasText;
+  }
+
+  /* Its edges are the cut lines. */
+  .paper {
+    background: Canvas;
   }
 
   .stage {
@@ -329,11 +351,6 @@ const copies = (n: number) => Array.from({ length: n }, (_, i) => i);
     grid-template-columns: minmax(0, 1fr);
     gap: 1.5rem;
     margin-block: 0.5rem;
-  }
-
-  .sheet-preview {
-    color-scheme: light;
-    color: CanvasText;
   }
 
   .messages {
@@ -448,7 +465,7 @@ const copies = (n: number) => Array.from({ length: n }, (_, i) => i);
 
     .crew-cards {
       display: grid;
-      gap: 6mm;
+      gap: 5mm;
       width: 190mm;
       margin-inline: auto;
     }

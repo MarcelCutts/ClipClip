@@ -9,38 +9,7 @@
  */
 
 :root {
-  color-scheme: light;
-
-  /* Page, by day: the printed card */
-  --paper: #ffffff;
-  /* Shaded cells: table headers, the colour-code panel */
-  --paper-2: #f1f3f4;
   --paper-grain: transparent;
-  --ink: #0b0c0d;
-  --ink-bright: #0b0c0d;
-  /* Secondary text, including any instruction: never dimmer than this */
-  --ink-2: #353b40;
-  /* Metadata at 15px or more: part times, counts */
-  --ink-3: #5e666c;
-  /* Not for words: leader dots, tick marks */
-  --ink-4: #9aa2a8;
-  --rule: #c5cbd0;
-  --link: #0b0c0d;
-  --focus: #1d5fd0;
-  /* The action colour: only for what to do (a checklist's response, a drill's step) */
-  --action: #006a8e;
-  /* "Know by heart" boxes: the pale yellow printed checklists use */
-  --tint: #fff4c7;
-  --tint-edge: #0b0c0d;
-  /* Title strips: a card's black header by day, a raised display header by night */
-  --strip: #0b0c0d;
-  --on-strip: #ffffff;
-  /* The one warning colour: the tab and title of a drill for something going wrong */
-  --warning: #c42519;
-  --on-warning: #ffffff;
-  --good: #1e7f4a;
-  --warn: #9a5b00;
-  --bad: #c0322b;
   /* Printed things are flat */
   --panel-shadow: none;
 
@@ -127,6 +96,47 @@
   --radius-control: 4px;
 }
 
+/*
+ * Page colours, by day: the printed card. They change with the theme, so they're kept apart from
+ * everything else. Anything marked data-paper keeps them by night as well, as a printout does: the
+ * print kit's previews are paper in both themes.
+ */
+:root,
+[data-paper] {
+  color-scheme: light;
+  --paper: #ffffff;
+  /* Shaded cells: table headers, the colour-code panel */
+  --paper-2: #f1f3f4;
+  --ink: #0b0c0d;
+  --ink-bright: #0b0c0d;
+  /* Secondary text, including any instruction: never dimmer than this */
+  --ink-2: #353b40;
+  /* Metadata at 15px or more: part times, counts */
+  --ink-3: #5e666c;
+  /* Not for words: leader dots, tick marks */
+  --ink-4: #9aa2a8;
+  --rule: #c5cbd0;
+  --link: #0b0c0d;
+  --focus: #1d5fd0;
+  /* The action colour: only for what to do (a checklist's response, a drill's step) */
+  --action: #006a8e;
+  /* "Know by heart" boxes: the pale yellow printed checklists use */
+  --tint: #fff4c7;
+  --tint-edge: #0b0c0d;
+  /* Title strips: a card's black header by day, a raised display header by night. The edge is a
+     2px line along a strip's top: by day it's the strip itself, by night it lifts the strip off
+     the display. */
+  --strip: #0b0c0d;
+  --strip-edge: #0b0c0d;
+  --on-strip: #ffffff;
+  /* The one warning colour: the lamp on the drills' tab and the drills' own lit lights */
+  --warning: #c42519;
+  --on-warning: #ffffff;
+  --good: #1e7f4a;
+  --warn: #9a5b00;
+  --bad: #c0322b;
+}
+
 /* By night: the cockpit display */
 @media screen and (prefers-color-scheme: dark) {
   :root {
@@ -142,9 +152,11 @@
     --link: #e8ecef;
     --focus: #78b6ff;
     --action: #3fd0ff;
-    --tint: #16191c;
-    --tint-edge: #e8ecef;
-    --strip: #2a3137;
+    /* A dim printed yellow, edged in the day's yellow, so it can't pass for an orange LED */
+    --tint: #1f1a0b;
+    --tint-edge: #d9bf5e;
+    --strip: #15191c;
+    --strip-edge: #e8ecef;
     --on-strip: #f3f6f7;
     --warning: #ff5a4e;
     --on-warning: #0a0c0e;

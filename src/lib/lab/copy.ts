@@ -4,7 +4,7 @@
  * statements with the reason in them: no question-and-answer lead-ins, no slogans.
  */
 import { formatDb } from '../dsp/db';
-import { describeLevel, METER_SEGMENTS } from '../xdj';
+import { describeLevel, METER_SEGMENTS, scaleLabel } from '../xdj';
 import type { Ceiling, Confidence, Crunch, Fixer, Prediction, Reading, Stage, Step } from './ceilings';
 
 /** The channel meter's top light, the red one. */
@@ -44,14 +44,14 @@ export const STEPS: Record<Step, { title: string; body: string }> = {
   },
   3: {
     title: 'Now fix it for real',
-    body: 'The channels are unlocked. Get the crunch to Clean, with the meter’s red light dark and the Howler light green.',
+    body: 'The channels are unlocked. Get the crunch to Clean, with the meter’s red light dark and the Howler’s LEVEL light green.',
   },
   4: {
     title: 'Record level too high',
-    body: 'This time the channels stay out of the red, but the Howler light is red. Fix it with the record level only.',
+    body: 'This time the channels stay out of the red, but the LEVEL light is red. Fix it with the record level only.',
   },
   5: {
-    title: 'Sandbox',
+    title: 'Free play',
     body: 'Move anything you like. Each preset is a situation you might meet in the booth.',
   },
 };
@@ -63,8 +63,8 @@ export const NAV = {
   next: 'Next',
   /** Step 2's way on: the challenge always ends in its lesson, so this shows it first. */
   reveal: 'Show me what happens',
-  skip: 'Skip to the sandbox',
-  restart: 'Start the guide again',
+  skip: 'Skip to free play',
+  restart: 'Start the lab again',
   locked: 'Locked for this step',
 } as const;
 
@@ -72,7 +72,7 @@ export const PREDICT = {
   question: 'The channels are in the red. You turn the record level down. What happens to the crunch?',
   options: {
     'goes-away': 'Goes away',
-    'quieter-stays': 'Gets quieter, stays',
+    'quieter-stays': 'Gets quieter but stays',
     'not-sure': 'Not sure',
   } satisfies Record<Prediction, string>,
   sure: 'How sure are you?',
@@ -97,7 +97,9 @@ export function revealFeedback(r: Reading, prediction: Prediction | null, confid
     'The damage happened in the mixer, before the record level. Turning it down only shrinks the flat tops. Turn the file up later and the crunch comes back.',
   ];
   if (r.howler === 'green') {
-    lines.push('The Howler light stayed green. It only checks its own input, so it misses crunch made in the mixer.');
+    lines.push(
+      'The LEVEL light stayed green. It only checks the Howler’s own input, so it misses crunch made in the mixer.',
+    );
   }
   const note = predictionNote(prediction, confidence);
   if (note) lines.push(note);
@@ -113,17 +115,20 @@ export function predictionNote(prediction: Prediction | null, confidence: Confid
   return 'You predicted it would go away. Turning down after the damage only makes it quieter.';
 }
 
-/** How the crew turn the recording down on the night, with the Howler on MASTER 2. */
+/**
+ * How the crew turn the recording down on the night, with the Howler on MASTER 2. Pioneer doesn't say
+ * whether MASTER ATT reaches MASTER 2, so the setup page tests it (T2), and this says so.
+ */
 export const ON_THE_NIGHT =
-  'On the night, MASTER LEVEL stays fully up, taped REC. MASTER ATT in UTILITY turns the recording down instead.';
+  'On the night, MASTER LEVEL stays fully up, taped REC. The crew turn the recording down with MASTER ATT in UTILITY, if the setup test shows it reaches MASTER 2.';
 
 export function successFeedback(step: Step, r: Reading): Feedback | null {
   if (step === 3) {
     // The lab has one track. Two tracks that each stay out of the red can still go red together.
     const lines = [
-      'With the track out of the red, nothing gets cut in the mixer. The Howler light is green too.',
+      'With the track out of the red, nothing gets cut in the mixer. The LEVEL light is green too.',
       r.channels > 3
-        ? `Aim for the first orange light (${formatDb(0)}) or the second (${formatDb(3)}). A blend can add two more${NBSP}lights.`
+        ? `Aim for the first orange light (${scaleLabel(0)}) or the second (${scaleLabel(3)}). A blend can add two more${NBSP}lights.`
         : `That leaves room for a blend, which can add two more${NBSP}lights.`,
     ];
     return { title: 'Fixed for real', lines, next: 'Next: record level too high' };
@@ -133,10 +138,10 @@ export function successFeedback(step: Step, r: Reading): Feedback | null {
       'The mix was clean, so the only damage was at the Howler’s input. The record level can fix that one.',
     ];
     if (r.recordingPeakDbfs > -6)
-      lines.push('It’s close to the top, though, so crew set it lower to leave room for blends.');
+      lines.push('It’s close to the top, though, so the crew set it lower to leave room for blends.');
     // Our wiring: the Howler on MASTER 2, so the crew's way down is MASTER ATT, not MASTER LEVEL.
     lines.push(ON_THE_NIGHT);
-    return { title: 'Fixed with the record level alone', lines, next: 'Next: the sandbox' };
+    return { title: 'Fixed with the record level alone', lines, next: 'Next: free play' };
   }
   return null;
 }
@@ -160,7 +165,8 @@ export const CHECK = {
   wrong: 'Not quite.',
   why: {
     mixer: 'Only the channel. The record level comes after the damage, so it only makes the crunch quieter.',
-    recorder: 'Both. Anything before the Howler turns its input down. Crew use MASTER ATT, so your channels stay put.',
+    recorder:
+      'Both. Anything before the Howler turns its input down. The crew use MASTER ATT, so your channels stay put.',
   } satisfies Record<Ceiling, string>,
 } as const;
 
@@ -171,7 +177,7 @@ export const CHECK = {
 export const READOUTS = {
   ch1: 'CH1',
   crunch: 'Crunch',
-  howler: 'Howler light',
+  howler: 'Howler’s LEVEL light',
   peak: 'Recording peak',
 } as const;
 
@@ -195,7 +201,7 @@ export const CRUNCH_WORDS: Record<Crunch, string> = {
 
 export const HOWLER_WORDS = {
   green: { state: 'Blinking green', meaning: 'Level OK' },
-  red: { state: 'Blinking red', meaning: 'Too hot' },
+  red: { state: 'Blinking red', meaning: 'Level too high' },
 } as const;
 
 /** The recording's loudest peak, in words a DJ can use. dBFS stays in the details. */
@@ -262,11 +268,12 @@ export function scopeClaims(r: Reading, teach = true): { mixer: string; recordin
 export const CONTROLS = {
   channels: {
     label: 'Channel (TRIM and EQ)',
-    hint: 'How hot the track sits after TRIM and EQ. A blend adds more on top, which shows on the middle meters.',
+    hint: 'How loud the track peaks after TRIM and EQ. A blend adds more on top, which shows on the middle meters.',
   },
   knob: {
     label: 'Record level (MASTER LEVEL)',
-    hint: `MASTER LEVEL sets the speakers and the recording. Fully up is ${formatDb(0)}, and like every output knob it only turns down.`,
+    // On the night the knob itself stays taped fully up (copy review 52), so the hint says what it stands for first.
+    hint: `On the night, MASTER LEVEL stays taped fully up. Here the knob stands for the record level. Fully up is ${formatDb(0)}, and like every output knob it only turns down.`,
   },
 } as const;
 
@@ -294,7 +301,7 @@ export const SOUND = {
   steady: 'You hear the recording turned up to one steady loudness, as you would at home.',
   clean: 'Hear the clean version',
   matched: 'The clean version is matched for loudness, so only the crunch changes.',
-  unavailable: 'Sound is unavailable in this browser. The screens and readouts still work.',
+  unavailable: 'This browser can’t play the sound. Everything else works; try another browser to hear it.',
   playing: 'Two ceilings lab',
 } as const;
 
@@ -312,7 +319,7 @@ export const DETAILS = {
   peak: 'Recording peak',
   peakNote: `The file’s 0${NBSP}dBFS is ceiling 2 in this model.`,
   mixer: 'Loudest peak in the mixer',
-  mixerNote: `On the channel meter’s scale. The meter stops at ${formatDb(METER_TOP_DB, { unit: '' })}, its red light, so anything louder shows as red.`,
+  mixerNote: `On the channel meter’s scale. The meter stops at ${scaleLabel(METER_TOP_DB)}, its red light, so anything louder shows as red.`,
   engineer: 'Engineer view: two test tones',
   engineerNote: `A 58.6${NBSP}Hz bass tone and a 2${NBSP}kHz tone, the lab’s original signal. Harder to hear on phone speakers.`,
 } as const;

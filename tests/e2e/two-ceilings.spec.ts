@@ -51,8 +51,9 @@ test('the knob challenge shows its lesson before moving on', async ({ page }) =>
   // The knob is the thing to do: the reveal key waits unlit, and only the knob carries its hint.
   await expect(key).toHaveText('Show me what happens');
   await expect(key).not.toHaveClass(/primary/);
-  await expect(lab.getByText(/^MASTER LEVEL sets the speakers and the recording\./)).toBeVisible();
-  await expect(lab.getByText(/^How hot the track sits/)).toHaveCount(0);
+  // MASTER LEVEL stays taped on the night, so the knob's hint first says it stands for the record level.
+  await expect(lab.getByText(/^On the night, MASTER LEVEL stays taped fully up\./)).toBeVisible();
+  await expect(lab.getByText(/^How loud the track peaks/)).toHaveCount(0);
   await expect(lab.locator('[data-crunch]')).toHaveText('Heavy crunch');
 
   // Moving on without trying the knob still ends the challenge in its reveal, in view on a phone.
@@ -89,7 +90,7 @@ test('the knob challenge starts its clock on the first knob move', async ({ page
 });
 
 test('after the last fix, a quick check puts the two ceilings side by side', async ({ page }) => {
-  // The sandbox's Back leads to step 4, with the record level fully up and the Howler red.
+  // Free play's Back leads to step 4, with the record level fully up and the Howler red.
   const lab = await openLab(page, '?lab=sandbox');
   await lab.locator('.nav').getByRole('button', { name: 'Back' }).click();
   await expect(lab.getByRole('heading', { level: 4 })).toContainText('Record level too high');
@@ -110,7 +111,7 @@ test('after the last fix, a quick check puts the two ceilings side by side', asy
   await expect(answers).toBeFocused();
   await expect(answers).toContainText('In the mixer: Right.');
   await expect(answers).toContainText('At the recorder: Right.');
-  await expect(lab.locator('.key.primary')).toHaveText('Next: the sandbox');
+  await expect(lab.locator('.key.primary')).toHaveText('Next: free play');
 });
 
 test('the Howler light stops blinking within 5 seconds', async ({ page }) => {

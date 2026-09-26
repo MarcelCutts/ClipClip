@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { peak } from '../dsp/analysis';
 import { dbToGain } from '../dsp/db';
+import { PREDICT as LAB_PREDICT } from '../lab/copy';
 import { scopeY } from '../viz/scope';
 import {
   clip,
@@ -25,9 +26,15 @@ describe('the question', () => {
     expect(ids).toContain(PREDICT.correct);
     expect(ids).toContain(PREDICT.wrong);
     expect(ids).toContain(PREDICT.unsure);
-    // Worded as in the lab's prediction, and short enough to sit on one line of a pad.
-    expect(PREDICT.choices.find((c) => c.id === PREDICT.correct)?.label).toBe('Gets quieter, stays');
+    // Short enough to sit on one line of a phone's answer row.
+    expect(PREDICT.choices.find((c) => c.id === PREDICT.correct)?.label).toBe('Gets quieter but stays');
     expect(PREDICT.learn.path).toBe('/#two-ceilings');
+  });
+
+  it('asks about the file after the night, not the record level the two-ceilings lab asks about', () => {
+    expect(PREDICT.question).toMatch(/file/);
+    expect(PREDICT.question).not.toMatch(/record level/);
+    expect(PREDICT.question).not.toBe(LAB_PREDICT.question);
   });
 
   it('names the surprise when the reader was sure it would go away', () => {
@@ -47,7 +54,7 @@ describe('the question', () => {
 
   it('keeps its copy short and plain', () => {
     const copy = [
-      PREDICT.lead,
+      PREDICT.title,
       PREDICT.question,
       PREDICT.reveal,
       PREDICT.learn.text,
@@ -135,6 +142,15 @@ describe('drawing', () => {
     expect(after.label.x).toBeGreaterThan(0);
     expect(after.label.x).toBeLessThan(PREDICT_SCOPE.width);
     expect(after.label.value).toBeCloseTo(knob, 9);
+  });
+
+  it('keys the shading with "cut off" just after the first cut-off peak, clear of the next one', () => {
+    expect(before.cut).not.toBeNull();
+    const x = before.cut?.x ?? 0;
+    expect(x).toBeGreaterThan(0);
+    // About 50 units of "cut off" fit before the screen's middle, where the second peak starts.
+    expect(x + 55).toBeLessThan(PREDICT_SCOPE.width / 2);
+    expect(drawClipped(source, { driveDb: -1 }).cut).toBeNull();
   });
 
   it('draws nothing flat when the push stays under the ceiling', () => {

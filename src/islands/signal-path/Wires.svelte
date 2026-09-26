@@ -85,7 +85,7 @@
   /* The model name printed on the mixer, lettered like the other hardware labels (.hw-label). */
   .chassis-name {
     font-family: var(--font-label);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 800;
     letter-spacing: 0.14em;
     fill: var(--hw-label-2);

@@ -1,12 +1,17 @@
 ---
 /**
- * The XDJ-RX2's three meter columns, lit the way they should look on a well-set blend: each deck
- * on the first or second orange, the mix a light or two higher, red dark. The title above says
- * that; labels sit beside what they name, and a bracket marks where to aim. Server-rendered, and
- * at the reading column's width: nothing in it needs more.
+ * Figure: the XDJ-RX2's meters, drawn as a manual draws them. A line drawing of the meter bridge
+ * on the page (CH1, the middle pair with CLIP above it, CH2, and the printed scale), lit the way a
+ * well-set blend looks: each deck on the first or second orange, the mix a light or two higher,
+ * red and CLIP dark. Numbered callouts point at the parts and key into the list beside it, and a
+ * bracket marks where to aim.
+ *
+ * Like every meter on the site it doesn't rely on colour: a printed break where the colour changes,
+ * a bold 0, the red light outlined, and the list in words. Server-rendered, at the reading
+ * column's width: nothing in it needs more.
  */
 import { TARGET_PEAK_DB } from '../lib/model';
-import { METER_SEGMENTS } from '../lib/xdj';
+import { METER_SEGMENTS, scaleLabel, zoneFor } from '../lib/xdj';
 
 // The blend in the picture: deck 1 on the second orange, deck 2 on the first, the mix one light
 // above deck 1.
@@ -14,62 +19,99 @@ const CH1 = TARGET_PEAK_DB.second;
 const CH2 = TARGET_PEAK_DB.first;
 const MIX = TARGET_PEAK_DB.second + 3;
 
-const rows = [...METER_SEGMENTS].reverse();
-const tick = (db: number) => (db > 0 ? `+${db}` : db < 0 ? `−${-db}` : '0');
+const XDJ_MANUAL =
+  'https://downloads.support.alphatheta.com/manuals/all-in-one-dj-systems/XDJ-RX2/XDJ-RX2_DRI1479A_manual.pdf';
+
+// The drawing's rows, top to bottom: the column names, CLIP, then the lights from +12 down, with
+// a short break row wherever the colour changes. Then the panel's lower edge, the leader lines and
+// the callout numbers below it.
+const lights = [...METER_SEGMENTS].reverse();
+const FIRST_LIGHT_ROW = 4; // 1 panel top, 2 names, 3 CLIP
+let row = FIRST_LIGHT_ROW - 1;
+const rows = lights.map((s, i) => {
+  if (i > 0 && lights[i - 1]?.zone !== s.zone) row++;
+  row++;
+  return { ...s, row };
+});
+const lastLightRow = row;
+const breakRows = Array.from({ length: lastLightRow - FIRST_LIGHT_ROW + 1 }, (_, i) => FIRST_LIGHT_ROW + i).filter(
+  (r) => !rows.some((s) => s.row === r),
+);
+const lightRows = Array.from({ length: lastLightRow - FIRST_LIGHT_ROW + 1 }, (_, i) =>
+  breakRows.includes(FIRST_LIGHT_ROW + i) ? 'var(--break)' : 'var(--led-h)',
+).join(' ');
+const rowOf = (db: number) => rows.find((s) => s.db === db)?.row ?? FIRST_LIGHT_ROW;
 const lit = (db: number, level: number) => db <= level;
-// Grid rows: 1 is the names, then one row per light from the top (+12) down.
-const rowOf = (db: number) => 2 + rows.findIndex((s) => s.db === db);
-const aimTop = rowOf(TARGET_PEAK_DB.second);
-const aimBottom = rowOf(TARGET_PEAK_DB.first) + 1;
-const zoneAt = (level: number) => METER_SEGMENTS.find((s) => s.db === level)?.zone ?? 'green';
-const label = `The XDJ-RX2’s meters mid-blend. CH1 peaks at ${tick(CH1)}, the second orange light. CH2 peaks at ${tick(CH2)}, the first orange light. The middle meters show the mix at ${tick(MIX)}, ${zoneAt(MIX)}, with red dark.`;
+
+const aim = `grid-row: ${rowOf(TARGET_PEAK_DB.second)} / ${rowOf(TARGET_PEAK_DB.first) + 1}`;
+const label = `The XDJ-RX2’s meters mid-blend. CH1 peaks at ${scaleLabel(CH1)}, the second orange light. CH2 peaks at ${scaleLabel(CH2)}, the first orange light. The middle meters show the mix at ${scaleLabel(MIX)}, ${zoneFor(MIX)}, with red and CLIP dark. A bracket marks the aim, ${scaleLabel(TARGET_PEAK_DB.first)} and ${scaleLabel(TARGET_PEAK_DB.second)}.`;
 ---
 
 <figure class="anatomy">
   <figcaption class="takeaway">
-    Mid-blend, done right: each deck on the first or second orange, the mix below the red.
+    In a well-set blend, each deck peaks on the first or second orange light and the mix stays below the red.
   </figcaption>
-  <div class="panel rig">
-    <div class="layout">
-    <div class="bridge" role="img" aria-label={label}>
-      <span class="name hw-label" style="grid-column: ch1">CH1</span>
-      <span class="name hw-label" style="grid-column: ml / mr-end">Master</span>
-      <span class="name hw-label" style="grid-column: ch2">CH2</span>
-      {rows.map((s, i) => (
+  <div class="layout">
+    <div
+      class="drawing"
+      role="img"
+      aria-label={label}
+      style={`--light-rows: ${lightRows}; --lights-end: ${lastLightRow + 1}`}
+    >
+      <span class="panel-edge"></span>
+      <span class="name" style="grid-column: ch1">CH1</span>
+      <span class="name" style="grid-column: t1 / t2-end">MASTER</span>
+      <span class="name" style="grid-column: ch2">CH2</span>
+      <span class="clip">CLIP</span>
+      {rows.map((s) => (
   <Fragment>
-    <span class="led" data-zone={s.zone} data-on={lit(s.db, CH1) ? '' : undefined} style={`grid-area: ${i + 2} / ch1`}></span>
-    <span class="tick" style={`grid-area: ${i + 2} / t1`}>{tick(s.db)}</span>
-    <span class="led narrow" data-zone={s.zone} data-on={lit(s.db, MIX) ? '' : undefined} style={`grid-area: ${i + 2} / ml`}></span>
-    <span class="led narrow" data-zone={s.zone} data-on={lit(s.db, MIX) ? '' : undefined} style={`grid-area: ${i + 2} / mr`}></span>
-    <span class="tick" style={`grid-area: ${i + 2} / t2`}>{tick(s.db)}</span>
-    <span class="led" data-zone={s.zone} data-on={lit(s.db, CH2) ? '' : undefined} style={`grid-area: ${i + 2} / ch2`}></span>
+    <span class="led" data-zone={s.zone} data-on={lit(s.db, CH1) ? '' : undefined} style={`grid-area: ${s.row} / ch1`}></span>
+    <span class="tick" data-zero={s.db === 0 ? '' : undefined} style={`grid-area: ${s.row} / t1`}>{scaleLabel(s.db)}</span>
+    <span class="led" data-zone={s.zone} data-on={lit(s.db, MIX) ? '' : undefined} style={`grid-area: ${s.row} / ml`}></span>
+    <span class="led" data-zone={s.zone} data-on={lit(s.db, MIX) ? '' : undefined} style={`grid-area: ${s.row} / mr`}></span>
+    <span class="tick" data-zero={s.db === 0 ? '' : undefined} style={`grid-area: ${s.row} / t2`}>{scaleLabel(s.db)}</span>
+    <span class="led" data-zone={s.zone} data-on={lit(s.db, CH2) ? '' : undefined} style={`grid-area: ${s.row} / ch2`}></span>
   </Fragment>
 ))}
-      <span class="aim" style={`grid-row: ${aimTop} / ${aimBottom}`} aria-hidden="true"><span>Aim</span></span>
+      <span class="aim" style={aim}><span>Aim</span></span>
+      <span class="leader down" style="grid-column: ch1"></span>
+      <span class="leader down" style="grid-column: ml / mr-end"></span>
+      <span class="leader down" style="grid-column: ch2"></span>
+      <span class="leader across"></span>
+      <span class="call" style="grid-row: calls; grid-column: ch1">1</span>
+      <span class="call" style="grid-row: calls; grid-column: ml / mr-end">2</span>
+      <span class="call" style="grid-row: calls; grid-column: ch2">1</span>
+      <span class="call beside" style="grid-row: clip; grid-column: call">3</span>
     </div>
-    <dl class="callouts">
-      <div>
-        <dt>Side meters</dt>
-        <dd>One deck each, <strong>before</strong> its fader. Set TRIM here, on cue.</dd>
-      </div>
-      <div>
-        <dt>Middle meters</dt>
-        <dd>The mix going out. <strong>Watch these in a blend.</strong></dd>
-      </div>
-      <div>
-        <dt>Aim</dt>
-        <dd>The loudest bits on the first or second orange light. A blend can add two more, so red stays dark.</dd>
-      </div>
-    </dl>
-    </div>
+    <ol class="keys">
+      <li>
+        <span class="call" aria-hidden="true">1</span>
+        <p><strong>Channel meters, CH1 and CH2.</strong> One deck each, before its fader. Set TRIM here, on cue.</p>
+      </li>
+      <li>
+        <span class="call" aria-hidden="true">2</span>
+        <p>
+          <strong>Middle meters.</strong> The mix going out to the speakers and the recording. Watch these in a blend.
+        </p>
+      </li>
+      <li>
+        <span class="call" aria-hidden="true">3</span>
+        <p>
+          <strong>CLIP.</strong> Blinks slowly when the sound is “about to be distorted” and fast when it “is distorted”
+          (<a href={`${XDJ_MANUAL}#page=27`} rel="external">XDJ-RX2 manual, page 27</a>).
+        </p>
+      </li>
+    </ol>
   </div>
-  <p class="aside-note">Some people call the orange lights yellow. They’re the same lights.</p>
 </figure>
 
 <style>
   .anatomy {
+    /* The drawing's line weight, shared by the callout numbers in the key. */
+    --line: 1.5px;
+    container: anatomy / inline-size;
     display: grid;
-    gap: 0.75rem;
+    gap: 0.9rem;
     margin-block: 0.5rem;
   }
 
@@ -82,129 +124,202 @@ const label = `The XDJ-RX2’s meters mid-blend. CH1 peaks at ${tick(CH1)}, the 
     text-wrap: balance;
   }
 
-  .rig {
-    container: anatomy / inline-size;
-  }
-
   .layout {
     display: grid;
-    gap: 1.5rem;
+    gap: 1.25rem;
     justify-items: start;
   }
 
-  /* The meter bridge, drawn as one grid so the aim bracket can span exactly two lights. */
-  .bridge {
-    --led-h: 0.6rem;
+  /* The drawing, as one grid: the aim bracket, CH1, the scale, the middle pair, the scale again,
+     CH2, then room for the leader to callout 3 past the panel's edge. */
+  .drawing {
+    --led-h: 0.625rem;
+    --break: 0.3rem;
+    --col-gap: 5px;
+    --row-gap: 4px;
+    --pad: 0.7rem;
     display: grid;
     grid-template-columns:
-      [aim] 2.4rem [ch1] 1.75rem [t1] 1.9rem [ml] 0.85rem [mr] 0.85rem [mr-end t2] 1.9rem
-      [ch2] 1.75rem;
-    grid-template-rows: auto repeat(12, var(--led-h));
-    column-gap: 4px;
-    row-gap: 5px;
-    padding: 0.75rem 0.9rem 0.9rem 0.5rem;
-    border-radius: var(--radius-control);
-    background: var(--hw-sunk);
+      [aim] auto [ch1] 1.75rem [t1] 1.9rem [ml] 0.85rem [mr] 0.85rem [mr-end t2] 1.9rem [t2-end ch2] 1.75rem
+      [ch2-end] 1.1rem [call] 1.5rem;
+    grid-template-rows: [top] 0.3rem [names] auto [clip] auto var(--light-rows) [bottom] 0.45rem [leads] 1rem [calls] auto;
+    column-gap: var(--col-gap);
+    row-gap: var(--row-gap);
+    font-family: var(--font-label);
+    color: var(--ink);
+  }
+
+  /* The meter bridge's outline, drawn behind everything on it: round CH1 to CH2, from the names to
+     just below the lowest light. */
+  .panel-edge {
+    grid-column: ch1 / ch2-end;
+    grid-row: top / leads;
+    margin-inline: calc(-1 * var(--pad));
+    border: var(--line) solid var(--ink);
+    border-radius: var(--radius-panel);
+    background: var(--paper-2);
   }
 
   .name {
-    grid-row: 1;
+    grid-row: names;
     justify-self: center;
-    margin-bottom: 0.35rem;
     font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
     white-space: nowrap;
   }
 
-  .led {
+  /* CLIP, above the middle pair: a lamp outlined in its red, dark. */
+  .clip {
+    grid-row: clip;
+    grid-column: ml / mr-end;
+    justify-self: stretch;
+    margin-block-end: 0.2rem;
+    padding-block: 0.05rem;
+    border: var(--line) solid var(--led-r);
     border-radius: 2px;
-    background: var(--led-g-off);
+    background: var(--paper);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    line-height: 1.2;
+    text-align: center;
   }
 
-  .led[data-zone='orange'] {
-    background: var(--led-a-off);
+  /* Each light drawn as a small outlined lamp, filled where it's lit. The red one keeps a red
+     outline, so it reads as red while it's dark. */
+  .led {
+    border: 1px solid var(--ink);
+    border-radius: 2px;
+    background: var(--paper);
   }
 
   .led[data-zone='red'] {
-    background: var(--led-r-off);
-    box-shadow: inset 0 0 0 1px var(--led-r-rim);
+    border: var(--line) solid var(--led-r);
   }
 
   .led[data-on][data-zone='green'] {
     background: var(--led-g);
-    box-shadow: 0 0 0.4rem color-mix(in oklab, var(--led-g) 55%, transparent);
   }
 
   .led[data-on][data-zone='orange'] {
     background: var(--led-a);
-    box-shadow: 0 0 0.4rem color-mix(in oklab, var(--led-a) 55%, transparent);
   }
 
+  /* The scale as the panel prints it, with the 0 in bold. */
   .tick {
     align-self: center;
-    font-family: var(--font-label);
     font-size: 0.75rem;
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1;
     font-variant-numeric: tabular-nums;
     text-align: center;
-    color: var(--hw-label-2);
+    color: var(--ink-2);
   }
 
-  /* A square bracket beside CH1's two orange lights, labelled like a note on the panel. */
+  .tick[data-zero] {
+    font-weight: 800;
+    color: var(--ink);
+  }
+
+  /* The aim: a bracket beside CH1's two orange lights, 0 and +3, with our note on it. */
   .aim {
     grid-column: aim;
     display: flex;
     align-items: center;
     justify-content: flex-end;
+    gap: 0.35rem;
     margin-block: -2px;
-    margin-inline-end: 3px;
-    border: 2px solid var(--hw-bright);
-    border-inline-start: 0;
-    border-radius: 0 3px 3px 0;
-    width: 0.45rem;
-    justify-self: end;
-  }
-
-  /* Our note on the panel, not a word printed on it, so it's set like writing, not silk-screen. */
-  .aim span {
-    margin-inline-end: 0.9rem;
+    /* Outside the panel: it's our note, not something printed on the mixer. */
+    margin-inline-end: calc(var(--pad) + 0.5rem);
+    font-family: var(--font-body);
     font-size: var(--text-sm);
     font-weight: 700;
-    color: var(--hw-bright);
   }
 
-  .callouts {
+  .aim::after {
+    content: '';
+    align-self: stretch;
+    width: 0.4rem;
+    border: 2px solid var(--ink);
+    border-inline-end: 0;
+  }
+
+  /* Leader lines from the parts to their numbers: down from the lowest lights, and across from
+     CLIP past the panel's edge. Each runs through the grid's gaps at both ends, so it touches the
+     part and its number. */
+  .leader {
+    background: var(--ink);
+  }
+
+  .leader.down {
+    grid-row: var(--lights-end) / calls;
+    justify-self: center;
+    width: var(--line);
+    margin-block: calc(-1 * var(--row-gap));
+  }
+
+  .leader.across {
+    grid-row: clip;
+    grid-column: mr-end / call;
+    align-self: center;
+    height: var(--line);
+    margin-inline: calc(-1 * var(--col-gap));
+    margin-block-end: 0.2rem;
+  }
+
+  .call {
     display: grid;
-    gap: 0.9rem;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: var(--line) solid var(--ink);
+    border-radius: 50%;
+    background: var(--paper);
+    font-family: var(--font-body);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--ink);
+  }
+
+  .drawing .call {
+    justify-self: center;
+  }
+
+  .drawing .call.beside {
+    align-self: center;
+    justify-self: start;
+    margin-block-end: 0.2rem;
+  }
+
+  /* The key: each number, then what it points at. */
+  .keys {
+    display: grid;
+    gap: 0.75rem;
     margin: 0;
+    padding: 0;
+    list-style: none;
   }
 
-  .callouts dt {
-    font-family: var(--font-display);
-    font-size: 1.2rem;
-    font-weight: 800;
-    line-height: 1.1;
-    color: var(--hw-bright);
+  .keys li {
+    display: grid;
+    grid-template-columns: 1.5rem minmax(0, 1fr);
+    column-gap: 0.6rem;
+    align-items: start;
   }
 
-  .callouts dd {
-    margin: 0.2rem 0 0;
+  .keys p {
     font-size: var(--text-sm);
-    line-height: 1.45;
-    color: var(--hw-label);
+    line-height: 1.5;
   }
 
-  .callouts strong {
-    color: var(--hw-bright);
+  .keys strong {
+    color: var(--ink-bright);
   }
 
-  .aside-note {
-    font-size: var(--text-sm);
-    color: var(--ink-2);
-  }
-
-  /* Wide enough: the callouts beside the meters, top-aligned with the names. */
-  @container anatomy (min-width: 30rem) {
+  /* Wide enough: the key beside the drawing, level with the meters. */
+  @container anatomy (min-width: 32rem) {
     .layout {
       grid-template-columns: auto minmax(0, 1fr);
       column-gap: 2rem;
@@ -213,19 +328,21 @@ const label = `The XDJ-RX2’s meters mid-blend. CH1 peaks at ${tick(CH1)}, the 
   }
 
   @media (forced-colors: active) {
-    .led {
+    .led,
+    .clip {
       forced-color-adjust: none;
       background: Canvas;
-      box-shadow: inset 0 0 0 1px CanvasText;
+      border-color: CanvasText;
     }
 
     .led[data-on][data-zone] {
       background: CanvasText;
-      box-shadow: none;
     }
 
-    .aim {
-      border-color: CanvasText;
+    /* Drawn as fills, which forced colours would clear, so they keep the text colour. */
+    .leader {
+      forced-color-adjust: none;
+      background: CanvasText;
     }
   }
 </style>

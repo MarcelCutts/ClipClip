@@ -3,12 +3,14 @@
  * One drill for when something goes wrong, set like a quick reference handbook's: a black title strip
  * with the light you're looking at drawn lit, the title and the drill's number; the condition and the
  * objective; then numbered steps. A step is a control and what to do with it, joined by leader dots,
- * or a line starting "If". "Choose one" lists what you might find, each branch ending the drill
- * (■ ■ ■ ■), jumping to a step or another drill, or carrying on with the next step. Why it works comes
- * last, as additional information that needn't be read.
+ * or a line starting "If". What a step also does (turning the room down, say) is a plain sentence
+ * just before it. "Choose one" lists what you might find, each branch ending the drill (■ ■ ■ ■),
+ * jumping to a step or another drill, or carrying on with the next step. Why it works comes last, as
+ * additional information that needn't be read.
  *
- * The drill is linkable as /night/#fix-<id>, and each step as #fix-<id>-step-<n>. The light sits on a
- * scrap of black faceplate, because lit colour only ever means a signal state and LEDs sit on black.
+ * The drill is linkable as /night/#fix-<id>, and each step as #fix-<id>-step-<n>; a jump lands clear of
+ * the page's tabs (global.css) and outlines the step in the action colour. The light sits on a scrap
+ * of black faceplate, because lit colour only ever means a signal state and LEDs sit on black.
  */
 import { drill, drillAnchor, type Fix, isIfStep, type Next } from '../lib/fixes';
 import { section } from '../lib/sections';
@@ -71,10 +73,16 @@ function jump(next: Next): { to: string; text: string; title?: string } {
     <ol class="steps">
       {fix.steps.map((step, i) => (
   <li class="step" id={drillAnchor(fix.id, i + 1)}>
+    {!isIfStep(step) && step.before && <p class="before">{step.before}</p>}
     <span class="n">{i + 1}</span>
     {isIfStep(step) ? (
       <p class="if">
         <strong>If</strong>{step.if.slice(2)}
+        {step.see && (
+        <Fragment>
+          {' '}<a class="ref" href={href(step.see.path)}>See {step.see.code}<span class="visually-hidden">, {step.see.title}</span></a>
+        </Fragment>
+      )}
         {step.next !== undefined && (
         <Fragment>
           {' '}<a class="go" href={jump(step.next).to}>{jump(step.next).text}{jump(step.next).title && <span class="visually-hidden">: {jump(step.next).title}</span>}</a>
@@ -145,7 +153,6 @@ function jump(next: Next): { to: string; text: string; title?: string } {
   .drill {
     display: grid;
     border: 2px solid var(--ink);
-    scroll-margin-top: var(--anchor-offset, 1rem);
   }
 
   /* The title strip: black by day, a raised display header by night. */
@@ -272,13 +279,21 @@ function jump(next: Next): { to: string; text: string; title?: string } {
     display: grid;
     grid-template-columns: 1.75rem minmax(0, 1fr);
     align-items: baseline;
-    scroll-margin-top: var(--anchor-offset, 1rem);
   }
 
-  /* Landed here from a "Go to step" jump: the step is shaded, so the eye finds it. */
+  /* Landed here from a "Go to step" jump: outlined in the action colour, so the eye finds it in the
+     dark too. */
   .step:target {
-    background: var(--paper-2);
-    outline: 0.4rem solid var(--paper-2);
+    outline: 3px solid var(--action);
+    outline-offset: 0.4rem;
+  }
+
+  /* What the step also does, said before it in plain words, at full strength. The step's number
+     stays with the step. */
+  .before {
+    grid-column: 2;
+    margin-block-end: 0.35rem;
+    line-height: 1.5;
   }
 
   .n {
@@ -365,8 +380,12 @@ function jump(next: Next): { to: string; text: string; title?: string } {
     translate: 0.05rem -0.2em;
   }
 
-  /* A jump is something to do, so it takes the action colour. */
+  /* A jump is something to do, so it takes the action colour. It sits in a line of text but is a
+     thumb's height tall (44px), so the line it ends opens up to fit it. */
   .go {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
     color: var(--action);
     font-weight: 700;
     text-decoration-color: currentColor;

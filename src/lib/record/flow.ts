@@ -5,9 +5,10 @@
  * The steps, for the Howler on MASTER 2: MASTER LEVEL fully up and taped, the loudest blend, MASTER
  * ATT down a step at a time while the light is red, MASTER LEVEL down only if it's still red, then
  * a test recording. The practice round runs the same steps from a random start, without the
- * instructions.
+ * instructions. The setup page prints the same steps as its S3 card, so they read the same there.
  */
 
+import { LEVEL_FALLBACK, OPEN_UTILITY } from '../checklists';
 import { formatDb } from '../dsp/db';
 import {
   ATT_LOWEST,
@@ -25,7 +26,7 @@ import {
   LEVEL,
   type Light,
   levelMessage,
-  MARGIN,
+  lightFor,
   MATERIAL_IDS,
   type MaterialId,
   material,
@@ -49,7 +50,7 @@ export interface Step {
   id: StepId;
   /** The challenge, as it appears on the checklist: what to look at, named as on the gear. */
   label: string;
-  /** What the checklist response should read once it's done: a target state, not "checked". */
+  /** The checklist's response, in lower case like every response: a target state, not "checked". */
   target: string;
   /** The read-then-do line: what to do, and what to look for. */
   instruction: string;
@@ -61,24 +62,24 @@ export interface Step {
 
 const db = (v: number) => formatDb(v, { signed: false });
 const meter = (v: number) => formatDb(v, { unit: '' });
-const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export const STEPS: readonly Step[] = [
   {
     id: 'up',
     label: 'MASTER LEVEL',
-    target: 'Fully up, taped REC',
+    target: 'fully up, taped REC',
     instruction:
       'Turn MASTER LEVEL fully up. Tape it there and write REC on the tape. Fully up, the middle meters show the mix itself.',
     action: 'Tape it',
     control: 'level',
   },
   {
-    // Hotter than the DJs' rule (first or second orange) on purpose, and it says so.
+    // Louder than the DJs' rule (first or second orange) on purpose, so it says so, and that it's
+    // only for the test.
     id: 'play',
     label: 'Loudest blend',
-    target: 'Playing, light checked',
-    instruction: `Play a blend hotter than any DJ should send, both decks at ${meter(material('loud').mixDb)} with the kicks lined up. The middle meters touch red on purpose. Watch the Howler light.`,
+    target: 'playing, light checked',
+    instruction: `Play both decks at ${meter(material('loud').mixDb)} with the kicks lined up, a blend louder than any DJ should play. The middle meters touch red on purpose. Do this only for the test, with no set playing, and delete any recording of it. Watch the Howler’s LEVEL light.`,
     action: 'Check the light',
     control: 'play',
   },
@@ -87,24 +88,26 @@ export const STEPS: readonly Step[] = [
     // for a dBFS number on the night. The file's numbers come afterwards, as the result.
     id: 'att',
     label: 'MASTER ATT',
-    target: 'A step down while red',
-    instruction: `If the light blinks red, set MASTER ATT in UTILITY down a step, to ${db(ATT_VALUES[1])}. If it’s still red, set it to ${db(ATT_LOWEST)}. Once it’s green, leave it there.`,
+    target: 'a step down while red',
+    // Both ATTs go on the tape, so the night's checks ("both ATTs as on the tape") have something to check.
+    instruction: `If the light blinks red, set MASTER ATT in UTILITY down a step, to ${db(ATT_VALUES[1])}. ${OPEN_UTILITY} If it’s still red, set it to ${db(ATT_LOWEST)}. Once it’s green, leave it there, and write MASTER ATT and BOOTH ATT on the REC tape.`,
     action: 'Set it here',
     control: 'att',
   },
   {
-    // Only if MASTER ATT ran out of steps: a condition, as a quick reference handbook words one.
+    // Only if MASTER ATT ran out of steps: a condition, as a quick reference handbook words one. The
+    // fallback is the one rule S1, T2 and F1 use (checklists.ts).
     id: 'level',
-    label: 'MASTER LEVEL, if still red',
-    target: capitalise(MARGIN),
-    instruction: `If the light is still red with MASTER ATT at ${db(ATT_LOWEST)}, turn MASTER LEVEL down a notch at a time to the ${MARGIN}. Re-mark the REC tape. The middle meters then read low, so a blend can clip before they go red. If the light was green, leave MASTER LEVEL fully up.`,
+    label: `${LEVEL_FALLBACK.challenge}, if still red`,
+    target: LEVEL_FALLBACK.response,
+    instruction: `${LEVEL_FALLBACK.text} The middle meters then read low, so a blend can clip before they go red. If the light was green, leave MASTER LEVEL fully up.`,
     action: 'Mark it here',
     control: 'level',
   },
   {
     id: 'test',
     label: 'Test recording',
-    target: 'Heard on headphones',
+    target: 'heard on headphones',
     instruction: 'Record 2\u00a0minutes and listen on headphones for the level, any hum and both sides.',
     action: 'Record 2\u00a0minutes',
     control: null,
@@ -153,7 +156,7 @@ export interface Flow {
     /** The MASTER ATT step that step 3 left. */
     att: AttDb | null;
   };
-  /** Step 5: the test clip has been made. */
+  /** Step 5: the test recording has been made, at the setting the rig still has. */
   recorded: boolean;
   heard: Record<CheckId, boolean>;
   /** What the last press of this step's key said, if it didn't finish the step. */
@@ -208,14 +211,27 @@ export function practiceStart(rand: () => number = Math.random, limit = HOWLER_L
 const good = (text: string, step: StepId, rig: Rig): Feedback => ({ tone: 'good', text, step, rig });
 const fix = (text: string, step: StepId, rig: Rig): Feedback => ({ tone: 'fix', text, step, rig });
 
+/**
+ * A test recording only speaks for the setting it was made at. Once MASTER LEVEL or MASTER ATT
+ * moves, it's gone, and so is anything it finished: the listening checks, and the job itself.
+ */
+function unrecorded(flow: Flow): Flow {
+  if (!flow.recorded) return flow;
+  return { ...flow, recorded: false, heard: { level: false, hum: false, sides: false }, complete: false, note: null };
+}
+
 export function reduce(flow: Flow, action: Action): Flow {
   switch (action.type) {
     case 'play':
       return { ...flow, rig: { ...flow.rig, material: action.material } };
-    case 'level':
-      return { ...flow, rig: { ...flow.rig, level: nearestNotch(action.db) } };
+    case 'level': {
+      const level = nearestNotch(action.db);
+      if (level === flow.rig.level) return flow;
+      return unrecorded({ ...flow, rig: { ...flow.rig, level } });
+    }
     case 'att':
-      return { ...flow, rig: { ...flow.rig, att: action.db } };
+      if (action.db === flow.rig.att) return flow;
+      return unrecorded({ ...flow, rig: { ...flow.rig, att: action.db } });
     case 'heard': {
       const heard = { ...flow.heard, [action.check]: action.value };
       const complete = flow.recorded && Object.values(heard).every(Boolean);
@@ -284,16 +300,36 @@ export function stepResponse(flow: Flow, id: StepId): string {
   const { kept } = flow;
   switch (id) {
     case 'up':
-      return 'Taped REC, fully up';
+      return 'taped REC, fully up';
     case 'play':
-      return kept.seen === 'red' ? 'Light blinking red' : 'Light blinking green';
+      return kept.seen === 'red' ? 'light blinking red' : 'light blinking green';
     case 'att':
-      return kept.att === null ? step(id).target : `At ${db(kept.att)}`;
+      return kept.att === null ? step(id).target : `at ${db(kept.att)}`;
     case 'level':
-      return kept.tape === null || kept.tape === LEVEL.max ? 'Stays fully up' : `Marked REC at ${db(kept.tape)}`;
+      return kept.tape === null || kept.tape === LEVEL.max ? 'stays fully up' : `marked REC at ${db(kept.tape)}`;
     case 'test':
-      return 'Heard on headphones';
+      return 'heard on headphones';
   }
+}
+
+/**
+ * The words on the key for the step you're on. Step 4 only has work to do if the light is still
+ * red with MASTER ATT set, so if MASTER ATT got it green, its key says to leave MASTER LEVEL alone.
+ */
+export function stepAction(flow: Flow): string {
+  if (flow.step === 'level' && flow.kept.att !== null) {
+    const feed = { level: flow.kept.tape ?? LEVEL.max, att: flow.kept.att };
+    if (lightFor({ material: 'blend', ...feed }, flow.limit) === 'green') return 'Leave it fully up';
+  }
+  return step(flow.step).action;
+}
+
+/** What the rig was set to, once the job is done, in the words the REC tape needs. */
+export function settingsSummary(flow: Flow): string {
+  const tape = flow.kept.tape ?? LEVEL.max;
+  const level = tape === LEVEL.max ? 'MASTER LEVEL fully up' : `MASTER LEVEL at ${db(tape)}`;
+  const att = `MASTER ATT at ${db(flow.kept.att ?? ATT_VALUES[0])}`;
+  return `${level}, ${att}. Write MASTER ATT and BOOTH ATT on the REC tape.`;
 }
 
 /**

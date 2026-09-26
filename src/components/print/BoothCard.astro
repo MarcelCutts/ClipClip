@@ -4,20 +4,23 @@
  * DJs' "Know by heart" box as a quick reference handbook's card: pale yellow, under a black title
  * strip, with the DJ rules as challenge and response joined by leader dots and what to do if it
  * isn't so, a line drawing of the XDJ-RX2's meters marked with where to aim, and a QR code to the
- * guide (/#trim). The rules come straight from DJ_RULES, so the card says what the site says.
+ * guide (/#trim). The rules come straight from DJ_RULES, so the card says what the site says. The
+ * guide's box adds BOOTH MONITOR as a fourth line; A6 has room for three and a sentence, so the card
+ * gives the DJ's one knob in a sentence of its own.
  * One wiring: MASTER LEVEL is taped (it sets the speakers and the recording), BOOTH MONITOR is the DJ's.
  *
  * Print sizes: every sentence 10 pt or more, the lines to know by heart about 12 pt, every label on
  * the drawing 7 pt or more. Everything inside is sized in em from a base set in container units,
  * so the card scales to fit a phone on screen and prints at exactly A6. It prints black on white
  * on pale yellow: the card and its strip ask the browser to print their backgrounds, and the LEDs
- * and the QR code are SVG shapes, which print whatever the "background graphics" setting.
+ * and the QR code are SVG shapes, which print whatever the "background graphics" setting. The print
+ * page shows it on paper in either theme, so it keeps its yellow on a dark screen too.
  */
 import QRCode from 'qrcode';
 import { DJ_RULES } from '../../lib/rules';
 import { MONITOR_TAG } from '../../lib/tags';
 import { href } from '../../lib/url';
-import { METER_SEGMENTS } from '../../lib/xdj';
+import { METER_SEGMENTS, scaleLabel } from '../../lib/xdj';
 
 // The guide, where it starts on playing a set. The QR code carries the #trim; the typed address
 // doesn't need it, since the guide's top is a fine place to land too.
@@ -44,36 +47,41 @@ for (let row = 0; row < qr.modules.size; row++) {
 }
 
 // The meter bridge, as printed on the unit: CH1, the MASTER pair, CH2, with the scale between.
-// A unit prints at about 0.9 mm (the drawing is 15em tall), so the font sizes below print at about
-// 8 pt (column names), 7.2 pt (scale and CLIP) and 9.5 pt (zones).
+// A unit prints at about 0.9 mm (the drawing is 15.6em tall), so the font sizes below print at about
+// 8 pt (column names), 7.2 pt (scale and CLIP) and 9.5 pt (zones). As on every meter on the site,
+// the colours don't work alone: a printed break sits where the colour changes, and 0 is bold.
 const pitch = 3.5;
 const ledH = 2;
 const top = 9.4;
-const rows = [...METER_SEGMENTS].reverse().map((seg, i) => ({ ...seg, y: top + i * pitch }));
-const bottom = top + rows.length * pitch;
+/** The extra space of the break where the colour changes. */
+const BREAK = 1.2;
+const rows: ((typeof METER_SEGMENTS)[number] & { y: number })[] = [];
+for (const seg of [...METER_SEGMENTS].reverse()) {
+  const prev = rows.at(-1);
+  rows.push({ ...seg, y: prev ? prev.y + pitch + (prev.zone === seg.zone ? 0 : BREAK) : top });
+}
+const bottom = rows.at(-1)!.y + pitch;
 const frame = { w: 30, h: bottom + 4.2 };
 /** Baseline for a label of this size, centred on a height: half its cap height below the middle. */
 const centreOn = (middle: number, size: number) => middle + size * 0.36;
 const TICK = 2.8;
 const ZONE = 3.7;
-const scale = (db: number) => (db < 0 ? `−${-db}` : String(db));
 const rowOf = (db: number) => rows.find((r) => r.db === db)!;
 // Brackets down the right-hand side, each spanning the LEDs from one level to another, named one
-// line per entry. The target is a position, not a colour: orange runs from 0 to +9 and a blend adds
-// up to two more lights, so the channels peak on the first two orange lights and the top two stay
-// free for blends.
+// line per entry, in the guide's words. The target is a position, not a colour: orange runs from 0
+// to +9 and a blend adds up to two more lights, so the channels aim for the first two orange lights
+// and the top two stay free for blends. Red is where Pioneer says the sound may distort.
 const zone = (from: number, to: number, name: string[]) => ({
   y1: rowOf(from).y - 0.35,
   y2: rowOf(to).y + ledH + 0.35,
   name,
 });
-const zones = [zone(12, 12, ['Too hot']), zone(9, 6, ['Blend room']), zone(3, 0, ['Loudest bits'])];
+const zones = [zone(12, 12, ['May distort']), zone(9, 6, ['Blend room']), zone(3, 0, ['Aim'])];
 const bx = frame.w + 1.8;
 const lineGap = 3.8;
-/** Room for the widest zone name ("Loudest bits") to the right of its bracket. */
+/** Room for the widest zone name ("May distort") to the right of its bracket. */
 const labelsW = 24;
-const meterLabel =
-  'The meters on the XDJ-RX2: CH1, MASTER and CH2. Loudest bits: the first two orange lights, 0 and +3. Blend room: +6 and +9, where a blend adds up. Too hot: the red light at +12.';
+const meterLabel = `The meters on the XDJ-RX2: CH1, MASTER and CH2. Aim for the first two orange lights, ${scaleLabel(0)} and ${scaleLabel(3)}. ${scaleLabel(6)} and ${scaleLabel(9)} are room for a blend, where two tracks add up. The red light at ${scaleLabel(12)} may distort.`;
 ---
 
 <div class="card-frame">
@@ -113,11 +121,11 @@ const meterLabel =
           <rect x="12.4" y={r.y} width="2.2" height={ledH} rx="0.35" />
           <rect x="15.4" y={r.y} width="2.2" height={ledH} rx="0.35" />
           <rect x="24.5" y={r.y} width="3" height={ledH} rx="0.35" />
-          <text class="tick" x="9" y={centreOn(r.y + ledH / 2, TICK)}>
-            {scale(r.db)}
+          <text class:list={['tick', { zero: r.db === 0 }]} x="9" y={centreOn(r.y + ledH / 2, TICK)}>
+            {scaleLabel(r.db)}
           </text>
-          <text class="tick" x="21" y={centreOn(r.y + ledH / 2, TICK)}>
-            {scale(r.db)}
+          <text class:list={['tick', { zero: r.db === 0 }]} x="21" y={centreOn(r.y + ledH / 2, TICK)}>
+            {scaleLabel(r.db)}
           </text>
         </g>
       ))
@@ -191,12 +199,14 @@ const meterLabel =
     margin: 0;
   }
 
-  /* The title strip runs edge to edge across the top, like a handbook card's. */
+  /* The title strip runs edge to edge across the top, like a handbook card's, with the strips'
+     top edge (on paper it's the strip's own colour). */
   .strip {
     grid-area: strip;
     margin-inline: calc(-1 * var(--side));
     padding: 0.45em var(--side) 0.4em;
     background: var(--strip);
+    box-shadow: inset 0 2px 0 var(--strip-edge);
     color: var(--on-strip);
     font-size: 1.45em;
     font-weight: 700;
@@ -283,7 +293,7 @@ const meterLabel =
   .meters {
     grid-area: meters;
     width: auto;
-    height: 15em;
+    height: 15.6em;
     align-self: start;
     overflow: visible;
   }
@@ -318,6 +328,11 @@ const meterLabel =
   .db {
     font-size: 2.8px;
     font-weight: 600;
+  }
+
+  /* 0 is where the orange starts: bold, as on every meter on the site. */
+  .tick.zero {
+    font-weight: 800;
   }
 
   .led rect {
@@ -384,14 +399,6 @@ const meterLabel =
     fill: currentColor;
   }
 
-  /* The dark theme's tint is for the dark display, so the preview on a dark page shows the card
-     on white paper instead. */
-  @media screen and (prefers-color-scheme: dark) {
-    .booth-card {
-      background: Canvas;
-    }
-  }
-
   @media print {
     .booth-card,
     .strip {
@@ -404,6 +411,7 @@ const meterLabel =
     .strip {
       forced-color-adjust: none;
       background: CanvasText;
+      box-shadow: none;
       color: Canvas;
     }
   }

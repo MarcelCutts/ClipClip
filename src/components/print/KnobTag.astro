@@ -3,7 +3,8 @@
  * A knob tag for the gear, sized to sit on a strip of 19 mm console tape: 18 mm tall, and 60 mm
  * long unless it says more. Stencil type, black on white. Sizes are in print millimetres, scaled
  * through container units so the on-screen preview shrinks to fit. A long tag's lines are
- * sentences, so they print at 10 pt or more.
+ * sentences, so they print at 10 pt or more. A tag can carry blanks for settings the crew write in
+ * by hand, like the REC tape's two attenuators.
  */
 interface Props {
   /** The big word, as it would be written on the tape: REC, MONITOR, RIG. */
@@ -12,22 +13,21 @@ interface Props {
   owner?: string;
   /** Extra lines for a long-form tag that says why. */
   lines?: readonly string[];
+  /** Settings to write in by hand, each printed as its name and a blank line. */
+  blanks?: readonly string[] | undefined;
   /** Length in millimetres at print size. */
   width?: number;
 }
 
-const { name, owner, lines = [], width = 60 } = Astro.props;
+const { name, owner, lines = [], blanks = [], width = 60 } = Astro.props;
 ---
 
 <div class="tag-frame" style={`--w: ${width}`}>
-  <p class:list={['tag', { long: lines.length > 0 }]}>
+  <p class:list={['tag', { long: lines.length > 0, 'with-blanks': blanks.length > 0 }]}>
     <span class="name">{name}</span>
     {
       owner && (
         <span class="owner">
-          <span class="dot" aria-hidden="true">
-            ·
-          </span>
           <span class="visually-hidden">, </span>
           {owner}
         </span>
@@ -38,6 +38,20 @@ const { name, owner, lines = [], width = 60 } = Astro.props;
         <span class="lines">
           {lines.map((line) => (
             <span class="line">{line} </span>
+          ))}
+        </span>
+      )
+    }
+    {
+      blanks.length > 0 && (
+        <span class="blanks">
+          <span class="visually-hidden">. Blanks to write in: </span>
+          {blanks.map((b, i) => (
+            <span class="blank">
+              {i > 0 && <span class="visually-hidden">, </span>}
+              {b}
+              <span class="rule" aria-hidden="true" />
+            </span>
           ))}
         </span>
       )
@@ -84,10 +98,6 @@ const { name, owner, lines = [], width = 60 } = Astro.props;
     letter-spacing: 0.02em;
   }
 
-  .dot {
-    margin-right: 0.25em;
-  }
-
   .tag.long {
     flex-direction: column;
     flex-wrap: nowrap;
@@ -110,6 +120,38 @@ const { name, owner, lines = [], width = 60 } = Astro.props;
     letter-spacing: 0.015em;
   }
 
+  /* With blanks the big word gives up some height, and the blanks take a row of their own. */
+  .with-blanks {
+    row-gap: calc(var(--mm) * 1.6);
+  }
+
+  .with-blanks .name {
+    font-size: calc(var(--mm) * 8);
+  }
+
+  /* About 8.5 pt: labels to write beside, not sentences. The blank is a ruled line to write on. */
+  .blanks {
+    display: flex;
+    flex-basis: 100%;
+    justify-content: center;
+    gap: calc(var(--mm) * 3.5);
+    font-size: calc(var(--mm) * 3);
+    font-weight: 760;
+    letter-spacing: 0.03em;
+  }
+
+  .blank {
+    display: inline-flex;
+    align-items: baseline;
+    gap: calc(var(--mm) * 1);
+  }
+
+  .rule {
+    display: inline-block;
+    width: calc(var(--mm) * 10);
+    border-bottom: calc(var(--mm) * 0.3) solid currentColor;
+  }
+
   /* On screen, let a tag wrap and grow rather than spill when a reader widens the text spacing
      (WCAG 1.4.12). Paper keeps the fixed height the tape is cut to. */
   @media screen {
@@ -117,6 +159,10 @@ const { name, owner, lines = [], width = 60 } = Astro.props;
       white-space: normal;
       height: auto;
       min-height: 100%;
+    }
+
+    .blank {
+      white-space: nowrap;
     }
   }
 </style>

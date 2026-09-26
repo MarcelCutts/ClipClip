@@ -3,10 +3,13 @@
  * The crew's tool for the night itself, set like a quick reference handbook. It opens on its tabs, in
  * the order the night runs: C1 Doors, C2 Changeover, F Something's wrong, C3 After. Then what the crew
  * know by heart, and the checklists and drills in that order. Every card is linkable from the group
- * chat (/night/#changeover, /night/#fix-howler-red). Why any of it works is in the guide.
+ * chat (/night/#changeover, /night/#fix-howler-red). Why any of it works is in the guide. On wide
+ * screens an index rail sits left of the cards, as on the setup page, listing every drill under F.
  */
+import Contents, { type ContentsEntry } from '../../components/Contents.astro';
 import DrillCard from '../../components/DrillCard.astro';
 import KnowByHeart from '../../components/KnowByHeart.astro';
+import Tabs, { type Tab } from '../../components/Tabs.astro';
 import Term from '../../components/Term.astro';
 import Checklist from '../../islands/Checklist.svelte';
 import Base from '../../layouts/Base.astro';
@@ -18,16 +21,33 @@ import { href } from '../../lib/url';
 
 const { doors, changeover, after } = CHECKLISTS;
 // Trouble comes during the sets, so the drills sit between the changeovers and the end of the night.
-const tabs = [
-  { id: doors.anchor, code: doors.code, label: 'Doors' },
-  { id: changeover.anchor, code: changeover.code, label: 'Changeover' },
-  { id: 'fixes', code: 'F', label: 'Something’s wrong', warning: true },
-  { id: after.anchor, code: after.code, label: 'After' },
+const tabs: Tab[] = [
+  { code: doors.code, label: 'Doors', href: `#${doors.anchor}`, target: doors.anchor },
+  { code: changeover.code, label: 'Changeover', href: `#${changeover.anchor}`, target: changeover.anchor },
+  { code: 'F', label: 'Something’s wrong', href: '#fixes', target: 'fixes', lamp: true },
+  { code: after.code, label: 'After', href: `#${after.anchor}`, target: after.anchor },
 ];
 const groups = [
   { id: 'booth', title: 'In the booth, now', drills: FIXES.filter((f) => f.where === 'booth') },
   { id: 'recording', title: 'In the recording, afterwards', drills: FIXES.filter((f) => f.where === 'recording') },
 ];
+// Wide screens: the index in the rail, as on the setup page. The night in order, and under F every
+// drill by its code, which opens while you're in them.
+const contents: ContentsEntry[] = [
+  { id: doors.anchor, number: doors.code, label: doors.title },
+  { id: changeover.anchor, number: changeover.code, label: changeover.title },
+  {
+    id: 'fixes',
+    number: 'F',
+    label: 'Something’s wrong',
+    lamp: true,
+    subs: FIXES.map((f) => ({ id: drillAnchor(f.id), label: `${f.code} ${f.short}` })),
+  },
+  { id: after.anchor, number: after.code, label: after.title },
+];
+// The rail runs beside every row of the page's grid: the box, C1, C2 and its line, the drills, C3 and
+// the two paragraphs after it.
+const ROWS = 8;
 ---
 
 <Base
@@ -39,21 +59,13 @@ const groups = [
   </header>
 
   <!-- Thumb tabs, as on the edge of a printed handbook: they stay at the top of the screen, and the one
-       for the part of the night on screen is filled. Plain links without JavaScript. -->
-  <nav class="tabs flow" aria-label="Checklists and drills" data-night-tabs>
-    <ol>
-      {tabs.map((t) => (
-  <li>
-    <a class:list={['tab', { warning: t.warning }]} href={`#${t.id}`} data-target={t.id}>
-      <span class="tab-code">{t.code}</span> <span class="tab-label">{t.label}</span>
-    </a>
-  </li>
-))}
-    </ol>
-  </nav>
+       for the part of the night on screen is filled (the script below). Plain links without JavaScript. -->
+  <Tabs label="Checklists and drills" tabs={tabs} data-night-tabs />
 
   <div class="night flow">
-    <div class="block"><KnowByHeart title="Know by heart on crew" rules={CREW_RULES} start={4} /></div>
+    <Contents entries={contents} rows={ROWS} />
+
+    <div class="block"><KnowByHeart title="Know by heart on crew" rules={CREW_RULES} /></div>
 
     <div class="block stage"><Checklist list="doors" headingLevel={2} client:visible /></div>
 
@@ -61,8 +73,14 @@ const groups = [
     <p class="say">Say it to the next DJ: <strong>“{CHANGEOVER_LINE}”</strong></p>
 
     <section class="drills stage" id="fixes">
-      <h2 class="drills-title"><span class="mark">F</span> Something’s wrong</h2>
-      <p>Find what you can see, then work through its drill from step 1.</p>
+      <!-- Named "F: Something’s wrong", code first, as the tab is. The code is said in the hidden text, so
+           no space creeps in before the colon. -->
+      <h2 class="drills-title">
+        <span class="mark" aria-hidden="true"><span class="lamp"></span>F</span><span class="visually-hidden"
+          >F: </span
+        >Something’s wrong
+      </h2>
+      <p>Find what you see or hear, then work through its drill from step 1.</p>
       <nav class="index" aria-label="Drills">
         {groups.map((g) => (
   <div class="index-group">
@@ -93,9 +111,9 @@ const groups = [
     </p>
 
     <p class="more">
-      If it’s your first night with this rig, or something has changed, start with the <a href={href('/setup/')}
-        >setup page</a
-      >. Cards and tape tags for the booth are on the <a href={href('/print/')}>print page</a>.
+      If it’s your first night with this rig, or something has changed, start with <a href={href('/setup/')}
+        >Setting up</a
+      >. Cards and tape tags for the booth are in the <a href={href('/print/')}>Print kit</a>.
     </p>
   </div>
 </Base>
@@ -144,118 +162,13 @@ const groups = [
     line-height: 1.1;
   }
 
-  /* The tabs hang from a heavy rule, like thumb tabs cut into the edge of a handbook. */
-  .tabs {
-    position: sticky;
-    top: 0;
-    z-index: 12;
-    padding-block-end: 0.5rem;
-    background: var(--paper);
+  /* On the night a jump is instant: nobody in a hurry should watch the page glide past. Where it
+     lands is the page's scroll padding, clear of the tabs. */
+  :global(html) {
+    scroll-behavior: auto;
   }
 
-  .tabs ol {
-    display: flex;
-    gap: 0.3rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    border-top: 2px solid var(--ink);
-  }
-
-  /* Shared out evenly, as far as the longest words allow. */
-  .tabs li {
-    flex: 1 1 0;
-    display: flex;
-  }
-
-  .tab {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 2.75rem;
-    padding: 0.25rem 0.4rem 0.35rem;
-    border: 1.5px solid var(--ink);
-    border-top: 0;
-    font-size: var(--text-sm);
-    line-height: 1.2;
-    text-align: center;
-    color: var(--ink);
-    text-decoration: none;
-  }
-
-  .tab-code {
-    font-weight: 700;
-  }
-
-  .tab:hover .tab-label {
-    text-decoration: underline;
-    text-underline-offset: 0.16em;
-  }
-
-  .tab[aria-current] {
-    background: var(--strip);
-    color: var(--on-strip);
-  }
-
-  /* Something's wrong: the one tab in the warning colour, filled whether or not you're there. */
-  .tab.warning {
-    border-color: var(--warning);
-    background: var(--warning);
-    color: var(--on-warning);
-  }
-
-  .tab.warning[aria-current] {
-    outline: 2px solid var(--on-warning);
-    outline-offset: -4px;
-  }
-
-  /* Its code sits beside its two-line name, so it's no taller than the others. */
-  .tab.warning {
-    flex-direction: row;
-    gap: 0.35em;
-  }
-
-  /* Narrow phones: tighter tabs, so all four still fit across. */
-  @media (max-width: 23.99rem) {
-    .tabs ol {
-      gap: 0.2rem;
-    }
-
-    .tab {
-      padding-inline: 0.2rem;
-    }
-  }
-
-  /* The narrowest: codes only, as on the guide's tabs. The names stay for screen readers. */
-  @media (max-width: 21.99rem) {
-    .tab-label {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-      white-space: nowrap;
-    }
-  }
-
-  /* Wider: code and name on one line, each tab as wide as its name needs, then shared out. */
-  @media (min-width: 40rem) {
-    .tabs li {
-      flex-basis: auto;
-    }
-
-    .tab {
-      flex-direction: row;
-      gap: 0.45em;
-      padding-inline: 0.75rem;
-    }
-  }
-
-  /* Anchors land clear of the tabs. The cards and drills read this too. */
   .night {
-    --anchor-offset: 4.5rem;
     row-gap: 1.25rem;
     padding-block-start: 1rem;
   }
@@ -263,7 +176,6 @@ const groups = [
   /* A little more air between the night's stages than inside them. */
   .stage {
     margin-block-start: 1.25rem;
-    scroll-margin-top: var(--anchor-offset);
   }
 
   .say {
@@ -282,17 +194,27 @@ const groups = [
     gap: 0.6rem;
   }
 
-  /* The F tab's marker, so the heading matches the tab that brought you here. */
+  /* The F tab's code and lamp, in an ink outline like the tab, so the heading matches the tab that
+     brought you here. Red is only the lamp: it means something's wrong, not "click here". */
   .mark {
     flex: none;
-    display: inline-grid;
-    place-items: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
     min-width: 2.25rem;
     height: 2.25rem;
-    background: var(--warning);
-    color: var(--on-warning);
+    padding-inline: 0.5rem;
+    border: 1.5px solid var(--ink);
     font-size: var(--text-rule);
     line-height: 1;
+  }
+
+  .lamp {
+    flex: none;
+    width: 0.5rem;
+    height: 0.5rem;
+    background: var(--warning);
   }
 
   .index {
@@ -332,9 +254,17 @@ const groups = [
     font-weight: 700;
   }
 
-  .index a:hover .index-label {
+  /* Each row is a link to its drill, so its title is underlined like every link on the page. */
+  .index-label {
     text-decoration: underline;
+    text-decoration-color: color-mix(in oklab, var(--link) 60%, transparent);
+    text-decoration-thickness: 0.08em;
     text-underline-offset: 0.16em;
+  }
+
+  .index a:hover .index-label {
+    text-decoration-color: currentColor;
+    text-decoration-thickness: 0.14em;
   }
 
   .group-title {
@@ -356,19 +286,28 @@ const groups = [
     margin-block-start: 1.5rem;
   }
 
-  @media (forced-colors: active) {
-    .tab[aria-current],
-    .tab.warning,
-    .mark {
-      forced-color-adjust: none;
-      background: CanvasText;
-      color: Canvas;
+  /* The index is for wide screens only, in the rail. Narrower, the tabs and the drills' own index
+     do its job. */
+  .night > :global(.toc) {
+    display: none;
+  }
+
+  /* Wide screens: the rail starts level with the know-by-heart box, and stays in view under the tabs. */
+  @media (min-width: 80rem) {
+    .night > :global(.toc) {
+      display: grid;
+      margin-block-start: 0;
     }
   }
 
-  @media print {
-    .tabs {
-      display: none;
+  @media (forced-colors: active) {
+    .mark {
+      border-color: CanvasText;
+    }
+
+    .lamp {
+      forced-color-adjust: none;
+      background: CanvasText;
     }
   }
 </style>

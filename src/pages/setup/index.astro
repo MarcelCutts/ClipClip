@@ -6,8 +6,12 @@
  * answer what the manuals don't say. Done once, and again whenever the rig changes. Why it works is
  * in the guide.
  *
+ * S2 is the rig as a table, built from the guide's signal drawing (lib/rig.ts): what feeds each
+ * part, how it's set and which tape goes on it. The drawing itself stays in the guide (3.1). S3 is
+ * the record level's steps (lib/record/flow.ts), with a practice rig under them.
+ *
  * The anchors stay put: the old /crew/ page forwards to #wiring, #record-level, #backup, #power and
- * #tests, the guide links to #record-level, and #setup is the checklist's own.
+ * #tests, the guide links to #record-level and #test-att, and #setup is the checklist's own.
  */
 import Contents, { type ContentsEntry } from '../../components/Contents.astro';
 import PageHeader from '../../components/PageHeader.astro';
@@ -15,10 +19,13 @@ import Procedure from '../../components/Procedure.astro';
 import Term from '../../components/Term.astro';
 import Checklist from '../../islands/Checklist.svelte';
 import RecordLevel from '../../islands/RecordLevel.svelte';
-import SignalPath from '../../islands/SignalPath.svelte';
 import Base from '../../layouts/Base.astro';
-import { CHECKLISTS } from '../../lib/checklists';
+import { CHECKLISTS, LEVEL_FALLBACK } from '../../lib/checklists';
+import { ROOM_NOTE, STEPS } from '../../lib/record/flow';
+import { edgesFor, NODES, type NodeId } from '../../lib/rig';
+import { section } from '../../lib/sections';
 import { SOURCES } from '../../lib/sources';
+import { MONITOR_TAG, REC_TAG, RIG_TAG, type ShortTag } from '../../lib/tags';
 import { href } from '../../lib/url';
 
 /** A source document's address, from the one list, so the page and the sources section agree. */
@@ -37,7 +44,119 @@ const HOWLER = doc('Recorder+Streamer MK1 manual');
 const RANE = doc('Sound System Interconnection (RaneNote 110)');
 
 /** A no-break space, between a number and its unit. */
-const nb = ' ';
+const nb = '\u00a0';
+
+// ---- S2: the rig as a table -----------------------------------------------------------------
+
+interface Cite {
+  label: string;
+  url: string;
+}
+
+interface RigRow {
+  /** The part, as the guide's drawing names it. */
+  node: NodeId;
+  /** Show the drawing's second line after the name ("QSC GX7"). */
+  withSub?: boolean;
+  /** How the lead is made, after the socket's name: "XLR, L and R". */
+  lead?: string;
+  /** A second line under the feed: what the lead should be. */
+  leadNote?: string;
+  /** What it's set to: the response, in the action colour. Empty for nothing to set. */
+  set: string;
+  /** A second line under the setting. */
+  setNote?: string;
+  /** The card that sets the rest: "See S4." */
+  see?: { code: string; id: string; for?: string };
+  /** A second line under the tape: what's written on it. */
+  tapeNote?: string;
+  sources: Cite[];
+}
+
+const OI = (page: number): Cite => ({ label: `XDJ manual p.${nb}${page}`, url: `${MANUAL}#page=${page}` });
+const QSG = (page: number): Cite => ({ label: `XDJ quick start p.${nb}${page}`, url: `${QUICK_START}#page=${page}` });
+
+/** The tape each taped part carries (rig.ts marks which are taped; tags.ts has what's printed on them). */
+const TAPE: Partial<Record<NodeId, ShortTag>> = { masterLevel: REC_TAG, booth: MONITOR_TAG, amps: RIG_TAG };
+
+/** Each part in signal order: the PA's branch, the recorder's, then the booth monitors'. */
+const RIG_ROWS: RigRow[] = [
+  {
+    node: 'masterLevel',
+    set: 'fully up',
+    setNote: 'It sets MASTER 1 and MASTER 2 together, so it sets the room and the recording at once.',
+    tapeNote: 'Write MASTER ATT and BOOTH ATT on it.',
+    sources: [OI(27)],
+  },
+  {
+    node: 'driverack',
+    lead: `XLR, L and R`,
+    set: `input switch on +4${nb}dBu`,
+    see: { code: 'S4', id: 'driverack', for: 'the setup wizard' },
+    sources: [QSG(20), { label: `dbx manual p.${nb}5`, url: `${DBX}#page=5` }],
+  },
+  {
+    node: 'amps',
+    withSub: true,
+    set: 'FULL RANGE, gain for the room',
+    see: { code: 'S4', id: 'driverack' },
+    sources: [{ label: 'QSC GX manual', url: QSC }],
+  },
+  {
+    node: 'howler',
+    lead: 'RCA, L and R',
+    leadNote: `One stereo RCA lead, under 3${nb}m, with no adapters.`,
+    set: 'WAV',
+    see: { code: 'S3', id: 'record-level', for: 'its record level' },
+    sources: [QSG(20), { label: 'RaneNote 110', url: RANE }, { label: 'Howler manual', url: HOWLER }],
+  },
+  {
+    node: 'booth',
+    set: 'left to the DJ',
+    setNote: 'It sets only the booth monitors.',
+    sources: [OI(27)],
+  },
+  {
+    node: 'monitor',
+    lead: '¼″ jacks, L and R',
+    leadNote: 'Balanced leads.',
+    set: '',
+    sources: [OI(10), QSG(20)],
+  },
+];
+
+/**
+ * What feeds a part, as the drawing wires it (the DJ view, where the limiter is part of the
+ * DriveRack): a socket by its printed name, anything else as "the DriveRack PA2", "the mix".
+ */
+function feed(id: NodeId): string {
+  const from = edgesFor('dj').find((e) => e.to === id)?.from;
+  if (!from) throw new Error(`Nothing feeds ${id}`);
+  const node = NODES[from];
+  if (node.printed) return node.label;
+  return node.kind === 'bus' ? `the ${node.label.toLowerCase()}` : `the ${node.label}`;
+}
+
+const rigRows = RIG_ROWS.map((r, i) => {
+  const node = NODES[r.node];
+  const tape = node.taped ? TAPE[r.node] : undefined;
+  return {
+    ...r,
+    ref: String(i + 1),
+    unit: node.label,
+    sub: r.withSub ? node.sub : undefined,
+    from: feed(r.node),
+    tape,
+  };
+});
+
+const signal = section('signal');
+
+// ---- S3: the record level -------------------------------------------------------------------
+
+const recordSteps = STEPS.map((s) => ({ challenge: s.label, response: s.target, note: s.instruction }));
+
+// ---- T1 to T6 -------------------------------------------------------------------------------
 
 interface Test {
   id: string;
@@ -49,7 +168,12 @@ interface Test {
   note?: string;
   /** What a good result looks like, and what to do if you don't get it. */
   expected: string;
+  /** A card to go to next, named after the expected result: "(S3)". */
+  see?: { code: string; id: string };
 }
+
+/** A test that moves MASTER LEVEL or MASTER ATT ends by putting them back. */
+const PUT_BACK = { challenge: 'MASTER LEVEL and MASTER ATT', response: 'back as on the tape' };
 
 // Pioneer and Howler leave these unpublished, so the only way to know is to try them on our kit.
 const tests: Test[] = [
@@ -64,7 +188,8 @@ const tests: Test[] = [
       { challenge: 'MASTER ATT', response: `0${nb}dB` },
       { challenge: 'Loud track', response: 'playing' },
       { challenge: 'Its TRIM', response: 'up, slowly' },
-      { challenge: 'Middle meters', response: 'read when the Howler first blinks red' },
+      { challenge: 'Middle meters', response: 'read when the LEVEL light first blinks red' },
+      PUT_BACK,
     ],
     expected:
       'A reading on the middle meters. Write it on the REC tape. If the middle meters reach red first, the Howler has room to spare.',
@@ -79,25 +204,27 @@ const tests: Test[] = [
     steps: [
       { challenge: 'Loud track', response: 'recording on the Howler' },
       { challenge: 'MASTER ATT', response: 'down, halfway through' },
+      PUT_BACK,
     ],
     note: `Pioneer doesn’t say whether it does. MASTER ATT’s settings are 0, −6 and −12${nb}dB. The Operating Instructions misprint the last as +12${nb}dB, and the Quick Start Guide has it right.`,
-    expected:
-      'The second half comes out quieter. If it doesn’t, trim the recording with MASTER LEVEL instead, a notch at a time, and re-mark the REC tape.',
+    // If MASTER ATT doesn't reach MASTER 2, MASTER LEVEL is the only record level: the one fallback rule, in the
+    // words S1, S3 and F1 use (checklists.ts).
+    expected: `The second half comes out quieter. If it doesn’t, MASTER ATT can’t turn the recording down. Play the loudest blend, and if the LEVEL light blinks red, turn ${LEVEL_FALLBACK.challenge} down ${LEVEL_FALLBACK.how}, and re-mark the REC tape.`,
   },
   {
     // VirtualDJ's layout notes and Pioneer's own TRIM procedure put the channel meters before the fader. Nobody
-    // says whether they read after the EQ; the wiring drawing assumes they do.
-    id: 'test-side-meters',
+    // says whether they read after the EQ; the guide's drawing assumes they do.
+    id: 'test-channel-meters',
     number: 'T3',
-    title: 'What the side meters show',
-    short: 'Side meters',
+    title: 'What the channel meters show',
+    short: 'Channel meters',
     steps: [
       { challenge: 'LOW', response: 'up, on a playing track' },
       { challenge: 'Its channel meter', response: 'watch it' },
       { challenge: 'Its channel fader', response: 'down, then up' },
     ],
     expected:
-      'The channel meter doesn’t move with the fader. Pioneer doesn’t say whether it moves with LOW. If it does, it reads after the EQ, as the wiring drawing in S2 assumes.',
+      'The channel meter doesn’t move with the fader. Pioneer doesn’t say whether it moves with LOW. If it does, it reads after the EQ, as the guide’s drawing assumes.',
   },
   {
     // Pioneer manual p.31: red means the sound "may be distorted". MASTER REC records before MASTER LEVEL (FAQ),
@@ -111,6 +238,7 @@ const tests: Test[] = [
       { challenge: 'One channel', response: 'into the red' },
       { challenge: 'MASTER REC', response: 'recording onto a USB stick' },
       { challenge: 'The file', response: 'zoomed in' },
+      PUT_BACK,
     ],
     expected:
       'If red clips, the loudest peaks have flat tops. They can sit below the top of the file, so look at any height.',
@@ -132,7 +260,8 @@ const tests: Test[] = [
       { challenge: 'Loudest blend', response: 'a minute, recorded at the taped setting' },
       { challenge: 'The file', response: 'open in Audacity' },
     ],
-    expected: `It peaks around −6 to −9${nb}dBFS.`,
+    expected: `It peaks around −6 to −9${nb}dBFS. If it peaks higher, turn the record level down and re-mark the REC tape`,
+    see: { code: 'S3', id: 'record-level' },
   },
 ];
 
@@ -170,60 +299,153 @@ const contents: ContentsEntry[] = [
       <Checklist list="setup" headingLevel={2} client:visible />
     </div>
 
+    <!-- The table needs the page's wide column; its card has no steps, only the table. -->
     <div class="job subflow">
-      <Procedure
-        id="wiring"
-        number="S2"
-        title="Wiring"
-        kind="Once"
-        level={2}
-        steps={[
-          {
-            challenge: 'MASTER 1 (XLR, L and R)',
-            response: 'DriveRack PA2 inputs',
-            note: 'From there to the amps and the speakers.',
-          },
-          {
-            challenge: 'MASTER 2 (RCA, L and R)',
-            response: 'Howler input',
-            note: `One stereo RCA lead, under 3${nb}m, with no adapters.`,
-          },
-          {
-            challenge: 'BOOTH (¼″ jacks, L and R)',
-            response: 'booth monitors',
-            note: 'Balanced leads. BOOTH MONITOR sets only these speakers, and it’s the DJ’s knob.',
-          },
-          {
-            challenge: 'MASTER LEVEL',
-            response: 'fully up, taped REC',
-            note: 'It sets MASTER 1 and MASTER 2 together, so it sets the room and the recording at once.',
-          },
-        ]}
-        note="The room’s volume comes from the amps and the DriveRack, never from MASTER LEVEL. Pick any part in the drawing below to light up what it feeds."
-      >
-        <p class="source">
-          Pioneer’s <span class="nobr">XDJ-RX2</span> Operating Instructions
-          (<a href={`${MANUAL}#page=27`} rel="external">page 27</a>) and Quick Start Guide
-          (<a href={`${QUICK_START}#page=20`} rel="external">page 20</a>), and
-          <a href={RANE} rel="external">RaneNote 110</a> on unbalanced leads.
-        </p>
-      </Procedure>
-      <div class="wide figure"><SignalPath client:visible /></div>
+      <div class="wide wiring">
+        <Procedure id="wiring" number="S2" title="Wiring" kind="Once" level={2} steps={[]}>
+          <!-- Wide: a table, one row per part. Narrow: the same rows as a list, each field labelled. -->
+          <table class="rig-table">
+            <caption class="visually-hidden">What feeds each part of the rig, how it’s set and its tape</caption>
+            <thead>
+              <tr>
+                <th scope="col" class="ref">Ref</th>
+                <th scope="col">Unit</th>
+                <th scope="col">Fed from</th>
+                <th scope="col">Set to</th>
+                <th scope="col">Tape tag</th>
+                <th scope="col">Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                rigRows.map((r) => (
+                  <tr>
+                    <td class="ref">{r.ref}</td>
+                    <th scope="row" class="unit">
+                      {r.unit}
+                      {r.sub && <span class="sub">{r.sub}</span>}
+                    </th>
+                    <td>
+                      {r.from}
+                      {r.lead && <span class="nobr">({r.lead})</span>}
+                      {r.leadNote && <span class="sub">{r.leadNote}</span>}
+                    </td>
+                    <td>
+                      {r.set ? <span class="set">{r.set}</span> : <span class="none">none</span>}
+                      {r.setNote && <span class="sub">{r.setNote}</span>}
+                      {r.see && (
+                        <span class="sub">
+                          See <a href={`#${r.see.id}`}>{r.see.code}</a>{r.see.for ? ` for ${r.see.for}.` : '.'}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {r.tape ? <span class="tag">{r.tape.name}</span> : <span class="none">none</span>}
+                      {r.tapeNote && <span class="sub">{r.tapeNote}</span>}
+                    </td>
+                    <td>
+                      <span class="cites">
+                        {r.sources.map((c) => (
+                          <a href={c.url} rel="external">
+                            {c.label}
+                          </a>
+                        ))}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+          <ol class="rig-list">
+            {
+              rigRows.map((r) => (
+                <li>
+                  <p class="unit">
+                    <span class="ref">{r.ref}</span>
+                    <span>
+                      {r.unit}
+                      {r.sub && <span class="sub-inline">{r.sub}</span>}
+                    </span>
+                  </p>
+                  <dl>
+                    <div>
+                      <dt>Fed from</dt>
+                      <dd>
+                        {r.from}
+                        {r.lead && <span class="nobr">({r.lead})</span>}
+                        {r.leadNote && <span class="sub">{r.leadNote}</span>}
+                      </dd>
+                    </div>
+                    {r.set && (
+                      <div>
+                        <dt>Set to</dt>
+                        <dd>
+                          <span class="set">{r.set}</span>
+                          {r.setNote && <span class="sub">{r.setNote}</span>}
+                          {r.see && (
+                            <span class="sub">
+                              See <a href={`#${r.see.id}`}>{r.see.code}</a>{r.see.for ? ` for ${r.see.for}.` : '.'}
+                            </span>
+                          )}
+                        </dd>
+                      </div>
+                    )}
+                    {r.tape && (
+                      <div>
+                        <dt>Tape tag</dt>
+                        <dd>
+                          <span class="tag">{r.tape.name}</span>
+                          {r.tapeNote && <span class="sub">{r.tapeNote}</span>}
+                        </dd>
+                      </div>
+                    )}
+                    <div>
+                      <dt>Source</dt>
+                      <dd>
+                        <span class="cites">
+                          {r.sources.map((c) => (
+                            <a href={c.url} rel="external">
+                              {c.label}
+                            </a>
+                          ))}
+                        </span>
+                      </dd>
+                    </div>
+                  </dl>
+                </li>
+              ))
+            }
+          </ol>
+          <p class="note">
+            <strong>Note.</strong> The room’s volume comes from the <Term of="amps">amps</Term>, never from
+            <Term of="masterLevel">MASTER LEVEL</Term>. To see what each part feeds, pick it in the drawing in
+            <a href={href(`/#${signal.id}`)}>{signal.number} {signal.title}</a>.
+          </p>
+        </Procedure>
+      </div>
     </div>
 
-    <section class="job subflow" id="record-level" aria-labelledby="record-level-title">
-      <h2 class="strip" id="record-level-title">
-        <span><span class="no">S3</span>Record level</span>
-        <span class="kind">Once</span>
-      </h2>
-      <p class="intro">
-        The <Term of="howler">Howler</Term> has no input knob, only its LEVEL light. It blinks green when the level is
-        fine and red when it’s too hot. So the record level is set by what feeds it: MASTER LEVEL, and
-        <Term of="att">MASTER ATT</Term> if you need it. Set it once, on a blend hotter than any DJ should send, then
-        leave it.
-      </p>
-      <div class="wide"><RecordLevel client:visible /></div>
-    </section>
+    <div class="job subflow">
+      <Procedure
+        id="record-level"
+        number="S3"
+        title="Record level"
+        kind="Once"
+        level={2}
+        caution="The Howler has no input knob, only its LEVEL light, which blinks green when the level is fine and red when it’s too high. So MASTER LEVEL and MASTER ATT set the record level. Pioneer doesn’t say whether MASTER ATT reaches MASTER 2, so run T2 first."
+        steps={recordSteps}
+        note={ROOM_NOTE}
+      >
+        <p class="source">
+          Pioneer’s Operating Instructions (<a href={`${MANUAL}#page=27`} rel="external">page 27</a> for MASTER LEVEL,
+          <a href={`${MANUAL}#page=31`} rel="external">page 31</a> for UTILITY and
+          <a href={`${MANUAL}#page=32`} rel="external">page 32</a> for MASTER ATT), and Howler’s
+          <a href={HOWLER} rel="external">MK1 manual</a> for the LEVEL light.
+        </p>
+      </Procedure>
+      <div class="wide practice"><RecordLevel client:visible /></div>
+    </div>
 
     <div class="job">
       <Procedure
@@ -278,7 +500,7 @@ const contents: ContentsEntry[] = [
         title="Generator power"
         kind="Once"
         level={2}
-        caution="Never cure hum by lifting a mains earth. The earth is what stops a faulty case giving someone a shock."
+        caution="Never cure hum by disconnecting an earth, with a ground-lift adapter or a taped or cut earth pin. The earth is what stops a faulty case giving someone a shock."
         steps={[
           {
             challenge: 'Generator',
@@ -294,7 +516,7 @@ const contents: ContentsEntry[] = [
           {
             challenge: 'Howler’s lead',
             response: 'through an isolation transformer',
-            note: 'It breaks a hum loop in the audio lead, and every earth stays connected.',
+            note: 'It breaks an earth loop in the audio lead, and every earth stays connected.',
           },
           {
             challenge: 'Amps',
@@ -339,13 +561,13 @@ const contents: ContentsEntry[] = [
           {
             challenge: 'Howler',
             response: 'recording too',
-            note: 'If the USB file is clean and the Howler’s isn’t, the damage happened after the split.',
+            note: 'If the USB file is clean and the Howler’s isn’t, the crunch came in on the way to the Howler.',
           },
           { challenge: 'MASTER REC', response: 'press to stop', note: 'Wait until it stops flashing.' },
           { challenge: 'USB STOP', response: `hold for over 2${nb}seconds` },
           { challenge: 'USB stick', response: 'out once its light is off' },
         ]}
-        note="A couple of owners have reported glitches, and it’s probably 16-bit, so treat it as the spare and try it at home first."
+        note="Pioneer doesn’t publish its bit depth, and some owners report glitches, so treat it as the spare and try it at home first."
       >
         <p class="source">
           Pioneer’s Operating Instructions (<a href={`${MANUAL}#page=12`} rel="external">page 12</a> for recording,
@@ -374,6 +596,12 @@ const contents: ContentsEntry[] = [
           >
             <p class="expected">
               <strong>Expected.</strong> {t.expected}
+              {t.see ? (
+                <>
+                  {' '}
+                  (<a href={`#${t.see.id}`}>{t.see.code}</a>).
+                </>
+              ) : null}
             </p>
             {t.id === 'test-leads' && (
               <p class="next">
@@ -432,38 +660,176 @@ const contents: ContentsEntry[] = [
     }
   }
 
-  .figure {
+  .practice {
     margin-block-start: 0.5rem;
   }
 
-  /* S3's title, set like a procedure card's strip: its labs sit under it rather than in a frame. */
-  .strip {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 1rem;
-    padding: 0.55rem 0.8rem;
-    background: var(--strip);
-    color: var(--on-strip);
-    font-size: var(--text-rule);
-    line-height: 1.3;
-    scroll-margin-top: 1rem;
+  /* ---- S2: the rig table ---------------------------------------------------------------------- */
+
+  /* The card has no steps: the table is its body. */
+  .wiring {
+    container-type: inline-size;
   }
 
-  .no {
-    margin-inline-end: 0.6em;
-  }
-
-  .kind {
-    flex: none;
-    font-family: var(--font-body);
-    font-weight: 400;
+  .rig-table {
+    display: none;
+    width: 100%;
+    border-collapse: collapse;
     font-size: var(--text-sm);
+    line-height: 1.4;
   }
 
-  /* The tests' heading: a bar like a part of the guide, over cards of their own. */
+  .rig-table th,
+  .rig-table td {
+    padding: 0.55rem 0.9rem 0.6rem 0;
+    border-bottom: 1px solid var(--rule);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .rig-table thead th {
+    padding-block: 0 0.45rem;
+    border-bottom: 2px solid var(--ink);
+    font-weight: 700;
+    color: var(--ink-2);
+  }
+
+  .rig-table tbody tr:last-child > * {
+    border-bottom: 0;
+  }
+
+  .rig-table .ref {
+    width: 2.25rem;
+    font-weight: 700;
+  }
+
+  .rig-table .unit {
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .sub {
+    display: block;
+    margin-top: 0.15rem;
+    font-weight: 400;
+    color: var(--ink-2);
+  }
+
+  .sub-inline {
+    margin-inline-start: 0.4em;
+    font-weight: 400;
+    color: var(--ink-2);
+  }
+
+  /* The setting is what to do, so it's in the action colour, as a checklist's response is. */
+  .set {
+    font-weight: 700;
+    color: var(--action);
+  }
+
+  .none {
+    color: var(--ink-3);
+  }
+
+  /* The tape's word as it's written on the tape: stencil capitals on gaffer tape. */
+  .tag {
+    display: inline-block;
+    padding: 0.2em 0.55em 0.15em;
+    background: var(--tape);
+    color: var(--tape-ink);
+    font-family: var(--font-stencil);
+    font-weight: 800;
+    font-size: 1.05rem;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    clip-path: polygon(0 8%, 6% 0, 100% 0, 96% 30%, 100% 62%, 95% 100%, 4% 100%, 0 70%, 3% 40%);
+  }
+
+  /* Sources: one to a line in the table; in the list they run on, one after another. */
+  .cites {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem 0.9rem;
+  }
+
+  .rig-table .cites {
+    flex-direction: column;
+    align-items: start;
+  }
+
+  .cites a {
+    white-space: nowrap;
+  }
+
+  .rig-list {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .rig-list > li {
+    display: grid;
+    gap: 0.5rem;
+    padding-block: 0.75rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .rig-list > li:first-child {
+    padding-top: 0.1rem;
+  }
+
+  .rig-list .unit {
+    display: grid;
+    grid-template-columns: 1.6rem minmax(0, 1fr);
+    font-weight: 700;
+  }
+
+  .rig-list dl {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0 0 0 1.6rem;
+    font-size: var(--text-sm);
+    line-height: 1.45;
+  }
+
+  .rig-list dl > div {
+    display: grid;
+    grid-template-columns: 5.5rem minmax(0, 1fr);
+    column-gap: 0.75rem;
+  }
+
+  .rig-list dt {
+    color: var(--ink-2);
+  }
+
+  .rig-list dd {
+    margin: 0;
+  }
+
+  /* Wide enough for six columns: the table, and the list goes. */
+  @container (min-width: 44rem) {
+    .rig-table {
+      display: table;
+    }
+
+    .rig-list {
+      display: none;
+    }
+  }
+
+  .note {
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+
+  /* ---- The tests ------------------------------------------------------------------------------ */
+
+  /* The tests' heading: a bar like a part of the guide, over cards of their own. Its edge lifts it
+     off the display by night. */
   .bar {
     padding: 0.5rem 0.8rem;
+    border-top: 2px solid var(--strip-edge);
     background: var(--strip);
     color: var(--on-strip);
     font-size: var(--text-h2);
@@ -483,24 +849,22 @@ const contents: ContentsEntry[] = [
     line-height: 1.5;
   }
 
-  #record-level,
-  #tests,
-  #print {
-    scroll-margin-top: 1rem;
-  }
-
   @media (forced-colors: active) {
-    .strip,
     .bar {
       forced-color-adjust: none;
+      border-top-color: CanvasText;
       background: CanvasText;
       color: Canvas;
+    }
+
+    .tag {
+      border: 1px solid CanvasText;
     }
   }
 
   @media print {
-    .strip,
-    .bar {
+    .bar,
+    .tag {
       print-color-adjust: exact;
       -webkit-print-color-adjust: exact;
     }

@@ -130,9 +130,10 @@
     stroke-linejoin: round;
   }
 
+  /* 2px, so each deck's line holds its own against the filled mix. */
   .deck {
     fill: none;
-    stroke-width: 1.25;
+    stroke-width: 2;
     stroke-linejoin: round;
   }
 
@@ -140,10 +141,11 @@
     stroke: var(--sig);
   }
 
-  /* Dashed as well as a different colour, so the two decks never differ by hue alone. */
+  /* Dashed as well as a different colour, so the two decks never differ by hue alone: the dash
+     is long enough to read at 2px, and its gaps long enough to see. */
   .deck2 {
     stroke: var(--sig-b);
-    stroke-dasharray: 3 2;
+    stroke-dasharray: 4 3;
   }
 
   /* What the ceiling cuts off. */

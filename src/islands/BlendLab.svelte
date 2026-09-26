@@ -2,22 +2,25 @@
   /**
    * W3 "Blends add up". Two decks, each trimmed to peak in the orange on its own channel meter.
    * Bring deck 2 in and the middle meters climb to the red, because kicks that land together add
-   * up to 6 dB. The side meters never move with a fader: they read before it. Fix the blend by
+   * up to 6 dB. The channel meters never move with a fader: they read before it. Fix the blend by
    * swapping the bass, easing a fader or trimming lower.
    *
    * The middle meters are the centre of the lab: the biggest thing on the panel, with the two
-   * faders either side and the verdict (MIX +12 dB, in the red) by them, so on a phone all three
-   * share one screen, with Listen straight after. Before deck 2 comes up the reader can guess
-   * where MASTER will peak by tapping it, and meets the real peak beside their mark. TRIM and LOW
-   * get their own rows under the meters, full width on a phone. The pads come in two sets: ways
-   * into the red, and ways out, which wait until the reader has hit the red (each one solves the
-   * challenge in one press). A pad tapped on a phone scrolls the meters back into view.
+   * faders either side and the verdict (Mix +12 dB, in the red) by them. Each deck's TRIM and LOW
+   * sit straight under its fader, deck 1 on the left and deck 2 on the right, so on a phone the
+   * meters and every control that moves them share one screen. Before deck 2 comes up the reader
+   * can guess where MASTER will peak by tapping it; the prompt sits above the meters, and the
+   * guess meets the real peak there. The pads come in two sets: blends that hit the red, and
+   * fixes, which wait until the reader has hit the red (each one solves the challenge in one
+   * press). A pad tapped on a phone scrolls the meters back into view. On a touch screen the
+   * sliders move only by their caps, so scrolling past the lab never changes it.
    *
    * Server-rendered complete: meters lit, verdict and sentence written before hydration.
    *
    * Nothing above a control changes height while it's in use, so a slider never moves under the
-   * reader's finger: the status lamp's legend keeps one width, the verdict keeps two lines, and
-   * the words that change (the challenge feedback, the sentence) sit below the controls.
+   * reader's finger: the status lamp's legend keeps one width, the guess line above the meters
+   * keeps its two lines whatever it says, the verdict keeps two lines, and the words that change
+   * (the challenge feedback, the sentence) sit below the controls.
    *
    * One surface: the panel. Its parts are set apart by printed lines and legends, and the only
    * boxes inside it are the meters' well and the waveform's screen.
@@ -144,10 +147,10 @@
 
   // The guess ------------------------------------------------------------------------------------
   // Before deck 2 first moves, the reader can tap the MASTER LED where they think the blend will
-  // peak. The mark stays by the meter; once deck 2 is all the way up, the line under the meters
+  // peak. The mark stays by the meter; once deck 2 is all the way up, the line above the meters
   // puts the guess beside the real peak until a fader moves or a pad is pressed. Only from the
-  // lab's usual start. The line only comes and goes while the reader is on a fader, which sits
-  // above it, so it never moves TRIM or LOW under a finger.
+  // lab's usual start. The line keeps its two lines' height from the start, even once it's empty,
+  // so its words coming and going never move the faders, meters or knobs below it.
 
   /** The guessed LED's dB mark. */
   let guess = $state<number | null>(null);
@@ -188,6 +191,8 @@
   const guessLine = $derived(
     reveal ?? (guess !== null ? guessNote(guess, guessOpen) : guessOpen ? GUESS_PROMPT : null),
   );
+  /** The lab starts with the guess open, so the line above the meters keeps its room throughout. */
+  const guessRow = untrack(() => guessOpen);
 
   // Challenge and hint --------------------------------------------------------------------------
 
@@ -196,7 +201,7 @@
   let tried = $state(untrack(() => status === 'red' || status === 'clip'));
   let hint = $state(false);
   const showHint = $derived(hint && !solved);
-  /** The ways out wait for the first red, unless the reader asks for them. */
+  /** The fixes wait for the first red, unless the reader asks for them. */
   let asked = $state(false);
   const waysShown = $derived(tried || asked);
 
@@ -328,6 +333,13 @@
 
     <div class="main">
       <div class="mixer">
+        <!-- Above the meters, where the reader looks first. The radios' legend asks the question
+             and the live region says the reveal, so this stays out of the accessibility tree. -->
+        {#if guessRow}
+          <p class="guess-line" data-guessed={guess !== null} data-open={guessOpen} aria-hidden="true">
+            {#if guessLine}<span class="mark-key"></span>{guessLine}{/if}
+          </p>
+        {/if}
         <ChannelFader n={1} bind:value={settings.deck1.fader} {uid} />
         <div class="centre" bind:this={metersEl}>
           <MeterBridge
@@ -345,12 +357,12 @@
           <Readout label={READOUT_LABEL} {...readout} />
         </div>
         <ChannelFader n={2} bind:value={settings.deck2.fader} {uid} />
-        <!-- The radios' legend asks the question and the live region says the reveal. -->
-        {#if guessLine}
-          <p class="guess-line" data-guessed={guess !== null} data-open={guessOpen} aria-hidden="true">
-            <span class="mark-key"></span>{guessLine}
-          </p>
-        {/if}
+      </div>
+
+      <!-- Each deck's TRIM and LOW under its fader, so the meters stay in view while they turn. -->
+      <div class="tray">
+        <Knobs n={1} bind:trim={settings.deck1.trim} bind:low={settings.deck1.low} {uid} hintLow={showHint} />
+        <Knobs n={2} bind:trim={settings.deck2.trim} bind:low={settings.deck2.low} {uid} />
       </div>
 
       <div class="listen">
@@ -363,15 +375,10 @@
       </div>
 
       <p class="note">{TEACHING_NOTE}</p>
-
-      <div class="tray">
-        <Knobs n={1} bind:trim={settings.deck1.trim} bind:low={settings.deck1.low} {uid} hintLow={showHint} />
-        <Knobs n={2} bind:trim={settings.deck2.trim} bind:low={settings.deck2.low} {uid} />
-      </div>
     </div>
 
     <div class="side">
-      <!-- Under TRIM and LOW on a phone; at the top of the right-hand column on a wide panel. -->
+      <!-- Under the teaching note on a phone; at the top of the right-hand column on a wide panel. -->
       <div class="kicks-row"><KicksSwitch bind:aligned={settings.aligned} name="{uid}-kicks" /></div>
 
       <!-- How the challenge is going. Read out through the live region. -->
@@ -451,9 +458,9 @@
   }
 
   /*
-   * Phones first: one column. The meters and faders come straight after the challenge, then
-   * Listen, then TRIM and LOW, so nothing above a control changes height. What the mixer did
-   * follows: the feedback, the pads, the sentence and the waveform.
+   * Phones first: one column. The meters and faders come straight after the challenge, with each
+   * deck's TRIM and LOW under its fader, then Listen, so nothing above a control changes height.
+   * What the mixer did follows: the feedback, the pads, the sentence and the waveform.
    */
   .layout {
     display: grid;
@@ -611,14 +618,16 @@
     }
   }
 
-  /* Under the meters and both faders, so it never pushes the meters about. */
+  /* Above the meters and both faders, two lines tall whatever it says (or when it's empty), so
+     its words changing never moves anything below it. */
   .guess-line {
     grid-column: 1 / -1;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
     gap: 0.5rem;
-    margin: 0.85rem 0 0;
+    min-height: 2.7em;
+    margin: 0 0 0.75rem;
     font-size: var(--text-sm);
     font-weight: 700;
     line-height: 1.35;
@@ -636,6 +645,7 @@
   .mark-key {
     display: none;
     flex: none;
+    align-self: center;
     width: 1.3rem;
     height: 0.8rem;
     border: 2px dashed var(--hw-bright);
@@ -677,19 +687,17 @@
     color: var(--hw-label);
   }
 
-  /* TRIM and LOW: full-width rows on a phone, one column per deck once there's room ------------ */
+  /* TRIM and LOW: one column per deck, under that deck's fader, at every width -------------- */
 
   .tray {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1.25rem 1.5rem;
-    padding-top: 1.1rem;
-    border-top: 1px solid var(--hw-edge);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem 1rem;
   }
 
   @container blend (min-width: 28rem) {
     .tray {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 1.5rem;
     }
   }
 

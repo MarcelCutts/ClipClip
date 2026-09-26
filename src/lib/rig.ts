@@ -831,54 +831,73 @@ function finish(name: LayoutName, draft: Draft, variant: Variant): Layout {
 }
 
 /**
+ * Part names are set at 15 px or more at every width (DESIGN.md: anything someone acts on), with
+ * the part's drawing above the name. Each layout is drawn so that its narrowest screen still fits
+ * them: the widest words ("DriveRack", "MASTER 1", "monitors") and two lines of name, or a name
+ * and its second line, under the drawing.
+ *
+ * The tall drawing's narrowest stage is 258 px, on a 320 px phone, so one unit is 0.86 px there and
+ * 15 px of type is about 17.5 units. The wide drawing takes over from `WIDE_FROM_PX` of panel,
+ * where one unit is at least 1 px (SignalPath.svelte's container query uses the same number).
+ */
+export const WIDE_FROM_PX = 900;
+
+/** Heights of a tall drawing's parts: a name on one line, or two lines (a long name, or a name and its second line). */
+const TALL_ONE = 54;
+const TALL_TWO = 74;
+
+/**
  * How far past its edge each part catches taps in the tall drawing, in drawing units. On a 320 px
- * phone the parts draw at about 38 px, and this brings every hit area to 44 px or more. The tall
- * layout keeps neighbours at least twice this far apart, so no two hit areas overlap.
+ * phone the narrowest parts (the channel meters) draw at about 41 px wide, and this brings every
+ * hit area to 44 px or more. The tall layout keeps neighbours at least twice this far apart, so
+ * no two hit areas overlap.
  */
 export const TALL_HIT_PAD = { x: 2, y: 4 } as const;
 
 /** Phones: both channels side by side, the signal running down the screen. */
 function tallLayout(variant: Variant): Layout {
-  const L = { x: 8, w: 88 };
-  const M = { x: 106, w: 88 };
-  const R = { x: 204, w: 88 };
-  const at = (col: { x: number; w: number }, y: number, h = 44): Rect => ({ x: col.x, y, w: col.w, h });
+  const L = { x: 4, w: 92 };
+  const M = { x: 104, w: 92 };
+  const R = { x: 204, w: 92 };
+  const at = (col: { x: number; w: number }, y: number, h = TALL_ONE): Rect => ({ x: col.x, y, w: col.w, h });
   // Under the XDJ the PA branch runs down the left: DriveRack, the limiter (full view only), amps.
-  const ampsY = variant === 'full' ? 730 : 664;
+  const ampsY = variant === 'full' ? 814 : 744;
   // The three places the music ends up share the bottom row.
-  const yEnd = ampsY + 72;
+  const yEnd = ampsY + TALL_TWO + 16;
 
   const r: Record<NodeId, Rect> = {
     deck1: at(L, 30),
     deck2: at(R, 30),
-    trim1: at(L, 90),
-    trim2: at(R, 90),
-    eq1: at(L, 150, 82),
-    eq2: at(R, 150, 82),
+    trim1: at(L, 100),
+    trim2: at(R, 100),
+    // HI, MID and LOW, one knob a line.
+    eq1: at(L, 170, 76),
+    eq2: at(R, 170, 76),
     // As wide as the gap between the channels allows, so they stay easy to tap.
-    meter1: { x: 100, y: 218, w: 48, h: 58 },
-    meter2: { x: 152, y: 218, w: 48, h: 58 },
-    fader1: at(L, 264),
-    fader2: at(R, 264),
-    mix: { x: 102, y: 342, w: 96, h: 46 },
-    masterLevel: at(M, 420),
-    booth: at(R, 420),
-    masterMeter: { x: 28, y: 408, w: 48, h: 60 },
-    master1: at(L, 526),
-    master2: at(M, 526),
-    boothOut: at(R, 526),
-    driverack: at(L, 598),
-    limiter: at(L, 664),
-    amps: at(L, ampsY),
-    pa: at(L, yEnd, 48),
-    howler: at(M, yEnd, 48),
-    monitor: at(R, yEnd, 48),
+    meter1: { x: 100, y: 225, w: 48, h: 62 },
+    meter2: { x: 152, y: 225, w: 48, h: 62 },
+    fader1: at(L, 266),
+    fader2: at(R, 266),
+    mix: at(M, 352, TALL_TWO),
+    masterLevel: at(M, 458, TALL_TWO),
+    booth: at(R, 458, TALL_TWO),
+    // Wide enough for its name, over MASTER 1.
+    masterMeter: { x: L.x, y: 458, w: L.w, h: 62 },
+    master1: at(L, 564, TALL_TWO),
+    master2: at(M, 564, TALL_TWO),
+    boothOut: at(R, 564, TALL_TWO),
+    driverack: at(L, 654, TALL_TWO),
+    limiter: at(L, 744),
+    amps: at(L, ampsY, TALL_TWO),
+    pa: at(L, yEnd, TALL_TWO),
+    howler: at(M, yEnd, TALL_TWO),
+    monitor: at(R, yEnd, TALL_TWO),
   };
 
-  const tapY = 247;
-  const mergeY = 324;
-  const splitY = 404;
-  const busY = 488;
+  const tapY = 256;
+  const mergeY = 336;
+  const splitY = 442;
+  const busY = 548;
   const routes: Partial<Record<string, Point[]>> = {
     'deck1>trim1': down(r.deck1, r.trim1),
     'trim1>eq1': down(r.trim1, r.eq1),
@@ -920,7 +939,7 @@ function tallLayout(variant: Variant): Layout {
     'tall',
     {
       width: 300,
-      height: yEnd + 48 + 6,
+      height: yEnd + TALL_TWO + 6,
       chassis: { x: 0.5, y: 0.5, w: 299, h: cy(r.master1) - 0.5 },
       rects: r,
       routes,
@@ -950,48 +969,57 @@ function tallLayout(variant: Variant): Layout {
   );
 }
 
-/** Wider screens: the two channels as rows, the signal running left to right. */
+/**
+ * Wider screens: the two channels as rows, the signal running left to right. The middle meters sit
+ * over MASTER LEVEL, tapping the wire that rises from it to MASTER 1, so the drawing needs no
+ * column of its own for them and fits the widest names at 15 px from `WIDE_FROM_PX` up.
+ */
 function wideLayout(variant: Variant): Layout {
-  const A = 52;
-  const B = 150;
-  const C = 248;
-  const at = (x: number, w: number, row: number, h = 56): Rect => ({ x, y: row - h / 2, w, h });
+  // Row A starts under the XDJ-RX2's printed name, in the chassis's top corner.
+  const A = 56;
+  const B = 156;
+  const C = 256;
+  const H = 66;
+  const at = (x: number, w: number, row: number, h = H): Rect => ({ x, y: row - h / 2, w, h });
   // The PA branch runs along the top row: DriveRack, the limiter (full view only), amps.
-  const ampsX = variant === 'full' ? 870 : 798;
+  const ampsX = variant === 'full' ? 736 : 662;
   // The three places the music ends up share the last column.
-  const xEnd = ampsX + 72;
+  const xEnd = ampsX + 66 + 14;
 
   const r: Record<NodeId, Rect> = {
-    deck1: at(8, 64, A),
-    deck2: at(8, 64, C),
-    trim1: at(86, 64, A),
-    trim2: at(86, 64, C),
-    eq1: at(164, 92, A, 64),
-    eq2: at(164, 92, C, 64),
-    meter1: { x: 246, y: 90, w: 48, h: 54 },
-    meter2: { x: 246, y: 156, w: 48, h: 54 },
-    fader1: at(284, 64, A),
-    fader2: at(284, 64, C),
-    mix: at(376, 72, B),
-    masterLevel: at(474, 76, B),
-    booth: at(474, 76, C),
-    masterMeter: { x: 556, y: 184, w: 48, h: 54 },
-    master1: at(630, 70, A),
-    master2: at(630, 70, B),
-    boothOut: at(630, 70, C),
-    driverack: at(714, 70, A),
-    limiter: at(798, 58, A),
-    amps: at(ampsX, 58, A),
-    pa: at(xEnd, 76, A),
-    howler: at(xEnd, 76, B),
-    monitor: at(xEnd, 76, C),
+    deck1: at(6, 56, A),
+    deck2: at(6, 56, C),
+    trim1: at(76, 50, A),
+    trim2: at(76, 50, C),
+    // HI, MID and LOW, one knob a line.
+    eq1: at(140, 62, A),
+    eq2: at(140, 62, C),
+    // Between the rows, under and over the wires they tap.
+    meter1: { x: 187, y: A + 40, w: 48, h: 56 },
+    meter2: { x: 187, y: C - 96, w: 48, h: 56 },
+    fader1: at(220, 50, A),
+    fader2: at(220, 50, C),
+    mix: at(292, 68, B),
+    masterLevel: at(382, 72, B),
+    booth: at(382, 72, C),
+    masterMeter: at(382, 72, A),
+    master1: at(480, 74, A),
+    master2: at(480, 74, B),
+    boothOut: at(480, 74, C),
+    driverack: at(568, 80, A),
+    limiter: at(662, 60, A),
+    amps: at(ampsX, 66, A),
+    pa: at(xEnd, 74, A),
+    howler: at(xEnd, 74, B),
+    monitor: at(xEnd, 74, C),
   };
 
-  const tapX = 270;
-  const mergeX = 362;
-  const splitX = 461;
-  const meterX = cx(r.masterMeter);
-  const riserX = 616;
+  const tapX = 211;
+  const mergeX = 280;
+  const splitX = 370;
+  const riserX = 466;
+  // Where the middle meters tap the riser to MASTER 1: level with the meters, clear of the corner.
+  const meterTapY = A + 20;
   const routes: Partial<Record<string, Point[]>> = {
     'deck1>trim1': across(r.deck1, r.trim1),
     'trim1>eq1': across(r.trim1, r.eq1),
@@ -1012,9 +1040,8 @@ function wideLayout(variant: Variant): Layout {
     'mix>masterLevel': across(r.mix, r.masterLevel),
     'mix>booth': across(r.mix, r.booth, splitX),
     'masterLevel>masterMeter': [
-      [right(r.masterLevel), B],
-      [meterX, B],
-      [meterX, r.masterMeter.y],
+      [riserX, meterTapY],
+      [right(r.masterMeter), meterTapY],
     ],
     'masterLevel>master1': across(r.masterLevel, r.master1, riserX),
     'masterLevel>master2': across(r.masterLevel, r.master2),
@@ -1031,9 +1058,9 @@ function wideLayout(variant: Variant): Layout {
   return finish(
     'wide',
     {
-      width: xEnd + 76 + 6,
-      height: 300,
-      chassis: { x: 0.5, y: 0.5, w: cx(r.master1) - 0.5, h: 299 },
+      width: xEnd + 74 + 6,
+      height: bottom(r.deck2) + 8,
+      chassis: { x: 0.5, y: 0.5, w: cx(r.master1) - 0.5, h: bottom(r.deck2) + 7 },
       rects: r,
       routes,
       dots: [
@@ -1041,8 +1068,8 @@ function wideLayout(variant: Variant): Layout {
         { x: tapX, y: C, edges: ['eq2>fader2', 'eq2>meter2'] },
         { x: mergeX, y: B, edges: ['fader1>mix', 'fader2>mix'] },
         { x: splitX, y: B, edges: ['mix>masterLevel', 'mix>booth'] },
-        { x: meterX, y: B, edges: ['masterLevel>masterMeter', 'masterLevel>master1', 'masterLevel>master2'] },
         { x: riserX, y: B, edges: ['masterLevel>master1', 'masterLevel>master2'] },
+        { x: riserX, y: meterTapY, edges: ['masterLevel>master1', 'masterLevel>masterMeter'] },
       ],
       labels: [
         {

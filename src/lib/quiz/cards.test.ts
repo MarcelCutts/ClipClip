@@ -160,7 +160,7 @@ describe('the monitor card agrees with the knob tags', () => {
     expect(SHORT_TAGS).toContain(REC_TAG);
     expect(REC_TAG.where).toMatch(/MASTER LEVEL/);
     expect(MASTER_TAG.name).toBe('SPEAKERS + RECORDING');
-    expect(MASTER_TAG.lines.at(-1)).toBe('Want it louder? Ask the crew.');
+    expect(MASTER_TAG.lines.at(-1)).toMatch(/ask the crew\.$/i);
   });
 });
 

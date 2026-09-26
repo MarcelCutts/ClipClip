@@ -31,9 +31,10 @@ describe('booth card', () => {
     expect([...at].sort((a, b) => a - b)).toEqual(at);
   });
 
-  it('tells DJs the one knob that’s theirs, as its tag does', () => {
+  it('tells DJs the one knob that’s theirs, as its tag does, and only once', () => {
     expect(MONITOR_TAG.owner).toBe('yours');
     expect(text).toMatch(/If the booth monitors are too quiet, turn up BOOTH MONITOR\. It’s yours\./);
+    expect(text.match(/BOOTH MONITOR/g)).toHaveLength(1);
     // The Howler records from MASTER 2, so no knob on the card is "your recording level".
     expect(text).not.toMatch(/knob marked REC|recording level|BOOTH = /i);
   });
@@ -45,13 +46,19 @@ describe('booth card', () => {
     expect(text).not.toMatch(/\?\s+\p{Lu}/u);
   });
 
-  it('marks the target on the meter drawing by position, not just colour', () => {
-    expect(text).toMatch(/Loudest bits/);
+  it('marks the target on the meter drawing by position, not just colour, in the guide’s words', () => {
+    expect(text).toMatch(/Aim/);
     expect(text).toMatch(/Blend room/);
-    expect(text).toMatch(/Too hot/);
-    expect(meterLabel).toContain('Loudest bits: the first two orange lights, 0 and +3.');
-    expect(meterLabel).toContain('Blend room: +6 and +9');
-    expect(meterLabel).toContain('Too hot: the red light at +12.');
+    expect(text).toMatch(/May distort/);
+    expect(text).not.toMatch(/Too hot|Loudest bits/);
+    expect(meterLabel).toContain('Aim for the first two orange lights, 0 and +3.');
+    expect(meterLabel).toContain('+6 and +9 are room for a blend');
+    expect(meterLabel).toContain('The red light at +12 may distort.');
+  });
+
+  it('prints the scale as the panel does, with a plus sign above 0', () => {
+    for (const mark of ['+12', '+9', '+6', '+3', '0', '−3', '−24']) expect(text).toContain(` ${mark} `);
+    expect(html).toMatch(/class="tick zero"/);
   });
 
   it('sends the QR code to the guide, where playing a set starts', () => {

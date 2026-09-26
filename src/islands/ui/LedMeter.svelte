@@ -3,10 +3,14 @@
   /**
    * An XDJ-RX2 level indicator: twelve LEDs, green to −3 dB, orange 0 to +9, red at +12.
    * `level` is the peak on the meter's own dB scale. The master variant has two columns and a
-   * CLIP light. Colour is never the only cue: the scale is printed beside the LEDs and the
-   * meter exposes its reading to screen readers.
+   * CLIP light. Colour is never the only cue: the scale is printed beside the LEDs as on the
+   * panel (−24 … 0, +3 … +12, with 0 in bold), a printed break sets each colour zone apart, and
+   * the meter exposes its reading to screen readers.
+   *
+   * The break is `--zone-break` (3px by default) added under the red light and under the 0 light.
+   * A parent that lays something over the LEDs row by row has to leave room for it too.
    */
-  import { describeLevel, litCount, METER_SEGMENTS } from '../../lib/xdj';
+  import { describeLevel, litCount, METER_SEGMENTS, scaleLabel } from '../../lib/xdj';
 
   interface Props {
     /** Name printed above the meter, like CH1 or MASTER. */
@@ -52,13 +56,15 @@
     <ol class="leds">
       {#each top as seg, i (seg.db)}
         {@const index = METER_SEGMENTS.length - 1 - i}
-        <li class="row">
+        {@const below = top[i + 1]}
+        <!-- A break under the last light of a colour: red over orange, orange over green. -->
+        <li class="row" class:zone-end={below !== undefined && below.zone !== seg.zone} class:zero={seg.db === 0}>
           <span class="led" data-zone={seg.zone} data-on={index < lit}></span>
           {#if stereo}
             <span class="led" data-zone={seg.zone} data-on={index < litRight}></span>
           {/if}
           {#if scale !== 'none'}
-            <span class="tick">{seg.db > 0 ? seg.db : String(seg.db).replace('-', '−')}</span>
+            <span class="tick">{scaleLabel(seg.db)}</span>
           {/if}
         </li>
       {/each}
@@ -77,13 +83,15 @@
     background: var(--hw-sunk);
   }
 
+  /* The meter's name and the CLIP legend name what they sit on, so they're big enough to read as
+     names (14px), like the fader names. */
   .name {
-    font-size: 0.72rem;
+    font-size: 0.875rem;
   }
 
   /* The CLIP legend stays readable when unlit, like the red print on the real panel. */
   .clip {
-    font-size: 0.66rem;
+    font-size: 0.875rem;
     padding: 0.12rem 0.3rem;
     color: color-mix(in oklab, var(--led-r) 45%, var(--hw-label));
     background: var(--led-r-off);
@@ -135,6 +143,11 @@
     flex-direction: row-reverse;
   }
 
+  /* The printed break between colour zones, so the zones read apart without their colours. */
+  .row.zone-end {
+    margin-bottom: var(--zone-break, 3px);
+  }
+
   /* Square-cornered, like the XDJ-RX2's own segments. */
   .led {
     width: var(--led-w, 1.25rem);
@@ -177,14 +190,20 @@
 
   /* The dB scale is printed on the panel, so it's lettered like the other silk-screen legends. */
   .tick {
-    min-width: 1.6em;
+    min-width: 1.8em;
     font-family: var(--font-label);
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     line-height: 1;
     font-weight: 650;
     font-variant-numeric: tabular-nums;
     color: var(--hw-label-2);
     text-align: left;
+  }
+
+  /* 0 is the mark everything is set against, so it's printed bold. */
+  .zero .tick {
+    font-weight: 800;
+    color: var(--hw-label);
   }
 
   [data-scale='left'] .tick {

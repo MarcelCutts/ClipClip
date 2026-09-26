@@ -1,11 +1,14 @@
 <script lang="ts">
   /**
-   * A radio group drawn as rubber pads (ui/RadioPad): native radios underneath, so arrow keys,
-   * forms and screen readers work as usual; the chosen pad lights up. Once `locked`, the group
-   * shows the answer in words and shapes, never colour alone: a tick on the right choice, a cross
-   * on a wrong pick.
+   * The answers on a quiz card, printed as ruled rows the way a card lists its lines: a ring to
+   * mark, then the answer. Native radios underneath (the ring is the radio), so arrow keys, taps
+   * and screen readers work as usual, and the whole row takes the tap. The chosen answer prints in
+   * the action colour with its ring filled, as a checklist prints its responses.
+   *
+   * Once `locked`, the rows say right and wrong in words and shapes, never colour alone: a tick
+   * and "Right answer" on the right one, a cross and "Your answer" on a wrong pick. Answers nobody
+   * picked step back, like a ticked line on a checklist.
    */
-  import RadioPad from '../ui/RadioPad.svelte';
 
   interface Props {
     /** Radio group name, unique on the page. */
@@ -17,7 +20,7 @@
     locked?: boolean;
     /** Id of the right choice, marked once locked. Leave out for questions with no right answer. */
     correct?: string | undefined;
-    /** Picks that are neither right nor wrong (like "Not sure"): no mark, just the lit LED. */
+    /** Picks that are neither right nor wrong (like "Not sure"): no mark, just the filled ring. */
     neutral?: readonly string[];
     /** What to call the reader's wrong pick and the right choice once locked. */
     yoursText?: string;
@@ -45,59 +48,118 @@
   }
 </script>
 
-<div class="choices">
+<div class="choices" data-locked={locked}>
   {#each choices as choice (choice.id)}
     {@const mark = markFor(choice.id)}
-    <RadioPad
-      {name}
-      value={choice.id}
-      label={choice.label}
-      checked={value === choice.id}
-      disabled={locked}
-      onchange={() => (value = choice.id)}
-      data-mark={mark}
-      data-dim={locked && mark === null && choice.id !== value}
-    >
-      {#snippet after()}
-        {#if mark}
-          <span class="mark">
-            {#if mark === 'right'}
-              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.6l3.1 3.1L13 4.8" /></svg>
-              <span>{rightText}</span>
-            {:else}
-              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" /></svg>
-              <span>{yoursText}</span>
-            {/if}
-          </span>
-        {/if}
-      {/snippet}
-    </RadioPad>
+    <label class="row" data-mark={mark} data-dim={locked && mark === null && choice.id !== value}>
+      <input
+        type="radio"
+        {name}
+        value={choice.id}
+        checked={value === choice.id}
+        disabled={locked}
+        onchange={() => (value = choice.id)}
+      />
+      <span class="text">{choice.label}</span>
+      {#if mark}
+        <span class="mark">
+          {#if mark === 'right'}
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.6l3.1 3.1L13 4.8" /></svg>
+            <span>{rightText}</span>
+          {:else}
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" /></svg>
+            <span>{yoursText}</span>
+          {/if}
+        </span>
+      {/if}
+    </label>
   {/each}
 </div>
 
 <style>
+  /* Rows ruled like a checklist card's lines: a hairline above the first and under each. */
   .choices {
     display: grid;
-    gap: 0.5rem;
+    border-top: 1px solid var(--rule);
   }
 
-  /* Answers get a little more room than a preset pad: a taller target, and space for two lines. */
-  .choices :global(.radio-pad) {
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 0.75rem;
+    row-gap: 0.15rem;
     min-height: 3rem;
-    line-height: 1.3;
+    padding: 0.55rem 0.5rem;
+    border-bottom: 1px solid var(--rule);
+    line-height: 1.35;
+    cursor: pointer;
   }
 
-  /* Locked: the choices nobody picked sink into the panel. */
-  .choices :global(.radio-pad[data-dim='true']),
-  .choices :global(.radio-pad[data-dim='true']:hover) {
-    background: var(--hw-2);
-    color: var(--hw-label-2);
+  .choices[data-locked='false'] .row:hover {
+    background: var(--paper-2);
   }
 
-  .choices :global(.radio-pad[data-mark='right']) {
-    border-color: var(--hw-label);
+  /* The ring is the radio itself, drawn in ink. Chosen, it fills in the action colour. */
+  input {
+    appearance: none;
+    flex: none;
+    display: grid;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: 0;
+    border: 2px solid var(--ink);
+    border-radius: 50%;
+    background: var(--paper);
+    cursor: inherit;
   }
 
+  input:checked {
+    border-color: var(--action);
+    background: radial-gradient(circle, var(--action) 0 42%, var(--paper) 47%);
+  }
+
+  /* The whole row shows the focus, since the whole row is the target. */
+  input:focus-visible {
+    outline: none;
+  }
+
+  .row:has(input:focus-visible) {
+    outline: 3px solid var(--focus);
+    outline-offset: -3px;
+  }
+
+  input:disabled {
+    cursor: default;
+  }
+
+  .choices[data-locked='true'] .row {
+    cursor: default;
+  }
+
+  .text {
+    flex: 1 1 12rem;
+    min-width: 0;
+    font-weight: 700;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+
+  /* Locked: the answers nobody picked step back, unless they're the right one. */
+  .row[data-dim='true'] .text {
+    color: var(--ink-3);
+  }
+
+  /* The reader's pick: what they did, so it takes the action colour, like a checklist's response. */
+  .row:has(input:checked) .text {
+    color: var(--action);
+  }
+
+  .row[data-dim='true'] input {
+    border-color: var(--rule);
+  }
+
+  /* Right or wrong, in words and a shape, at the row's end; under the answer when it's long. */
   .mark {
     display: inline-flex;
     align-items: center;
@@ -105,23 +167,35 @@
     margin-inline-start: auto;
     font-size: var(--text-xs);
     font-weight: 700;
-    color: var(--hw-label);
+    color: var(--ink);
     white-space: nowrap;
   }
 
-  /* On a lit pad the mark prints dark, like the pad's own words. */
-  .choices :global(.radio-pad:has(input:checked) .mark) {
-    color: inherit;
-  }
-
-  /* Both marks keep full-strength print: the tick or cross and the words tell them apart. */
   .mark svg {
-    width: 1rem;
-    height: 1rem;
+    width: 1.1rem;
+    height: 1.1rem;
     fill: none;
     stroke: currentColor;
-    stroke-width: 2.2;
+    stroke-width: 2.4;
     stroke-linecap: round;
     stroke-linejoin: round;
+  }
+
+  /* Gradients drop out in forced colours, so the filled ring takes the system highlight. */
+  @media (forced-colors: active) {
+    input {
+      forced-color-adjust: none;
+      border-color: CanvasText;
+      background: Canvas;
+    }
+
+    input:checked {
+      border-color: Highlight;
+      background: radial-gradient(circle, Highlight 0 42%, Canvas 47%);
+    }
+
+    .row:has(input:focus-visible) {
+      outline-color: Highlight;
+    }
   }
 </style>

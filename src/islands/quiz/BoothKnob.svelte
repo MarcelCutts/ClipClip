@@ -66,8 +66,9 @@
     width: 11rem;
   }
 
+  /* The knob's printed name: it names the control the question is about, so 14px at least. */
   .name {
-    font-size: 0.72rem;
+    font-size: 0.875rem;
   }
 
   svg {

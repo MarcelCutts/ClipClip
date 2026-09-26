@@ -32,6 +32,7 @@ import {
   VIEW_NAME,
   visibleNodes,
   WHOSE,
+  WIDE_FROM_PX,
 } from './rig';
 import { DJ_RULES } from './rules';
 
@@ -516,9 +517,9 @@ describe('drawing', () => {
     return false;
   };
   // The narrowest each drawing is shown: the tall one on a 320px phone (a 258px stage), the wide one
-  // in a 960px panel (SignalPath.svelte's breakpoint). SignalPath.svelte pads the tall drawing's hit
-  // areas by TALL_HIT_PAD.
-  const NARROWEST_PX: Record<LayoutName, number> = { tall: 258, wide: 960 };
+  // from WIDE_FROM_PX of panel (SignalPath.svelte's breakpoint). SignalPath.svelte pads the tall
+  // drawing's hit areas by TALL_HIT_PAD.
+  const NARROWEST_PX: Record<LayoutName, number> = { tall: 258, wide: WIDE_FROM_PX };
   const hitArea = (name: LayoutName, r: Rect): Rect => {
     const pad = name === 'tall' ? TALL_HIT_PAD : { x: 0, y: 0 };
     return { x: r.x - pad.x, y: r.y - pad.y, w: r.w + 2 * pad.x, h: r.h + 2 * pad.y };

@@ -18,6 +18,9 @@
 
   let { text, name, preview = true }: Props = $props();
 
+  /** When the copy fails: what happened, then how to copy it by hand on a computer or a phone. */
+  const BY_HAND = 'Couldn’t copy. Select the message and press Ctrl+C (⌘C on a Mac), or long-press it.';
+
   const uid = $props.id();
   const blocks = $derived(parseMessage(text));
 
@@ -40,7 +43,7 @@
       }, 4000);
     } catch {
       manual = true;
-      status = 'Press Ctrl+C / long-press to copy';
+      status = BY_HAND;
       await tick();
       box?.focus();
       box?.setSelectionRange(0, text.length);

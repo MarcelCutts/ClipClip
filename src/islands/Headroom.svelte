@@ -95,11 +95,13 @@
   const dbfs = (v: number, decimals = 0) => formatDb(v, { decimals, unit: 'dBFS' });
   const dbtp = formatDb(NORMALISE_TO_DBTP, { unit: 'dBTP' });
 
-  // The slider's scale: its two ends, the target for a loud track, and the top of the file.
-  const ticks = [RECORD_RANGE.min, TARGET_BAND.ideal, 0, RECORD_RANGE.max].map((at) => ({
-    at,
-    label: formatDb(at, { unit: '' }),
-  }));
+  // The slider's scale: its bottom end, the target for a loud track and the top of the file, in
+  // dBFS. Past the top there is no dBFS value (a file can't hold +6 dBFS), so the red stretch is
+  // named for what it is, like the readout's "6 dB over".
+  const ticks = [
+    ...[RECORD_RANGE.min, TARGET_BAND.ideal, 0].map((at) => ({ at, label: formatDb(at, { unit: '' }) })),
+    { at: RECORD_RANGE.max / 2, label: 'Over' },
+  ];
 
   const room = $derived(roomToNoise(target.levels));
   const rows = $derived([
@@ -128,7 +130,7 @@
     <div class="controls">
       <Fader
         id="{uid}-peak"
-        label="How hot we recorded"
+        label="Recording peak"
         plain
         bind:value={peak}
         min={RECORD_RANGE.min}
@@ -138,7 +140,7 @@
         speak={speakPeak}
         hint="dBFS counts down from the top of the file. 0 is the top, and everything else is minus."
         zones={[
-          { from: TARGET_BAND.bottom, to: TARGET_BAND.ideal, tone: 'sig' },
+          { from: TARGET_BAND.bottom, to: TARGET_BAND.ideal, tone: 'neutral' },
           { from: 0, to: RECORD_RANGE.max, tone: 'dmg' },
         ]}
         {ticks}
@@ -184,7 +186,7 @@
         <li>
           Pioneer quotes {XDJ_SN_DB}&nbsp;dB signal-to-noise at “rated output”, A-weighted. We read that as its maximum. On
           the master outputs the standard level sits {XDJ_STANDARD_BELOW_RATED_DB}&nbsp;dB under that, so the hiss rides
-          about {XDJ_HISS_BELOW_MUSIC_DB}&nbsp;dB under the music. Trimming the recording with MASTER ATT may bring it
+          about {XDJ_HISS_BELOW_MUSIC_DB}&nbsp;dB under the music. Turning the recording down with MASTER ATT may bring it
           closer, and it stays far below anything you’d hear.
         </li>
         <li>Howler doesn’t publish its noise floor. The shaded range is our guess, deliberately wide.</li>

@@ -7,7 +7,7 @@ const NBSP = ' ';
 describe('copy', () => {
   it('writes the reveal the way the brief asks', () => {
     expect(copy.revealLine({ pushDb: 6, clipped: 'b' })).toBe(
-      `B was pushed 6${NBSP}dB into the ceiling, then turned down to match.`,
+      `B was pushed 6${NBSP}dB past the ceiling, then turned down to match.`,
     );
   });
 
@@ -35,9 +35,9 @@ describe('copy', () => {
 
   it('says how far each round pushes the clipped one, and never which one it is', () => {
     expect(copy.ROUND_INTROS).toEqual([
-      `Play A and B. One was pushed 12${NBSP}dB into the mixer’s ceiling, so it clipped. Both play equally loud.`,
-      `This time the clipped one was pushed 6${NBSP}dB into the ceiling.`,
-      `In the last round, the clipped one was pushed only 3${NBSP}dB into the ceiling.`,
+      `Play A and B. One was pushed 12${NBSP}dB past the mixer’s ceiling, so it clipped. Both play equally loud.`,
+      `This time the clipped one was pushed 6${NBSP}dB past the ceiling.`,
+      `In the last round, the clipped one was pushed only 3${NBSP}dB past the ceiling.`,
     ]);
     for (const intro of copy.ROUND_INTROS) expect(intro).not.toMatch(/\b(A|B) (was|is)\b/);
   });
@@ -84,6 +84,12 @@ describe('copy', () => {
     expect(copy.scopeLabel('b', true)).toMatch(/cut flat and now under the mixer’s ceiling\.$/);
     expect(copy.scopeLabel('b', true, true)).toMatch(/cut flat at the mixer’s ceiling\.$/);
     expect(copy.CEILING_KEY).toMatch(/mixer’s ceiling/);
+  });
+
+  it('says the sound is missing in the words every lab uses', () => {
+    expect(copy.NO_AUDIO).toBe(
+      'This browser can’t play the sound. Everything else works; try another browser to hear it.',
+    );
   });
 
   it('never names a side on the page-wide Stop bar', () => {

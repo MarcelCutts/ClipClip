@@ -8,6 +8,10 @@
    *
    * One page can show both views (the guide does), so the ids and the radios' name come from
    * $props.id(). Complete at rest: the server renders the default pick with its path lit.
+   *
+   * On a phone the drawing is taller than the screen, so the readout (what the pick is, and what it
+   * reaches) rides along the bottom of the screen while the drawing scrolls under it: whichever
+   * part you tap, its explanation is in sight. Part names are 15 px or more at every width.
    */
   import {
     accessibleName,
@@ -20,6 +24,7 @@
     NODES,
     type NodeId,
     resolveSelection,
+    type Summary,
     summaryFor,
     TALL_HIT_PAD,
     tapeFor,
@@ -45,6 +50,9 @@
   const uid = $props.id();
   const BANDS = ['HI', 'MID', 'LOW'] as const;
 
+  /** The readout's height, so focus scrolling keeps a part clear of it where it rides along. */
+  let readoutH = $state(0);
+
   // Seeded from the props, then owned by the reader.
   let selected: NodeId | null = $derived(resolveSelection(initialSelection, variant));
 
@@ -54,6 +62,11 @@
   const focus = $derived(selected ? highlightFor(selected, variant) : null);
   const caption = $derived(selected ? captionFor(selected, variant) : idleCaption(variant));
   const summary = $derived(selected ? summaryFor(selected, variant) : null);
+  /** Every readout the view can show, to size the readout by its longest (see the markup). */
+  const sizers = $derived([
+    { id: 'idle', caption: idleCaption(variant), summary: null },
+    ...order.map((id) => ({ id, caption: captionFor(id, variant), summary: summaryFor(id, variant) })),
+  ]);
 
   function stateOf(id: NodeId): 'rest' | 'selected' | 'on' | 'off' {
     if (!focus) return 'rest';
@@ -73,7 +86,12 @@
   }
 </script>
 
-<section class="signal-path panel" data-variant={variant} aria-label={VIEW_NAME[variant]}>
+<section
+  class="signal-path panel"
+  data-variant={variant}
+  aria-label={VIEW_NAME[variant]}
+  style:--readout-h={readoutH > 0 ? `${readoutH}px` : undefined}
+>
   <div class="head">
     {#if variant === 'dj'}
       <!-- Whose knobs are whose, taped as on the real gear. -->
@@ -100,24 +118,34 @@
     </ul>
   </div>
 
-  <div class="body">
-    <!-- Phones only: the title, pinned while you scroll the drawing. Wider screens show it in the readout. -->
-    <p class="pinned">{caption.title}</p>
-    <div class="readout">
-      <p class="title">{caption.title}</p>
-      <div class="details" aria-live="polite" aria-atomic="true">
-        <p class="text">{caption.text}</p>
-        {#if summary}
-          <dl class="summary">
-            <dt>{summary.label}</dt>
-            <dd>{summary.items}</dd>
-            {#if summary.notLabel && summary.notItems}
-              <dt>{summary.notLabel}</dt>
-              <dd>{summary.notItems}</dd>
-            {/if}
-          </dl>
+  {#snippet words(said: { text: string }, sum: Summary | null)}
+    <p class="text">{said.text}</p>
+    {#if sum}
+      <dl class="summary">
+        <dt>{sum.label}</dt>
+        <dd>{sum.items}</dd>
+        {#if sum.notLabel && sum.notItems}
+          <dt>{sum.notLabel}</dt>
+          <dd>{sum.notItems}</dd>
         {/if}
+      </dl>
+    {/if}
+  {/snippet}
+
+  <div class="body">
+    <div class="readout" bind:offsetHeight={readoutH}>
+      <div class="card">
+        <p class="title">{caption.title}</p>
+        <div class="details" aria-live="polite" aria-atomic="true">{@render words(caption, summary)}</div>
       </div>
+      <!-- Every readout the view can show, stacked unseen in the same place: the readout is always as
+           tall as its longest, so a new pick never moves the drawing, or the page under it. -->
+      {#each sizers as s (s.id)}
+        <div class="card sizer" aria-hidden="true">
+          <p class="title">{s.caption.title}</p>
+          <div class="details">{@render words(s.caption, s.summary)}</div>
+        </div>
+      {/each}
     </div>
 
     <div
@@ -254,10 +282,11 @@
     flex: none;
   }
 
+  /* A ceiling, drawn as on the parts: a dashed ring in the screen's lettering. Red is for damage done. */
   .swatch.ceiling {
     width: 1.6rem;
     height: 0.95rem;
-    border: 1.5px dashed var(--dmg);
+    border: 1.5px dashed var(--screen-text);
     border-radius: var(--radius-control);
   }
 
@@ -313,6 +342,9 @@
     /* One drawing unit, in pixels: the layouts are drawn in these units and scale together. */
     --W: var(--tall-w);
     --u: calc(100cqi / var(--W));
+    /* Part names: never under 15 px (DESIGN.md), a touch larger where the drawing is. rig.ts draws
+       each layout with room for them at its narrowest. */
+    --name-size: max(15px, calc(14 * var(--u)));
     position: relative;
     container-type: inline-size;
     width: min(100%, 22.5rem);
@@ -330,19 +362,22 @@
   }
 
   /* Each part is a block in the diagram: one flat face and a printed edge, square-cornered like
-     the keys. */
+     the keys. Its little drawing sits over its name, centred, in every layout. */
   .node {
     position: absolute;
     left: calc(var(--tx) * var(--u));
     top: calc(var(--ty) * var(--u));
     width: calc(var(--tw) * var(--u));
     height: calc(var(--th) * var(--u));
-    --glyph: 1.6em;
+    --glyph: 1.3em;
+    --ladder: 1.6em;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 0.36em;
+    justify-content: center;
+    gap: 0.15em;
     margin: 0;
-    padding: 0 0.38em;
+    padding: 0.2em 0.15em;
     border: 1px solid var(--hw-edge);
     border-radius: var(--radius-control);
     background: var(--hw-2);
@@ -350,24 +385,27 @@
     /* Hardware labels take the node's colour, so they dim and brighten with it. */
     --hw-label-color: currentColor;
     font-family: var(--font-body);
-    font-size: calc(12.5 * var(--u));
+    font-size: var(--name-size);
     font-weight: 700;
     line-height: 1.1;
-    text-align: left;
+    text-align: center;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* The radio covers the part. Focus scrolling keeps a little room around it. */
+  /* The radio covers the part, over its drawing too (a faded drawing paints in a layer of its own).
+     The page's scroll padding keeps focus clear of its tab strip (global.css). */
   .node input {
     position: absolute;
+    z-index: 1;
     inset: 0;
     width: 100%;
     height: 100%;
     margin: 0;
     opacity: 0;
     cursor: inherit;
-    scroll-margin-block: calc(1.5rem + var(--sticky-top, 0px)) 1.5rem;
+    /* Room for the focus ring under a part scrolled up from below. */
+    scroll-margin-bottom: 1rem;
   }
 
   .node:has(input:focus-visible) {
@@ -381,7 +419,7 @@
       background: var(--hw-3);
     }
 
-    .node:not([data-state='off']):hover .sub {
+    .node:hover .sub {
       color: var(--hw-label);
     }
   }
@@ -389,93 +427,76 @@
   .words {
     display: flex;
     flex-direction: column;
-    gap: 0.12em;
+    align-items: center;
     min-width: 0;
   }
 
   .name {
-    font-size: 0.95em;
+    font-size: 1em;
   }
 
+  /* Names printed on the gear, in its silk-screen lettering, at the size of the others. */
   .name.hw-label {
-    font-size: 0.96em;
-    line-height: 1.05;
-    letter-spacing: 0.06em;
+    font-size: 1em;
+    line-height: 1.1;
+    letter-spacing: 0.03em;
   }
 
+  /* The second line: the socket, the model, which ceiling. */
   .sub {
-    font-size: 0.84em;
+    font-size: max(13px, 0.87em);
     font-weight: 400;
     color: var(--hw-label-2);
   }
 
-  /* The picked and hovered backgrounds are lighter, so the grey sub-line brightens to keep 4.5:1. */
+  /* The picked and hovered backgrounds are lighter, so the grey second line brightens to keep 4.5:1. */
   .node[data-state='selected'] .sub {
     color: var(--hw-label);
   }
 
-  /* A ceiling: a dashed red ring 4px outside the part, its corners concentric with the part's. */
+  /* A ceiling: a dashed ring 4px outside the part, its corners concentric with the part's, in the
+     screen's lettering like every ceiling line on the site. Red is kept for damage done. */
   .node[data-ceiling]::after {
     content: '';
     position: absolute;
-    inset: calc(-4px - var(--edge, 1px));
-    border: 1.5px dashed var(--dmg);
+    inset: -5px;
+    border: 1.5px dashed var(--screen-text);
     border-radius: calc(var(--radius-control) + 4px);
     pointer-events: none;
   }
 
-  /* The tall drawing is small on narrow phones (parts are ~38px at 320px), so each part also
-     catches taps just past its edge. rig.ts sets the reach and keeps neighbours' areas apart. */
-  @container sp (max-width: 879.98px) {
+  /* The tall drawing is small on narrow phones, so each part also catches taps just past its edge.
+     rig.ts sets the reach and keeps neighbours' areas apart. */
+  @container sp (max-width: 899.98px) {
     .node::before {
       content: '';
       position: absolute;
-      /* Measured from inside the border, so add its width (--edge) back. */
-      inset: calc(-1 * var(--edge, 1px) - var(--hit-y) * var(--u)) calc(-1 * var(--edge, 1px) - var(--hit-x) * var(--u));
-    }
-
-    /* The widest names ("DriveRack", "MASTER 2") nearly fill a part of the tall drawing, and the
-       label cut runs wider than the face these parts were drawn for. The wide layout's padding and
-       a little less tracking keep them off the part's right edge. */
-    .node {
-      gap: 0.3em;
-      padding-inline: 0.3em;
-    }
-
-    .name.hw-label {
-      letter-spacing: 0.04em;
+      /* Measured from inside the 1px border, so add it back. */
+      inset: calc(-1px - var(--hit-y) * var(--u)) calc(-1px - var(--hit-x) * var(--u));
     }
   }
 
   .node[data-kind='meter'] {
-    flex-direction: column;
-    justify-content: center;
-    gap: 0.25em;
-    padding: 0.2em 0;
+    padding-inline: 0;
   }
 
-  .node[data-kind='meter'] .name {
-    font-size: 0.84em;
-  }
-
-  .node[data-glyph='eq'] {
-    padding: 0.2em 0.55em;
-  }
-
+  /* HI, MID and LOW, a knob and its name a line, like the channel strip. */
   .bands {
     display: grid;
-    gap: 0.12em;
+    gap: 0.05em;
   }
 
   .band {
-    --glyph: 1.5em;
+    --glyph: 1.15em;
     display: flex;
     align-items: center;
-    gap: 0.5em;
+    gap: 0.35em;
   }
 
   .band .hw-label {
-    font-size: 0.85em;
+    font-size: 1em;
+    line-height: 1.1;
+    letter-spacing: 0.03em;
   }
 
   .tapemark {
@@ -483,28 +504,33 @@
     top: -0.6em;
     right: -0.4em;
     padding: 0.2em 0.45em 0.12em;
-    font-size: 0.76em;
+    font-size: 0.8em;
     rotate: 5deg;
   }
 
   /* ---- Picked, on the path, off it ---- */
 
+  /* On the path: a blue edge, and the name printed brightest. */
   .node[data-state='on'] {
     border-color: var(--sig);
+    color: var(--hw-bright);
   }
 
-  /* Picked: a heavier edge in the panel's white. */
+  /* Picked: a heavier edge in the panel's white. The second pixel is drawn inside, so the name
+     keeps the room rig.ts gave it. */
   .node[data-state='selected'] {
-    --edge: 2px;
-    border: 2px solid var(--hw-bright);
+    border-color: var(--hw-bright);
+    box-shadow: inset 0 0 0 1px var(--hw-bright);
     background: var(--hw-3);
     color: var(--hw-bright);
   }
 
+  /* Off the path: the part sinks into the panel and its drawing fades, but its name stays in the
+     panel's main lettering, since it can still be picked. */
   .node[data-state='off'] {
     background: var(--hw);
     border-color: color-mix(in oklab, var(--hw-edge) 70%, var(--hw));
-    color: var(--hw-label-2);
+    color: var(--hw-label);
   }
 
   .node[data-state='off'] :global(.glyph) {
@@ -526,17 +552,26 @@
 
   /* ---- The readout: what the pick is, and what it reaches ---- */
 
-  /* Printed straight on the panel like the rest of the lettering, under a rule: no card. */
+  /* Printed straight on the panel like the rest of the lettering, under a rule: no card. The
+     readouts all share one grid cell; only the current one is seen. */
   .readout {
     grid-area: readout;
     display: grid;
-    gap: 0.45rem;
-    align-content: start;
     color: var(--hw-label);
   }
 
-  .title,
-  .pinned {
+  .card {
+    grid-area: 1 / 1;
+    display: grid;
+    gap: 0.45rem;
+    align-content: start;
+  }
+
+  .sizer {
+    visibility: hidden;
+  }
+
+  .title {
     font-family: var(--font-display);
     font-weight: 700;
     font-size: 1.25rem;
@@ -590,57 +625,55 @@
     color: var(--hw-label-2);
   }
 
-  .pinned {
-    display: none;
-  }
-
-  /* Phones: the title moves out of the readout onto a strip of panel above it, which pins to the
-     top of the screen while you scroll the drawing. The details stay put, so what's pinned is one
-     or two short lines and the drawing stays in view. Only on a screen tall enough to show a part
-     below it: on a sideways phone or at 300–400% zoom it scrolls with the page. */
+  /* Phones: the drawing runs down the page, taller than the screen, so the readout rides along the
+     bottom of the screen while the drawing scrolls under it, and sits under the drawing once it's
+     all been scrolled past. Whichever part you tap, what it does is in sight. It sits over the
+     page's Stop bar while sound plays (--sound-bar, set by SoundBar). Only on a screen tall enough
+     to show some drawing above it: on a sideways phone or at 300–400% zoom the readout stays over
+     the drawing and scrolls with the page. */
   @container sp (max-width: 599.98px) {
-    .body {
-      grid-template-areas: 'pinned' 'readout' 'stage';
-      row-gap: 0;
-    }
-
-    .pinned {
-      display: block;
-      grid-area: pinned;
-      margin-inline: -0.5rem;
-      padding: 0.45rem 0.5rem 0.4rem;
-      border-bottom: 1px solid var(--hw-edge);
-      background: var(--hw);
+    .title {
       font-size: 1.125rem;
     }
 
-    .readout .title {
-      display: none;
-    }
+    @media (min-height: 36rem) {
+      .body {
+        grid-template-areas: 'stage' 'readout';
+        row-gap: 0;
+      }
 
-    .readout {
-      margin-block: 0.6rem 1rem;
-    }
-
-    /* --sticky-top is whatever the page pins above it (the guide's part tabs), so the title pins
-       under that rather than behind it. */
-    @media (min-height: 30rem) {
-      .pinned {
+      .readout {
         position: sticky;
-        top: var(--sticky-top, 0px);
+        bottom: var(--sound-bar, 0px);
         z-index: 2;
+        margin: 0.75rem -0.5rem 0;
+        padding: 0.6rem 0.5rem 0.7rem;
+        border-top: 2px solid var(--hw-edge);
+        background: var(--hw);
+      }
+
+      .card {
+        gap: 0.3rem;
+      }
+
+      .details {
+        gap: 0.35rem;
+      }
+
+      .text {
+        line-height: 1.4;
       }
 
       .node input {
-        /* Room for the pinned title above a focused part (two lines at most: ~4.3rem at 320px), and
-           for a page's floating buttons below it. */
-        scroll-margin-block: calc(5.25rem + var(--sticky-top, 0px)) 4.5rem;
+        /* Focus scrolling keeps a part clear of the readout riding below it (up to about 17rem tall
+           on a 320px phone, before it has been measured). */
+        scroll-margin-bottom: calc(var(--readout-h, 17rem) + 1rem);
       }
     }
   }
 
   /* Tablets: drawing on the left, the readout beside it, riding down with you as you scroll. */
-  @container sp (min-width: 600px) and (max-width: 879.98px) {
+  @container sp (min-width: 600px) and (max-width: 899.98px) {
     .body {
       grid-template-columns: minmax(0, 21rem) minmax(0, 1fr);
       grid-template-areas: 'stage readout';
@@ -659,9 +692,8 @@
     }
   }
 
-  /* Wide: the signal runs left to right, readout underneath. The parts' lettering is a notch larger
-     than in the tall drawing, since the wide drawing is scaled down to fit. */
-  @container sp (min-width: 880px) {
+  /* Wide (from rig.ts's WIDE_FROM_PX): the signal runs left to right, readout underneath. */
+  @container sp (min-width: 900px) {
     .body {
       grid-template-areas: 'stage' 'readout';
       row-gap: 1.25rem;
@@ -669,6 +701,7 @@
 
     .stage {
       --W: var(--wide-w);
+      --name-size: max(15px, calc(15 * var(--u)));
       width: 100%;
       aspect-ratio: var(--wide-w) / var(--wide-h);
     }
@@ -686,36 +719,19 @@
       top: calc(var(--wy) * var(--u));
       width: calc(var(--ww) * var(--u));
       height: calc(var(--wh) * var(--u));
-      flex-direction: column;
-      justify-content: center;
-      gap: 0.3em;
-      padding: 0.3em 0.3em;
-      text-align: center;
-      --glyph: 1.6em;
-    }
-
-    .words {
-      align-items: center;
-    }
-
-    .bands {
-      grid-auto-flow: column;
-      gap: 0.5em;
-    }
-
-    .band {
-      flex-direction: column;
-      gap: 0.25em;
     }
 
     .readout {
-      grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-      column-gap: 2rem;
       padding-top: 0.85rem;
       border-top: 1px solid var(--hw-edge);
     }
 
-    .readout .title {
+    .card {
+      grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+      column-gap: 2rem;
+    }
+
+    .card .title {
       grid-column: 1 / -1;
     }
 
@@ -749,18 +765,14 @@
       color: black;
     }
 
-    /* Paper doesn't scroll, so the title stays in the readout, and an instruction to pick means nothing. */
-    .signal-path .pinned,
+    /* Paper doesn't scroll, and an instruction to pick means nothing. */
     .signal-path .key .pick {
       display: none;
     }
 
-    .signal-path .readout .title {
-      display: block;
-    }
-
     .signal-path .readout {
       position: static;
+      background: none;
     }
 
     .signal-path .node,
@@ -775,8 +787,9 @@
       border: 2px solid black;
     }
 
-    .signal-path .node[data-state='off'] {
-      color: dimgray;
+    .signal-path .node[data-ceiling]::after,
+    .signal-path .swatch.ceiling {
+      border-color: black;
     }
 
     .signal-path .sub,
@@ -795,9 +808,11 @@
       border-color: Highlight;
     }
 
+    /* Box shadows go in forced colours, so the picked part keeps a heavier edge as an outline. */
     .node[data-state='selected'] {
-      --edge: 3px;
-      border: 3px solid Highlight;
+      border-color: Highlight;
+      outline: 2px solid Highlight;
+      outline-offset: 0;
     }
 
     .node[data-state='off'] {
@@ -806,8 +821,13 @@
       border-style: dotted;
     }
 
-    .pinned {
-      border-bottom-color: CanvasText;
+    .node[data-ceiling]::after,
+    .swatch.ceiling {
+      border-color: CanvasText;
+    }
+
+    .readout {
+      border-top-color: CanvasText;
     }
 
     /* The tape loses its colour too: an outlined tag instead of torn tape. */
