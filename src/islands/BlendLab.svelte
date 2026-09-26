@@ -2,9 +2,9 @@
   /**
    * W3 "Blends add up". Two decks, each trimmed to the second orange on its own channel meter.
    * Bring deck 2 in and the MASTER meters climb to the top orange, which the DJ box keeps dark,
-   * because kicks that land together can add up to 6 dB. The channel meters never move with a
-   * fader: they read before it. Fix the blend by swapping the bass, pulling a fader down or
-   * trimming both decks to the first orange.
+   * because two tracks peaking together can add up to 6 dB. The channel meters never move with a
+   * fader: they read before it. Fix the blend by pulling a fader down or trimming both decks to
+   * the first orange. LOW turns up only, to show what a boost adds (model.ts, LOW).
    *
    * The MASTER meters are the centre of the lab: the biggest thing on the panel, with the two
    * faders either side and the verdict (Mix +9 dB, on the top orange) by them. Each deck's TRIM and LOW
@@ -19,9 +19,9 @@
    * Server-rendered complete: meters lit, verdict and sentence written before hydration.
    *
    * Nothing above a control changes height while it's in use, so a slider never moves under the
-   * reader's finger: the status lamp's legend keeps one width, the guess line above the meters
-   * keeps its two lines whatever it says, the verdict keeps two lines, and the words that change
-   * (the challenge feedback, the sentence) sit below the controls.
+   * reader's finger: the status line under the prompt keeps two lines' room (one on a wide panel),
+   * the guess line above the meters keeps its two lines whatever it says, the verdict keeps two
+   * lines, and the words that change (the hint, the sentence) sit below the controls.
    *
    * One surface: the panel. Its parts are set apart by printed lines and legends, and the only
    * boxes inside it are the meters' well and the waveform's screen.
@@ -33,7 +33,6 @@
     BARELY_OVER_NOTE,
     blendSentence,
     CHALLENGE_PROMPT,
-    challengeMessage,
     explainBlend,
     GUESS_LEGEND,
     GUESS_PROMPT,
@@ -50,7 +49,7 @@
     PRESET_GROUPS,
     presetLine,
     READOUT_LABEL,
-    statusLamp,
+    statusLine,
     verdictLine,
     WAVEFORM_TOGGLE,
     WAYS_OUT_SHOW,
@@ -106,8 +105,7 @@
   const segments = $derived(blendSentence(settings, analysis));
   const explanation = $derived(explainBlend(settings, analysis));
   const status = $derived(challengeStatus(settings, analysis));
-  const message = $derived(challengeMessage(status));
-  const lamp = $derived(statusLamp(status));
+  const line = $derived(statusLine(status));
   const readout = $derived(mixReadout(analysis));
   const meters = $derived({
     ch1: displayDb(analysis.channel[0]),
@@ -324,12 +322,11 @@
   <div class="layout">
     <div class="challenge" bind:this={challengeEl}>
       <p class="prompt">{CHALLENGE_PROMPT}</p>
-      <!-- A lamp with its legend printed beside it: lit orange on the top orange, red in the red,
-           white once done. -->
-      <p class="status" data-tone={lamp.tone}>
-        <span class="visually-hidden">Status: </span>
-        <span class="lamp" aria-hidden="true"></span>
-        <span class="legend">{lamp.label}</span>
+      <!-- How it's going: the state in bold, then what it means. The live region says the same
+           thing in longer words, so this is read in place and never announced. -->
+      <p class="status" data-tone={line.tone}>
+        <span class="visually-hidden">Status: </span><strong>{line.state}</strong>
+        {line.detail}
       </p>
     </div>
 
@@ -342,7 +339,7 @@
             {#if guessLine}<span class="mark-key"></span>{guessLine}{/if}
           </p>
         {/if}
-        <ChannelFader n={1} bind:value={settings.deck1.fader} {uid} />
+        <ChannelFader n={1} bind:value={settings.deck1.fader} {uid} hinted={showHint} />
         <div class="centre" bind:this={metersEl}>
           <MeterBridge
             ch1={meters.ch1}
@@ -363,8 +360,8 @@
 
       <!-- Each deck's TRIM and LOW under its fader, so the meters stay in view while they turn. -->
       <div class="tray">
-        <Knobs n={1} bind:trim={settings.deck1.trim} bind:low={settings.deck1.low} {uid} hintLow={showHint} />
-        <Knobs n={2} bind:trim={settings.deck2.trim} bind:low={settings.deck2.low} {uid} />
+        <Knobs n={1} bind:trim={settings.deck1.trim} bind:low={settings.deck1.low} peak={meters.ch1} {uid} />
+        <Knobs n={2} bind:trim={settings.deck2.trim} bind:low={settings.deck2.low} peak={meters.ch2} {uid} />
       </div>
 
       <div class="listen">
@@ -378,15 +375,11 @@
     </div>
 
     <div class="side">
-      <!-- How the challenge is going. Read out through the live region. -->
-      {#if message || showHint || shaved}
+      <!-- What to try next. The status line above says how it's going. -->
+      {#if showHint || shaved}
         <div class="coach">
-          {#if message || showHint}
-            <div class="verdict" data-status={status} aria-hidden="true">
-              {#if message}<p>{message}</p>{/if}
-              {#if showHint}<p class="hint">{HINT}</p>{/if}
-            </div>
-          {/if}
+          <!-- Read out through the live region when it appears. -->
+          {#if showHint}<p class="hint" aria-hidden="true">{HINT}</p>{/if}
           <!-- Red on the meters, yet it sounds clean: say why, so the red never passes for fine. -->
           {#if shaved}<p class="shaved" id="{uid}-shaved">{BARELY_OVER_NOTE}</p>{/if}
         </div>
@@ -495,19 +488,15 @@
 
   /* Challenge ---------------------------------------------------------------------------------- */
 
-  /* The panel's title strip, over a printed line. The lamp wraps under the prompt on a phone and
-     sits at its end when there's room. */
+  /* The panel's title strip, over a printed line: the task, then how it's going. */
   .challenge {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.6rem 1.5rem;
+    display: grid;
+    gap: 0.4rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--hw-edge);
   }
 
   .prompt {
-    flex: 1 1 20rem;
     margin: 0;
     font-size: var(--text-base);
     font-weight: 700;
@@ -516,53 +505,30 @@
     text-wrap: pretty;
   }
 
-  /* One width whatever the legend says, so the prompt never rewraps and nothing below it moves. */
+  /* Two lines' room whatever it says (statusLine keeps to two on the narrowest phone), so the
+     words changing never move the faders under it. The state leads in bold. */
   .status {
-    flex: none;
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    min-width: 7.5rem;
+    min-height: calc(2 * 1.45em);
     margin: 0;
     font-size: var(--text-sm);
-    font-weight: 700;
-    line-height: 1.2;
-    white-space: nowrap;
-    color: var(--hw-bright);
-  }
-
-  .status[data-tone='todo'] {
-    font-weight: 400;
+    line-height: 1.45;
     color: var(--hw-label);
   }
 
-  /* Square, like the lamps on the unit. Unlit, its lens still shows. */
-  .lamp {
-    flex: none;
-    width: 0.8rem;
-    height: 0.8rem;
-    border: 1px solid var(--hw-edge);
-    background: var(--led-off);
+  .status strong {
+    font-weight: 700;
+    color: var(--hw-bright);
   }
 
-  /* Lit orange for the top orange and red for the red: the same signal state the MASTER meters show. */
-  .status[data-tone='orange'] .lamp {
-    border-color: var(--led-a);
-    background: var(--led-a);
-    box-shadow: 0 0 0.5rem var(--led-a);
+  .status[data-tone='todo'] strong {
+    color: var(--hw-label);
   }
 
-  .status[data-tone='red'] .lamp {
-    border-color: var(--led-r);
-    background: var(--led-r);
-    box-shadow: 0 0 0.5rem var(--led-r);
-  }
-
-  /* Done: lit white, like a pressed pad. It isn't a level, so it takes no meter colour. */
-  .status[data-tone='done'] .lamp {
-    border-color: var(--hw-bright);
-    background: var(--hw-bright);
-    box-shadow: 0 0 0.45rem var(--hw-bright);
+  /* Wide panels fit every line on one. */
+  @container blend (min-width: 36rem) {
+    .status {
+      min-height: 1.45em;
+    }
   }
 
   /* Mixer: faders either side of the meters -------------------------------------------------- */
@@ -698,22 +664,12 @@
     gap: 0.6rem;
   }
 
-  /* How the challenge is going: brighter and heavier than the notes. */
-  .verdict {
-    display: grid;
-    gap: 0.35rem;
-  }
-
-  .verdict p {
+  /* The hint is what to do next, so it's printed in the action colour. */
+  .hint {
     margin: 0;
     font-size: var(--text-sm);
     font-weight: 700;
     line-height: 1.45;
-    color: var(--hw-bright);
-  }
-
-  /* The hint is what to do next, so it's printed in the action colour. */
-  .verdict .hint {
     color: var(--hw-action);
   }
 
@@ -912,20 +868,4 @@
     padding-left: 1.1rem;
   }
 
-  @media (forced-colors: active) {
-    .lamp {
-      forced-color-adjust: none;
-      border-color: CanvasText;
-      background: Canvas;
-      box-shadow: none;
-    }
-
-    .status[data-tone='orange'] .lamp,
-    .status[data-tone='red'] .lamp,
-    .status[data-tone='done'] .lamp {
-      border-color: CanvasText;
-      background: CanvasText;
-      box-shadow: none;
-    }
-  }
 </style>

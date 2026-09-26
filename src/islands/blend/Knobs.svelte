@@ -1,9 +1,10 @@
 <script lang="ts">
   /**
    * One deck's TRIM and LOW. TRIM is set the way a DJ sets it, as where the track peaks on its
-   * channel meter, and says so right under its slider ("Peak on CH1"), since the real knob's own
-   * gain stops at +9. LOW moves in knob stops with flat in the middle, set off from TRIM by a
-   * printed line so the TRIM's note never reads as LOW's heading.
+   * channel meter with LOW flat, since the real knob's own gain stops at +9. Right under its slider
+   * it says where the channel peaks now ("CH1 peaks at +7 dB"), so a LOW boost shows as the gap
+   * between the two numbers. LOW is the boost half of the EQ's bass knob, flat to +6 (model.ts,
+   * LOW), set off from TRIM by a printed line so TRIM's note never reads as LOW's heading.
    *
    * The lab puts the two decks side by side straight under the faders and meters, deck 1 under
    * deck 1's fader, so the meters stay on screen while you turn these, even on a phone. On a
@@ -11,41 +12,34 @@
    * changes them.
    */
   import { trimHint } from '../../lib/blend/copy';
-  import { LOW_STEPS, TRIM } from '../../lib/blend/model';
+  import { LOW, TRIM } from '../../lib/blend/model';
   import { formatDb, speakDb } from '../../lib/dsp/db';
   import Fader from '../ui/Fader.svelte';
 
   interface Props {
     /** Which deck: 1 or 2. */
     n: 1 | 2;
-    /** Where the track peaks on its channel meter with the EQ flat, in meter dB. */
+    /** Where the track peaks on its channel meter with LOW flat, in meter dB. */
     trim: number;
-    /** LOW EQ in dB, one of LOW_STEPS. */
+    /** LOW EQ in dB, flat (0) to +6. */
     low: number;
+    /** Where the channel meter peaks now, LOW included, as the meter shows it. */
+    peak: number;
     /** Unique prefix for ids. */
     uid: string;
-    /** Draw attention to LOW (the challenge hint). */
-    hintLow?: boolean;
   }
 
-  let { n, trim = $bindable(), low = $bindable(), uid, hintLow = false }: Props = $props();
+  let { n, trim = $bindable(), low = $bindable(), peak, uid }: Props = $props();
 
   const id = $derived(`${uid}-deck${n}`);
-  const flat = (LOW_STEPS.length - 1) / 2;
 
-  const lowIndex = () => {
-    const i = LOW_STEPS.indexOf(low);
-    return i === -1 ? flat : i;
-  };
-  const setLowIndex = (i: number) => {
-    low = LOW_STEPS[i] ?? 0;
-  };
-
-  const formatLow = (i: number) => formatDb(LOW_STEPS[i] ?? 0);
-  const speakLow = (i: number) => {
-    const db = LOW_STEPS[i] ?? 0;
-    return db === 0 ? 'flat, 0 decibels' : speakDb(db);
-  };
+  const formatLow = (db: number) => (db === LOW.min ? 'Flat' : formatDb(db));
+  const speakLow = (db: number) => (db === LOW.min ? 'flat, 0 decibels' : speakDb(db));
+  /** The ends of LOW's slot, printed like the knob's scale: flat at 12 o'clock, +6 fully right. */
+  const lowTicks = [
+    { at: LOW.min, label: 'Flat' },
+    { at: LOW.max, label: formatDb(LOW.max, { unit: '' }) },
+  ];
 </script>
 
 <!-- biome-ignore lint/a11y/useSemanticElements: the name is a drawn hardware label, styled apart from the sliders' own labels; role="group" with aria-labelledby names the pair -->
@@ -64,27 +58,30 @@
       max={TRIM.max}
       step={TRIM.step}
       format={(v) => formatDb(v)}
-      speak={(v) => `track peaks at ${speakDb(v)} on the channel meter`}
-      hint={trimHint(n)}
+      speak={(v) => `track peaks at ${speakDb(v)} on the channel meter with LOW flat`}
+      hint={trimHint(n, peak)}
     />
   </div>
-  <div class="low" class:hinted={hintLow}>
+  <div class="low">
     <Fader
       id="{id}-low"
       label="LOW"
       context="Deck {n}"
-      bind:value={lowIndex, setLowIndex}
-      min={0}
-      max={LOW_STEPS.length - 1}
-      step={1}
+      bind:value={low}
+      min={LOW.min}
+      max={LOW.max}
+      step={LOW.step}
       format={formatLow}
       speak={speakLow}
+      ticks={lowTicks}
+      hint="The EQ’s bass knob."
     />
   </div>
 </div>
 
 <style>
   .knobs {
+    container: knobs / inline-size;
     display: grid;
     align-content: start;
     gap: 0.6rem;
@@ -127,7 +124,8 @@
     white-space: nowrap;
   }
 
-  /* "Peak on CH1" says where to set TRIM: tucked under TRIM's slot, at full size, never dim. */
+  /* "CH1 peaks at +3 dB" says where TRIM has put the channel: tucked under TRIM's slot, at full
+     size, never dim. */
   .trim :global(.fader) {
     row-gap: 0.2rem;
   }
@@ -137,24 +135,21 @@
     color: var(--hw-label);
   }
 
+  /* Past the red the note says "would peak at +17 dB", two lines in a column this narrow. Keep the
+     second line's room from the start, so turning LOW never moves LOW's own slider. */
+  @container knobs (max-width: 12.5rem) {
+    .trim :global(.hint) {
+      min-height: calc(2 * 1.4em);
+    }
+  }
+
   /* LOW starts after a printed line, so TRIM's note above it can't pass for LOW's heading. */
   .low {
     padding-top: 0.6rem;
     border-top: 1px solid var(--hw-edge);
   }
 
-  /* The hint: a steady printed ring round deck 1's LOW, no animation, beside the hint's words. */
-  .low.hinted {
-    outline: 2px solid var(--hw-label);
-    outline-offset: 4px;
-    border-radius: var(--radius-control);
-  }
-
   @media (forced-colors: active) {
-    .low.hinted {
-      outline-color: Highlight;
-    }
-
     .key {
       background: CanvasText;
     }

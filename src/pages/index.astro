@@ -184,16 +184,17 @@ const contents: ContentsEntry[] = [
 
       <h3 id="blends">{h('blends')}</h3>
       <p>
-        Two tracks that each peak on orange can reach red together. When their kicks line up, as they do in a good
-        blend, the peaks add. Two equal peaks that land together can reach twice the height: up to 6&nbsp;dB more, two
-        lights up the meter. Pioneer’s support team says audio “will either sum or cancel out, depending on the phasing” (<a
+        Two tracks that each peak on orange can reach red together. When both peak at the same moment, the peaks add.
+        Two equal peaks that land together can reach twice the height: up to 6&nbsp;dB more, two lights up the meter.
+        In a blend of a minute or more, both tracks’ loudest moments land together at some point, whether the kicks line
+        up or not. Pioneer’s support team says audio “will either sum or cancel out, depending on the phasing” (<a
           href={PIONEER_COMMUNITY_LEVELS}
           rel="external">Pioneer DJ Community</a
         >). Plan for all 6&nbsp;dB.
       </p>
       <p>
-        A track that peaks on the first orange light leaves headroom for the two lights a blend adds. With the kicks
-        lined up, the MASTER meters read up to +6, and the top orange, +9, stays dark.
+        A track that peaks on the first orange light leaves headroom for the two lights a blend adds. Two such tracks
+        read up to +6 on the MASTER meters, and the top orange, +9, stays dark.
       </p>
       <Procedure
         title="MASTER meters: top orange lit"
@@ -204,11 +205,6 @@ const contents: ContentsEntry[] = [
             challenge: 'A channel fader',
             response: 'down a little',
             note: 'While a track comes in, use its fader. After both are up, either one works. It is the quickest fix.',
-          },
-          {
-            challenge: 'Basslines',
-            response: 'one at a time',
-            note: 'Bring the new track in with its LOW turned down. At the drop, swap the LOWs.',
           },
           { challenge: 'HI, MID and LOW', response: '12 o’clock or lower', note: 'Each EQ knob can add up to 6 dB.' },
         ]}

@@ -18,7 +18,7 @@ import {
   faderDb,
   faderGain,
   hotDecks,
-  LOW_STEPS,
+  LOW,
   listenBuffer,
   PRESETS,
   type PresetId,
@@ -99,11 +99,8 @@ describe('fader curve', () => {
 });
 
 describe('controls', () => {
-  it('puts flat in the middle of the LOW knob, like its 12 o’clock detent', () => {
-    expect(LOW_STEPS[(LOW_STEPS.length - 1) / 2]).toBe(0);
-    expect(LOW_STEPS[0]).toBe(-26);
-    expect(LOW_STEPS.at(-1)).toBe(6);
-    expect([...LOW_STEPS].sort((a, b) => a - b)).toEqual(LOW_STEPS);
+  it('gives LOW the knob’s boost half: flat, its 12 o’clock, to +6, 1 dB a step', () => {
+    expect(LOW).toEqual({ min: 0, max: 6, step: 1 });
   });
 
   it('starts TRIM on the second orange, the highest start from which a blend lights the top orange', () => {
@@ -133,8 +130,6 @@ describe('meters', () => {
   });
 
   it('moves the channel meter with LOW, since the kick is the peak', () => {
-    const cut = analyseBlend(settingsOf('swap'));
-    expect(cut.channel[0]).toBeCloseTo(-2.4, 1);
     const boost = analyseBlend(settingsOf('boost'));
     expect(boost.channel[1]).toBeGreaterThan(7.5);
     expect(boost.channel[1]).toBeLessThan(TARGET_PEAK_DB.top);
@@ -174,12 +169,6 @@ describe('blends add up', () => {
     expect(r.mix - TARGET_PEAK_DB.top).toBeCloseTo(6.0, 1);
     expect(displayDb(r.mix)).toBe(CEILING_DB + 3);
     expect(r.clip).toBe('fast');
-  });
-
-  it('adds about +1.9 dB with deck 1’s LOW cut', () => {
-    const r = analyseBlend(settingsOf('swap'));
-    expect(r.mix - 3).toBeCloseTo(1.9, 1);
-    expect(r.clip).toBe('off');
   });
 
   it('adds less with deck 1’s fader one mark down, and far less with the kicks apart', () => {
@@ -282,8 +271,7 @@ describe('the ceiling', () => {
       expect(cutPercent(settingsOf('hot'), sr)).toBeGreaterThan(2);
       // Clean: only float rounding between the render and the uncut sum. Boost the LOW lights
       // CLIP just under the red, so nothing is cut yet.
-      for (const id of ['boost', 'swap', 'ease', 'orange'] as const)
-        expect(cutPercent(settingsOf(id), sr)).toBeLessThan(1e-3);
+      for (const id of ['boost', 'ease', 'orange'] as const) expect(cutPercent(settingsOf(id), sr)).toBeLessThan(1e-3);
     }
   });
 });
@@ -300,7 +288,7 @@ describe('only just in the red', () => {
     const over = withDeck(sixes, 'deck2', { trim: 7 });
     expect(displayDb(analyseBlend(over).mix)).toBe(13);
     expect(barelyOver(analyseBlend(over))).toBe(false);
-    for (const id of ['hot', 'boost', 'swap', 'ease', 'orange'] as const)
+    for (const id of ['hot', 'boost', 'ease', 'orange'] as const)
       expect(barelyOver(analyseBlend(settingsOf(id)))).toBe(false);
     expect(barelyOver(analyseBlend(START))).toBe(false);
     expect(barelyOver(analyseBlend(challenge))).toBe(false);
@@ -345,7 +333,6 @@ describe('presets', () => {
   });
 
   it('match the spec', () => {
-    expect(settingsOf('swap').deck1.low).toBe(-26);
     // One printed mark: the DJ box's "pull a channel fader down a little".
     expect(faderDb(settingsOf('ease').deck1.fader)).toBeCloseTo(-3, 6);
     expect(settingsOf('boost').deck2.low).toBe(6);
@@ -353,7 +340,7 @@ describe('presets', () => {
     expect(settingsOf('orange').deck2.trim).toBe(TARGET_PEAK_DB.aim);
     expect(settingsOf('hot').deck1.trim).toBe(TARGET_PEAK_DB.top);
     // Every other pad starts from the lab's own levels, one change away from the challenge.
-    for (const id of ['boost', 'ease', 'swap'] as const) {
+    for (const id of ['boost', 'ease'] as const) {
       expect(settingsOf(id).deck1.trim).toBe(TRIM.initial);
       expect(settingsOf(id).deck2.trim).toBe(TRIM.initial);
     }
@@ -361,7 +348,7 @@ describe('presets', () => {
 
   it('come in two sets: blends that light the top orange, then ways to keep it dark', () => {
     expect(presetsIn('push').map((p) => p.label)).toEqual(['Top orange', 'Boost the LOW']);
-    expect(presetsIn('out').map((p) => p.label)).toEqual(['Pull a fader down', 'Swap the bass', 'First orange']);
+    expect(presetsIn('out').map((p) => p.label)).toEqual(['Pull a fader down', 'First orange']);
     expect(presetsIn('push').length + presetsIn('out').length).toBe(PRESETS.length);
     expect(challengeStatus(settingsOf('hot'), analyseBlend(settingsOf('hot')))).toBe('red');
     expect(challengeStatus(settingsOf('boost'), analyseBlend(settingsOf('boost')))).toBe('clip');
@@ -406,8 +393,8 @@ describe('challenge: bring deck 2 all the way up without lighting the top orange
     expect(challengeStatus(close, analyseBlend(close))).toBe('clip');
   });
 
-  it('is solved by swapping the bass, easing deck 1 or trimming both down', () => {
-    for (const id of ['swap', 'ease', 'orange'] as const) {
+  it('is solved by pulling deck 1’s fader down or trimming both down', () => {
+    for (const id of ['ease', 'orange'] as const) {
       const s = settingsOf(id);
       expect(challengeStatus(s, analyseBlend(s))).toBe('done');
     }
@@ -425,7 +412,7 @@ describe('challenge: bring deck 2 all the way up without lighting the top orange
     expect(r.clip).toBe('off');
     expect(hotDecks(r)).toEqual([1]);
     expect(challengeStatus(s, r)).toBe('hot1');
-    for (const id of ['hot', 'swap', 'ease', 'boost', 'orange'] as const)
+    for (const id of ['hot', 'ease', 'boost', 'orange'] as const)
       expect(hotDecks(analyseBlend(settingsOf(id)))).toEqual([]);
   });
 
@@ -443,7 +430,7 @@ describe('listening', () => {
   it('stays inside ±1, the audio engine’s contract', () => {
     const extremes: BlendSettings[] = [
       { deck1: { trim: 12, low: 6, fader: 10 }, deck2: { trim: 12, low: 6, fader: 10 }, aligned: true },
-      { deck1: { trim: -6, low: -26, fader: 0.5 }, deck2: { trim: -6, low: 6, fader: 10 }, aligned: false },
+      { deck1: { trim: -6, low: 0, fader: 0.5 }, deck2: { trim: -6, low: 6, fader: 10 }, aligned: false },
       { deck1: { trim: 0, low: 6, fader: 10 }, deck2: { trim: 0, low: 6, fader: 10 }, aligned: true },
     ];
     for (const s of [START, ...PRESETS.map((p) => p.settings), ...extremes]) {
@@ -464,9 +451,9 @@ describe('listening', () => {
       { deck1: { trim: -6, low: 0, fader: 4 }, deck2: { trim: -6, low: 0, fader: 4 }, aligned: true },
       { deck1: { trim: -6, low: 0, fader: 10 }, deck2: { trim: -6, low: 0, fader: 10 }, aligned: true },
       withDeck(START, 'deck1', { trim: 0 }),
-      // The spikiest corner: both LOWs cut, so the hats set the peak.
-      { deck1: { trim: -6, low: -26, fader: 10 }, deck2: { trim: -15.5, low: -26, fader: 10 }, aligned: true },
-      { deck1: { trim: -6, low: -26, fader: 10 }, deck2: { trim: 6, low: 0, fader: 0 }, aligned: true },
+      // LOW fully up on both, and on one deck alone: the kick sets the peak.
+      { deck1: { trim: -6, low: 6, fader: 10 }, deck2: { trim: -6, low: 6, fader: 10 }, aligned: true },
+      { deck1: { trim: -6, low: 6, fader: 10 }, deck2: { trim: 6, low: 0, fader: 0 }, aligned: true },
     ];
     for (const sr of [44_100, 48_000]) {
       const ref = lufs(settingsOf('orange'), sr);

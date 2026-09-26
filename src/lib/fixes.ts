@@ -279,7 +279,8 @@ export const FIXES: Fix[] = [
       {
         if: 'If it blinks on every blend',
         action: 'say to the DJ between tracks:',
-        say: `${MASTER_METERS_WORDS} Play one bassline at a time.`,
+        // On every blend, the channels are hot: two on the first orange stay under the top orange.
+        say: `${MASTER_METERS_WORDS} ${CHANNEL_METERS_WORDS}`,
       },
     ],
     why: 'Pioneer: CLIP blinks slowly when the sound is about to be distorted, and fast when it is distorted (p. 27). With MASTER LEVEL fully up, only the DJ’s faders and TRIMs bring the mix down.',

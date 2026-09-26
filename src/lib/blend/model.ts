@@ -11,7 +11,8 @@
  * - TRIM is expressed the way a DJ sets it: where the track peaks on its channel meter with the
  *   EQ flat. The synth loops are normalised to a peak of exactly 1.0, so the gain is simply
  *   `meterDbToSample(trim)`.
- * - LOW scales the synth's `low` stem (kick and bass line), like the EQ in EQ mode (−26…+6 dB).
+ * - LOW turns the synth's `low` stem (kick and bass line) up, from flat to +6 dB: the boost half
+ *   of the EQ (LOW, below, says why the cut half is left out).
  * - The channel meters read after TRIM and EQ and before the fader, as we assume for the XDJ-RX2
  *   (the guide's section on what the makers publish). Only the master meter sees the sum.
  * - The crossfader is assumed to be on THRU, Pioneer's setting for not using it (manual p. 28), so
@@ -34,7 +35,7 @@ export const ANALYSIS_RATE = 48_000;
 export interface DeckSettings {
   /** Where the track peaks on its channel meter with the EQ flat, in meter dB. */
   trim: number;
-  /** LOW EQ in dB: −26 (EQ mode's deepest cut) to +6. */
+  /** LOW EQ in dB: 0 (flat, the knob's 12 o'clock) to +6. */
   low: number;
   /** Channel fader position: 0 is closed, 10 is fully up. */
   fader: number;
@@ -60,11 +61,14 @@ export type ClipState = 'off' | 'slow' | 'fast';
 export const TRIM = { min: -6, max: 12, step: 1, initial: TARGET_PEAK_DB.top - KICKS_TOGETHER_DB } as const;
 
 /**
- * The LOW knob's stops, from full left to full right: the panel's EQ range (xdj.ts). 0 dB sits in
- * the middle, like the knob's 12 o'clock detent, so the cut side gets finer steps near flat and
- * the boost side is 1 dB a step.
+ * The LOW knob's boost half, 1 dB a step: flat (12 o'clock) to fully right, the panel's +6
+ * (xdj.ts). It shows what a boost adds. The cut half is left out on purpose. These loops peak on
+ * their kick, so here a LOW cut would take a blend well down. On released tracks it did not: on 9
+ * of 10 we measured, taking the lows out raised the track's own peak, and a minute's blend with
+ * one LOW cut peaked no lower, at the median, than with both flat. A fader brought it down
+ * (guide 2.4).
  */
-export const LOW_STEPS: readonly number[] = [RANGES.eq.min, -20, -15, -10, -6, -3, 0, 1, 2, 3, 4, 5, RANGES.eq.max];
+export const LOW = { min: 0, max: RANGES.eq.max, step: 1 } as const;
 
 /**
  * Channel fader travel. One step is one printed mark, so a −/+ press moves the cap a whole mark:
@@ -273,7 +277,7 @@ export function renderMix(s: BlendSettings, tracks: Tracks): Float32Array {
 
 const deck = (trim: number, low: number, fader: number): DeckSettings => ({ trim, low, fader });
 
-export type PresetId = 'hot' | 'boost' | 'ease' | 'swap' | 'orange';
+export type PresetId = 'hot' | 'boost' | 'ease' | 'orange';
 
 /** Problems to cause ('push') and fixes to try once you've caused one ('out'). */
 export type PresetGroup = 'push' | 'out';
@@ -287,15 +291,14 @@ export interface Preset {
 
 /**
  * Each pad sets the whole mixer, so it always shows the same thing however you got there. They
- * come in two sets: two blends that light the MASTER meters' top orange, and three ways to keep it
+ * come in two sets: two blends that light the MASTER meters' top orange, and two ways to keep it
  * dark, each of which solves the challenge in one press (so the lab keeps them back until the
  * reader has lit the top orange).
  *
  * Top orange puts both tracks on the top orange light, so the blend lands 3 dB past the red and
  * Listen has something to cut. Boost the LOW is the start with deck 2 in and its LOW fully up: it
  * lights CLIP just under the red. The fixes start from the start's levels (both on the second
- * orange), where one change is enough: a fader one mark down, the bass swapped, or both TRIMs on
- * the first orange.
+ * orange), where one change is enough: a fader one mark down, or both TRIMs on the first orange.
  */
 export const PRESETS: readonly Preset[] = [
   {
@@ -316,12 +319,6 @@ export const PRESETS: readonly Preset[] = [
     group: 'out',
     // One printed mark, −3 dB: the DJ box's "pull a channel fader down a little".
     settings: { deck1: deck(TRIM.initial, 0, 9), deck2: deck(TRIM.initial, 0, 10), aligned: true },
-  },
-  {
-    id: 'swap',
-    label: 'Swap the bass',
-    group: 'out',
-    settings: { deck1: deck(TRIM.initial, RANGES.eq.min, 10), deck2: deck(TRIM.initial, 0, 10), aligned: true },
   },
   {
     id: 'orange',
@@ -422,8 +419,9 @@ export function barelyOver(r: BlendAnalysis): boolean {
 export const LISTEN_REFERENCE: PresetId = 'orange';
 /**
  * Lifts the reference blend from −6 dBFS (its peak at meter +6) to −4 dBFS. At this makeup every
- * setting reaches the reference loudness inside the peak limit at 44.1, 48 and 88.2 kHz (the
- * spikiest, with both LOWs cut, needs a peak of 0.92). At 96 kHz one corner lands 0.1 dB short.
+ * setting the lab can reach plays at the reference loudness inside the peak limit, at 44.1, 48,
+ * 88.2 and 96 kHz. The spikiest is the reference itself, at a peak of 0.63: two equal decks with
+ * LOW flat, their kicks stacked.
  */
 export const LISTEN_MAKEUP_DB = 2;
 /** Buffers stay inside ±1, the audio engine's contract. */

@@ -386,7 +386,7 @@ describe('what the drills say', () => {
     // The MASTER meters' rule, "top orange dark", between tracks (F3) and after a set (F9).
     expect(DJ_RULES[1]?.response).toBe('top orange dark');
     const f3 = drill('clip').steps[1];
-    expect(f3 && isIfStep(f3) ? f3.say : '').toBe(`${MASTER_METERS_WORDS} Play one bassline at a time.`);
+    expect(f3 && isIfStep(f3) ? f3.say : '').toBe(`${MASTER_METERS_WORDS} ${CHANNEL_METERS_WORDS}`);
     expect(branches(drill('crunch')).find((b) => b.finding === 'On the blends')?.say).toBe(MASTER_METERS_WORDS);
     expect(all.join(' ')).not.toMatch(/first or second orange|below red in a blend/);
     // Words, not manner.

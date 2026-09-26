@@ -39,7 +39,7 @@ const channelMeters: Rule = {
 
 const masterMeters: Rule = {
   // Pioneer prints MASTER over the pair; its manual calls them the master level indicator. Channels
-  // on the first orange keep a lined-up blend under the top orange (TARGET_PEAK_DB.top), so the top
+  // on the first orange keep a blend under the top orange (TARGET_PEAK_DB.top), so the top
   // orange is the first sign of a blend or an EQ boost that is too loud, a light before the red.
   challenge: 'MASTER meters (the pair in the middle)',
   response: 'top orange dark',

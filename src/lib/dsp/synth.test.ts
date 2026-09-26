@@ -29,12 +29,6 @@ describe('synth loops', () => {
     expect(rise).toBeLessThanOrEqual(6.03);
   });
 
-  it('adds far less when one track has its bass swapped out', () => {
-    const swapped = mixStems(a, { low: 10 ** (-26 / 20) });
-    const rise = gainToDb(peak(sum(swapped, trackB))) - gainToDb(peak(trackA));
-    expect(rise).toBeLessThan(3);
-  });
-
   it('renders at other device sample rates', () => {
     const l = renderLoop({ sampleRate: 44_100 });
     expect(l.length).toBe(Math.round((60 / 124) * 44_100 * 8));

@@ -2,8 +2,8 @@
 /**
  * Figure: the XDJ-RX2's meters, drawn as a manual draws them. A line drawing of the meter bridge
  * on the page (CH1, the middle pair with CLIP above it, CH2, and the printed scale), lit the way a
- * well-set blend looks at its loudest: each deck on the first orange, the kicks lined up, the mix
- * two lights higher, and the top orange, red and CLIP dark. Numbered callouts point at the parts
+ * well-set blend looks at its loudest: each deck on the first orange, both peaking at once, the
+ * mix two lights higher, and the top orange, red and CLIP dark. Numbered callouts point at the parts
  * and key into the list beside it, and a bracket marks where to aim.
  *
  * Like every meter on the site it doesn't rely on colour: a printed break where the colour changes,
@@ -46,7 +46,7 @@ const rowOf = (db: number) => rows.find((s) => s.db === db)?.row ?? FIRST_LIGHT_
 const lit = (db: number, level: number) => db <= level;
 
 const aim = `grid-row: ${rowOf(TARGET_PEAK_DB.aim)} / ${rowOf(TARGET_PEAK_DB.aim) + 1}`;
-const label = `The XDJ-RX2’s meters mid-blend, with the kicks lined up. CH1 and CH2 each peak at ${scaleLabel(CH1)}, the first orange light. The MASTER meters show the mix at ${scaleLabel(MIX)}, ${lightsHigher}, with the top orange, red and CLIP dark. A bracket marks the aim, ${scaleLabel(TARGET_PEAK_DB.aim)}.`;
+const label = `The XDJ-RX2’s meters at a blend’s loudest moment. CH1 and CH2 each peak at ${scaleLabel(CH1)}, the first orange light. The MASTER meters show the mix at ${scaleLabel(MIX)}, ${lightsHigher}, with the top orange, red and CLIP dark. A bracket marks the aim, ${scaleLabel(TARGET_PEAK_DB.aim)}.`;
 ---
 
 <figure class="anatomy">

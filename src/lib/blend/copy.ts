@@ -19,6 +19,7 @@ import {
   FADER,
   faderDb,
   hotDecks,
+  LOW,
   type PresetGroup,
   preset,
   TRIM,
@@ -36,7 +37,7 @@ const t = (text: string): Segment => ({ text });
 const value = (db: number): Segment => ({ text: formatDb(db), kind: 'value' });
 const num = (db: number): Segment => ({ text: formatDb(db), kind: 'num' });
 
-/** The most two equal kicks landing together can add: "6 dB". */
+/** The most two equal peaks landing together can add: "6 dB". */
 const BLEND_ADDS = formatDb(KICKS_TOGETHER_DB, { signed: false });
 
 /**
@@ -107,7 +108,7 @@ export const plain = (segments: Segment[]): string => segments.map((x) => x.text
 
 /**
  * A channel in the red: say so first, whatever the faders do, since its fader comes too late.
- * Name the LOW when it's boosted, as that's the likelier cause.
+ * Name the LOW when it's boosted, as that's the likelier cause: back to flat takes the boost off.
  */
 function hotChannel(s: BlendSettings, r: BlendAnalysis): string | null {
   const hot = hotDecks(r);
@@ -131,52 +132,71 @@ export function explainBlend(s: BlendSettings, r: BlendAnalysis): string {
   // The top orange lights before CLIP and the red, so this covers all three.
   const red = displayDb(r.mix) >= CEILING_DB;
   const over = topLit(r);
-  const boosted = s.deck1.low > 0 || s.deck2.low > 0;
-  const swapped = s.deck1.low <= -10 || s.deck2.low <= -10;
+  const boosts = [s.deck1.low, s.deck2.low].filter((low) => low > 0).length;
   const lowered = [s.deck1.fader, s.deck2.fader].filter((f) => f < FADER.max).length;
-  const still = red ? 'The kicks still stack into the red.' : 'The kicks still light the top orange.';
+  const still = red ? 'Together they still reach the red.' : 'Together they still light the top orange.';
 
   if (over) {
-    if (boosted) return 'The LOW boost makes one kick louder before the two stack.';
+    if (boosts === 2) return 'Both LOW boosts raise their decks’ peaks, and the blend rises with them.';
+    if (boosts === 1) return 'The LOW boost raises its deck’s peak, and the blend rises with it.';
     if (lowered === 2) return `Both faders are down a little. ${still}`;
-    if (lowered === 1 && s.deck2.fader < FADER.max) return 'The kicks stack higher as deck 2 comes in.';
+    if (lowered === 1 && s.deck2.fader < FADER.max) return 'The blend peaks higher as deck 2 comes in.';
     if (lowered === 1) return `Deck 1 is only a little lower. ${still}`;
-    return `When the kicks land together, their peaks add. Two equal kicks can make a peak up to ${BLEND_ADDS} higher, two lights up the meter.`;
+    return `When both tracks peak at once, the peaks add. Two equal peaks can reach ${BLEND_ADDS} higher, two lights up the meter.`;
   }
-  if (swapped) return 'Only one bassline plays at full. The kicks barely stack.';
-  if (lowered === 1) return `Deck ${s.deck1.fader < FADER.max ? 1 : 2} sits lower in the mix. Its kicks add less.`;
+  if (lowered === 1)
+    return `Deck ${s.deck1.fader < FADER.max ? 1 : 2} sits lower in the mix. It adds less to the blend.`;
   if (lowered === 2) return 'Both decks sit lower in the mix. The blend peaks lower.';
   if (s.deck1.trim === TARGET_PEAK_DB.aim && s.deck2.trim === TARGET_PEAK_DB.aim)
     return `Tracks that peak on the first orange leave room for what a blend adds, up to ${BLEND_ADDS}.`;
   if (s.deck1.trim < TRIM.initial || s.deck2.trim < TRIM.initial)
     return 'Lower TRIMs leave room for what the blend adds.';
-  return 'When kicks land together, their peaks add. Watch the MASTER meters.';
+  return 'When both tracks peak at once, the peaks add. Watch the MASTER meters.';
 }
 
 /** The DJ box's line for the MASTER meters, as the lab's task (rules.ts: "top orange dark"). */
 export const CHALLENGE_PROMPT = 'Bring deck 2 all the way up without lighting the top orange on the MASTER meters.';
 
-export type LampTone = 'todo' | 'near' | 'orange' | 'red' | 'done';
+export type StatusTone = 'todo' | 'near' | 'over' | 'done';
+
+export interface StatusLine {
+  /** The state in a word or three, set in bold: "Done.", "Top orange lit.". */
+  state: string;
+  /** What it means, or what to do. */
+  detail: string;
+  tone: StatusTone;
+}
+
+/** The fix for every state past the top orange: deck 2 stays up, the challenge says so. */
+const BRING_DOWN = 'Bring the mix down another way.';
 
 /**
- * How the challenge is going, in a word or two: the legend printed by the lamp beside the prompt.
- * The lamp lights in the colour the MASTER meters show at their highest: orange for the top orange
- * (CLIP lights only above it), red for the red.
+ * How the challenge is going, in one line under the prompt in the panel's title strip: the state,
+ * then what it means. Each fits two lines on the narrowest phone, where the strip keeps two lines'
+ * room, so a slider never moves while the words change (BlendLab). The live region says the longer
+ * challenge message instead, which names the MASTER meters.
  */
-export function statusLamp(status: ChallengeStatus): { label: string; tone: LampTone } {
+export function statusLine(status: ChallengeStatus): StatusLine {
   switch (status) {
     case 'done':
-      return { label: 'Done', tone: 'done' };
+      return { state: 'Done.', detail: 'Deck 2 is up and the top orange is dark.', tone: 'done' };
     case 'red':
-      return { label: 'In the red', tone: 'red' };
-    case 'top':
+      return { state: 'In the red.', detail: BRING_DOWN, tone: 'over' };
     case 'clip':
-      return { label: 'Top orange', tone: 'orange' };
+      return { state: 'CLIP is lit.', detail: BRING_DOWN, tone: 'over' };
+    case 'top':
+      return { state: 'Top orange lit.', detail: BRING_DOWN, tone: 'over' };
     case 'hot1':
     case 'hot2':
-      return { label: 'Nearly', tone: 'near' };
+      return {
+        state: 'Nearly.',
+        detail: `Deck ${status === 'hot1' ? 1 : 2}’s channel meter is in the red.`,
+        tone: 'near',
+      };
+    case 'cut':
+      return { state: 'Nearly.', detail: 'Deck 1 is almost silent. Keep it in the mix.', tone: 'near' };
     default:
-      return { label: 'Not yet', tone: 'todo' };
+      return { state: 'Not yet.', detail: 'Deck 2 is not all the way up.', tone: 'todo' };
   }
 }
 
@@ -225,8 +245,8 @@ export const WAYS_OUT_SHOW = 'Show them now';
 
 export const WAVEFORM_TOGGLE = 'Show the waveform';
 
-/** Shown once the reader has been in the red a while: what to do next. */
-export const HINT = 'Turn deck 1’s LOW down to take its kick out of the stack.';
+/** Shown once the reader has been in the red a while: what to do next, in the DJ box's words. */
+export const HINT = 'Pull deck 1’s fader down a little.';
 
 export function challengeMessage(status: ChallengeStatus): string | null {
   switch (status) {
@@ -287,8 +307,11 @@ export function presetLine(s: BlendSettings, r: BlendAnalysis, status: Challenge
   return [plain(blendSentence(s, r)), verdict].filter(Boolean).join(' ');
 }
 
-/** Under each TRIM: its number is a channel meter reading, not the knob's gain (RANGES.trim tops out at +9). */
-export const trimHint = (n: 1 | 2): string => `Peak on CH${n}`;
+/**
+ * Under each TRIM: where that channel meter peaks now, LOW included. TRIM's own number is the same
+ * reading with LOW flat (it isn't the knob's gain: RANGES.trim tops out at +9).
+ */
+export const trimHint = (n: 1 | 2, db: number): string => `CH${n} ${peaksAt(db)} ${formatDb(db)}`;
 
 export const LISTEN_NOTE = 'It starts quietly. If you hear nothing, check your volume and silent switch.';
 
@@ -308,14 +331,16 @@ export const PLAYER_LABEL = 'Blend lab';
 export const MODEL_NOTES_TITLE = 'What the lab assumes';
 
 /**
- * The two assumptions that change what a DJ does on the unit, each opening with the action, and
- * the one the labs make about the crossfader (Pioneer's THRU, manual p. 28), said once here. The
- * rest are in the guide's section on what the makers publish.
+ * The two assumptions that change what a DJ does on the unit, each opening with the action, then
+ * the controls the lab leaves out: the crossfader (Pioneer's THRU, manual p. 28), and most of the
+ * EQ (model.ts, LOW, says why only the boost half is here). The rest are in the guide's section on
+ * what the makers publish.
  */
 export const MODEL_NOTES: readonly string[] = [
   'On the unit, watch the MASTER meters as you pull a fader down. Pioneer describes the XDJ-RX2’s three channel fader curves in words only, with no dB figures (pp. 27 and 32). The dB figures on these faders are a typical DJ mixer’s.',
   `If CLIP blinks, even slowly, pull a channel fader down a little. Pioneer does not say at what level CLIP starts to blink. In this lab it blinks slowly within ${formatDb(CLIP_SLOW_RANGE_DB, { decimals: 1, signed: false })} of the red light, and fast past it.`,
   'The lab has no crossfader. It plays like the unit with CROSS FADER CURVE on THRU, Pioneer’s setting for not using it (p. 28).',
+  `The lab has one EQ knob, LOW, and only the half that turns it up. On the unit, HI, MID and LOW can each boost by as much as ${formatDb(LOW.max, { signed: false })}.`,
 ];
 
 /** Plain words for a fader position, for screen readers. Rounds the way the display does. */

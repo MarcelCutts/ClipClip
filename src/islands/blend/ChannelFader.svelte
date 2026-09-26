@@ -20,9 +20,11 @@
     value: number;
     /** Unique prefix for ids. */
     uid: string;
+    /** Draw attention to this fader (the challenge hint). */
+    hinted?: boolean;
   }
 
-  let { n, value = $bindable(), uid }: Props = $props();
+  let { n, value = $bindable(), uid, hinted = false }: Props = $props();
 
   const id = $derived(`${uid}-deck${n}`);
   const formatFader = (p: number) => (p <= FADER.min ? 'Off' : formatDb(faderDb(p)));
@@ -40,7 +42,7 @@
     <span class="hw-label" id="{id}-strip">Deck {n}</span>
   </p>
 
-  <div class="channel">
+  <div class="channel" class:hinted={hinted}>
     <div class="scale" aria-hidden="true">
       {#each ticks as t (t)}
         <span class="tick" class:major={t % 5 === 0}></span>
@@ -125,6 +127,13 @@
     z-index: 0;
   }
 
+  /* The hint: a steady printed ring round deck 1's fader, no animation, beside the hint's words. */
+  .channel.hinted {
+    outline: 2px solid var(--hw-label);
+    outline-offset: 4px;
+    border-radius: var(--radius-control);
+  }
+
   /* The shared fader grows its slot to fill a column; here the slot is --fader-length long, so the
      printed scale behind it lines up. */
   .channel :global(.track input) {
@@ -171,6 +180,10 @@
   }
 
   @media (forced-colors: active) {
+    .channel.hinted {
+      outline-color: Highlight;
+    }
+
     .tick,
     .tick.major {
       background: CanvasText;

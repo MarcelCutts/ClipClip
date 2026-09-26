@@ -20,7 +20,7 @@ import {
   plain,
   presetLine,
   speakFader,
-  statusLamp,
+  statusLine,
   trimHint,
   verdictLine,
   WAVEFORM_TOGGLE,
@@ -79,8 +79,10 @@ describe('reactive sentence', () => {
   });
 
   it('follows the channel meters when the decks differ', () => {
-    expect(sentence(settingsOf('swap'))).toBe(
-      'On its own, deck 1 peaks at −2 dB and deck 2 at +3 dB. Together, the mix peaks at +5 dB, in the orange.',
+    const differ = cloneSettings(challenge);
+    differ.deck1.trim = 0;
+    expect(sentence(differ)).toBe(
+      'On its own, deck 1 peaks at 0 dB and deck 2 at +3 dB. Together, the mix peaks at +8 dB, in the orange.',
     );
   });
 
@@ -115,7 +117,7 @@ describe('reactive sentence', () => {
   });
 
   it('keeps each sentence short', () => {
-    const all = [START, challenge, settingsOf('hot'), settingsOf('swap'), settingsOf('ease'), settingsOf('boost')];
+    const all = [START, challenge, settingsOf('hot'), settingsOf('orange'), settingsOf('ease'), settingsOf('boost')];
     for (const s of all) for (const one of sentence(s).split(/(?<=\.)\s/)) expect(words(one)).toBeLessThanOrEqual(22);
   });
 });
@@ -135,14 +137,17 @@ describe('zone words', () => {
 describe('explanation line', () => {
   it('gives one reason per state', () => {
     expect(explain(START)).toBe('Bring deck 2’s fader up. Watch the MASTER meters.');
-    // Lined-up kicks can add up to 6 dB: the synth's share one kick, so here they add all 6.
+    // Two equal peaks can add up to 6 dB: the synth's loops share one kick, so here they add all 6.
     expect(text(explain(challenge))).toBe(
-      'When the kicks land together, their peaks add. Two equal kicks can make a peak up to 6 dB higher, two lights up the meter.',
+      'When both tracks peak at once, the peaks add. Two equal peaks can reach 6 dB higher, two lights up the meter.',
     );
     expect(explain(settingsOf('hot'))).toMatch(/two lights up the meter/);
-    expect(explain(settingsOf('swap'))).toBe('Only one bassline plays at full. The kicks barely stack.');
-    expect(explain(settingsOf('ease'))).toBe('Deck 1 sits lower in the mix. Its kicks add less.');
-    expect(explain(settingsOf('boost'))).toBe('The LOW boost makes one kick louder before the two stack.');
+    expect(explain(settingsOf('ease'))).toBe('Deck 1 sits lower in the mix. It adds less to the blend.');
+    expect(explain(settingsOf('boost'))).toBe('The LOW boost raises its deck’s peak, and the blend rises with it.');
+    const both = cloneSettings(challenge);
+    both.deck1.low = 2;
+    both.deck2.low = 2;
+    expect(explain(both)).toBe('Both LOW boosts raise their decks’ peaks, and the blend rises with them.');
     expect(text(explain(settingsOf('orange')))).toBe(
       'Tracks that peak on the first orange leave room for what a blend adds, up to 6 dB.',
     );
@@ -155,17 +160,17 @@ describe('explanation line', () => {
     // From the top orange light on both decks, deck 2 one mark short of the top.
     const coming = cloneSettings(preset('hot').settings);
     coming.deck2.fader = 9;
-    expect(explain(coming)).toBe('The kicks stack higher as deck 2 comes in.');
+    expect(explain(coming)).toBe('The blend peaks higher as deck 2 comes in.');
     // Deck 1 one mark down: enough from the start, too little from hotter decks…
     const lowered = cloneSettings(challenge);
     lowered.deck1.trim = 5;
     lowered.deck2.trim = 5;
     lowered.deck1.fader = 9;
-    expect(explain(lowered)).toBe('Deck 1 is only a little lower. The kicks still light the top orange.');
+    expect(explain(lowered)).toBe('Deck 1 is only a little lower. Together they still light the top orange.');
     // …and from the top orange light, where one mark down isn't enough to leave the red.
     const hot = cloneSettings(preset('hot').settings);
     hot.deck1.fader = 9;
-    expect(explain(hot)).toBe('Deck 1 is only a little lower. The kicks still stack into the red.');
+    expect(explain(hot)).toBe('Deck 1 is only a little lower. Together they still reach the red.');
   });
 });
 
@@ -202,19 +207,34 @@ describe('a channel meter in the red', () => {
   });
 });
 
-describe('status lamp', () => {
-  it('says Done, In the red or Top orange, and a neutral word for the rest', () => {
-    expect(statusLamp('done')).toEqual({ label: 'Done', tone: 'done' });
-    expect(statusLamp('red')).toEqual({ label: 'In the red', tone: 'red' });
-    // Lit in the colour the MASTER meters show at their highest: CLIP only lights above the top orange.
-    for (const s of ['top', 'clip'] as const) expect(statusLamp(s)).toEqual({ label: 'Top orange', tone: 'orange' });
-    for (const s of ['hot1', 'hot2'] as const) expect(statusLamp(s).label).toBe('Nearly');
-    for (const s of ['waiting', 'apart', 'cut'] as const) expect(statusLamp(s).label).toBe('Not yet');
+describe('status line', () => {
+  const statuses: ChallengeStatus[] = ['waiting', 'apart', 'red', 'clip', 'top', 'hot1', 'hot2', 'cut', 'done'];
+
+  it('says the state first, then what it means', () => {
+    expect(statusLine('done')).toEqual({
+      state: 'Done.',
+      detail: 'Deck 2 is up and the top orange is dark.',
+      tone: 'done',
+    });
+    expect(statusLine('top').state).toBe('Top orange lit.');
+    expect(statusLine('clip').state).toBe('CLIP is lit.');
+    expect(statusLine('red').state).toBe('In the red.');
+    // Past the top orange, deck 2 stays up: the challenge says so, and the line says what is left.
+    for (const s of ['top', 'clip', 'red'] as const) {
+      expect(statusLine(s).detail).toBe('Bring the mix down another way.');
+      expect(statusLine(s).tone).toBe('over');
+    }
+    expect(statusLine('hot2').detail).toBe('Deck 2’s channel meter is in the red.');
+    for (const s of ['hot1', 'hot2', 'cut'] as const) expect(statusLine(s).state).toBe('Nearly.');
+    for (const s of ['waiting', 'apart'] as const)
+      expect(statusLine(s)).toEqual({ state: 'Not yet.', detail: 'Deck 2 is not all the way up.', tone: 'todo' });
   });
 
-  it('leaves the verdict word to the lamp, so the message beside it says why instead', () => {
-    for (const s of ['clip', 'top', 'hot1', 'hot2', 'done'] as const)
-      expect(challengeMessage(s)).not.toMatch(/^(Nearly|Done|Top orange)\b/);
+  it('fits two lines on the narrowest phone, so the title strip never grows while a slider moves', () => {
+    for (const s of statuses) {
+      const { state, detail } = statusLine(s);
+      expect(`${state} ${detail}`.length, s).toBeLessThanOrEqual(56);
+    }
   });
 });
 
@@ -227,7 +247,7 @@ describe('the readout by the MASTER meters', () => {
   it('says where the mix peaks and its colour, in the sentence’s words', () => {
     expect(readout(challenge)).toEqual({ value: '+9 dB', zone: 'orange', words: 'on the top orange' });
     expect(readout(settingsOf('hot'))).toEqual({ value: '+15 dB', zone: 'red', words: '3 dB over the red' });
-    expect(readout(settingsOf('swap'))).toEqual({ value: '+5 dB', zone: 'orange', words: 'in the orange' });
+    expect(readout(settingsOf('ease'))).toEqual({ value: '+8 dB', zone: 'orange', words: 'in the orange' });
     expect(readout(START)).toEqual({ value: '+3 dB', zone: 'orange', words: 'in the orange' });
     // The same number as the sentence gives the mix.
     for (const s of [START, challenge, ...PRESETS.map((p) => p.settings)]) {
@@ -292,7 +312,7 @@ describe('challenge copy', () => {
     expect(challengeMessage('apart')).toBeNull();
     const statuses: ChallengeStatus[] = ['red', 'clip', 'top', 'hot1', 'hot2', 'cut', 'done'];
     for (const s of statuses) expect(challengeMessage(s)).toBeTruthy();
-    // The lamp already says Done, so the message states the result: the DJ box's line for MASTER.
+    // The live region says this in place of the status line: the result, in the DJ box's line for MASTER.
     expect(challengeMessage('done')).toBe('Deck 2 is all the way up, and the top orange stays dark.');
     expect(challengeMessage('top')).toBe(
       'The MASTER meters light the top orange. Keep deck 2 up and bring the mix down another way.',
@@ -308,7 +328,7 @@ describe('challenge copy', () => {
 
   it('keeps the two model notes that change what a DJ does, each opening with the action', () => {
     expect(MODEL_NOTES_TITLE).toBe('What the lab assumes');
-    expect(MODEL_NOTES).toHaveLength(3);
+    expect(MODEL_NOTES).toHaveLength(4);
     expect(MODEL_NOTES[0]).toMatch(/^On the unit, watch the MASTER meters as you pull a fader down\. /);
     expect(MODEL_NOTES[1]).toMatch(/^If CLIP blinks/);
   });
@@ -319,6 +339,13 @@ describe('challenge copy', () => {
       'Pioneer describes the XDJ-RX2’s three channel fader curves in words only, with no dB figures (pp. 27 and 32).',
     );
     expect(MODEL_NOTES.join(' ')).not.toMatch(/does not publish the XDJ-RX2’s fader curve/);
+  });
+
+  it('says the lab’s LOW only turns up, and what the unit’s EQ can add', () => {
+    // Quick Start Guide, specifications: HI, MID and LOW each −∞ dB to +6 dB.
+    expect(text(MODEL_NOTES.at(-1) ?? '')).toBe(
+      'The lab has one EQ knob, LOW, and only the half that turns it up. On the unit, HI, MID and LOW can each boost by as much as 6 dB.',
+    );
   });
 
   it('says once that the lab plays as if the crossfader is on THRU', () => {
@@ -366,8 +393,8 @@ describe('live region', () => {
     expect(line('hot')).toBe(
       'Each deck peaks at +9 dB on its own. Together, the mix would peak at +15 dB, 3 dB over the red.',
     );
-    // Three pads land on "done": each still says something different.
-    expect(new Set((['swap', 'ease', 'orange'] as const).map(line)).size).toBe(3);
+    // Both fixes land on "done": each still says something different.
+    expect(new Set((['ease', 'orange'] as const).map(line)).size).toBe(2);
   });
 });
 
@@ -387,10 +414,15 @@ describe('house style', () => {
     guessNote(9, true),
     guessReveal(9, 12),
     guessReveal(12, 15),
-    trimHint(1),
+    trimHint(1, 3),
+    trimHint(2, 15),
     MODEL_NOTES_TITLE,
     ...MODEL_NOTES,
     ...(['red', 'clip', 'top', 'hot1', 'hot2', 'cut', 'done'] as const).map((s) => challengeMessage(s) ?? ''),
+    ...(['waiting', 'red', 'clip', 'top', 'hot1', 'hot2', 'cut', 'done'] as const).map((s) => {
+      const { state, detail } = statusLine(s);
+      return `${state} ${detail}`;
+    }),
   ];
   /** Every line the lab can show, the explanations and the reactive sentence included. */
   const everything = [
@@ -445,7 +477,11 @@ describe('house style', () => {
     expect(NO_SOUND).toBe(
       'This browser cannot play the sound. Everything else works. To hear it, try another browser.',
     );
-    expect(trimHint(2)).toBe('Peak on CH2');
+    // Under TRIM: the channel meter now, LOW included, and past the red where it would peak.
+    expect(text(trimHint(2, 8))).toBe('CH2 peaks at +8 dB');
+    expect(text(trimHint(1, 15))).toBe('CH1 would peak at +15 dB');
+    // The hint points at the fix that works on any track, in the DJ box's words.
+    expect(HINT).toBe('Pull deck 1’s fader down a little.');
   });
 
   it('never lets a number part from its unit', () => {
