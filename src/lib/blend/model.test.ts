@@ -151,7 +151,7 @@ describe('blends add up', () => {
     expect(r.clip).toBe('fast');
   });
 
-  it('puts Both tracks hot on the top orange light, so the blend goes 3 dB past the red', () => {
+  it('puts both tracks on the top orange light for Top orange, so the blend goes 3 dB past the red', () => {
     const s = settingsOf('hot');
     expect(s.deck1.trim).toBe(TARGET_PEAK_DB.top);
     expect(s.deck2.trim).toBe(TARGET_PEAK_DB.top);
@@ -323,8 +323,8 @@ describe('presets', () => {
   });
 
   it('come in two sets: ways into the red, then ways out of it', () => {
-    expect(presetsIn('push').map((p) => p.label)).toEqual(['Both tracks hot', 'Boost the LOW']);
-    expect(presetsIn('out').map((p) => p.label)).toEqual(['Ease a fader', 'Swap the bass', 'First orange']);
+    expect(presetsIn('push').map((p) => p.label)).toEqual(['Top orange', 'Boost the LOW']);
+    expect(presetsIn('out').map((p) => p.label)).toEqual(['Pull a fader down', 'Swap the bass', 'First orange']);
     expect(presetsIn('push').length + presetsIn('out').length).toBe(PRESETS.length);
     for (const p of presetsIn('push')) {
       const r = analyseBlend(p.settings);
@@ -336,8 +336,9 @@ describe('presets', () => {
     }
   });
 
-  it('never borrow the Kicks switch’s word, so a pad can’t pass for a kicks setting', () => {
-    for (const p of PRESETS) expect(p.label).not.toMatch(/kick/i);
+  it('line the kicks up, as every blend in the lab does', () => {
+    for (const p of PRESETS) expect(p.settings.aligned).toBe(true);
+    expect(START.aligned).toBe(true);
   });
 });
 

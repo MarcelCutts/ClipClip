@@ -22,7 +22,14 @@ describe('tick lifetimes', () => {
   });
 
   it('keeps ticks for the night on the lists that run once', () => {
-    for (const id of CHECKLIST_ORDER.filter((id) => !NEXT_RUN[id])) expect(TICK_LIFETIMES[id]).toBe(12 * HOUR);
+    for (const id of CHECKLIST_ORDER.filter((id) => !NEXT_RUN[id] && id !== 'files')) {
+      expect(TICK_LIFETIMES[id]).toBe(12 * HOUR);
+    }
+  });
+
+  it('keeps the next day’s ticks for two days, since the work on the recordings can spread out', () => {
+    expect(TICK_LIFETIMES.files).toBe(48 * HOUR);
+    expect(lifetimeText(TICK_LIFETIMES.files)).toBe('48 hours');
   });
 
   it('clears a changeover about half an hour after its last tick, well before the next DJ’s set ends', () => {

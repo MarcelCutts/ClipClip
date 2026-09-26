@@ -1,56 +1,56 @@
 import { describe, expect, it } from 'vitest';
-import { labSignal, type Prediction, type Reading, readLab } from './ceilings';
+import { KICKS_TOGETHER_DB } from '../model';
+import { DJ_RULES } from '../rules';
+import { section } from '../sections';
+import { METER_SEGMENTS } from '../xdj';
+import { goalMet, KNOB, labSignal, type Reading, readLab, STEP_SETUP } from './ceilings';
 import * as copy from './copy';
 
-const track = labSignal('track');
+const track = labSignal();
 const at = (channels: number, knob: number): Reading => readLab(track, channels, knob);
 
 /** Every reading worth describing: each combination of stage states the lab can reach. */
 const READINGS = [at(18, -12), at(18, 0), at(18, -6), at(9, 0), at(9, -3), at(12, -12), at(3, -9), at(-6, -24)];
 
+/** Every string the lab can show, in every state. */
 function allText(): string[] {
   const texts: string[] = [
     ...Object.values(copy.STEPS).flatMap((s) => [s.title, s.body]),
-    copy.PREDICT.question,
-    copy.PREDICT.sure,
-    copy.PREDICT.waiting,
     ...Object.values(copy.SOUND),
     ...Object.values(copy.CONTROLS).flatMap((c) => Object.values(c)),
     ...Object.values(copy.STAGE_WORDS),
-    copy.DETAILS.distortionNote,
-    copy.DETAILS.peakNote,
-    copy.DETAILS.mixerNote,
     ...Object.values(copy.NAV),
-    copy.DETAILS.engineerNote,
+    ...Object.values(copy.READOUTS),
+    ...Object.values(copy.CRUNCH_WORDS),
+    ...Object.values(copy.HOWLER_WORDS).flatMap((h) => [h.state, h.meaning]),
+    copy.CHAIN.label,
+    copy.CHAIN.knob.name,
     copy.SCOPES.zoom,
     ...Object.values(copy.SCOPES.legend),
-    ...Object.values(copy.WAITING),
-    copy.ON_THE_NIGHT,
     copy.MODEL_NOTE.text,
+    copy.MODEL_NOTE.link,
     copy.NO_SCRIPT,
-    copy.CHECK.title,
-    copy.CHECK.question,
-    ...Object.values(copy.CHECK.rows),
-    ...Object.values(copy.CHECK.why),
   ];
   for (const r of READINGS) {
-    texts.push(copy.stateSentence(r), copy.stateSentence(r, false));
+    texts.push(copy.stateSentence(r));
     for (const teach of [true, false]) texts.push(...Object.values(copy.scopeClaims(r, teach)));
-    const reveal = copy.revealFeedback(r, 'goes-away', 'certain');
+    const reveal = copy.revealFeedback(r);
     texts.push(reveal.title, ...reveal.lines);
-    for (const step of [3, 4] as const) {
+    for (const step of [2, 3] as const) {
       const s = copy.successFeedback(step, r);
-      if (s) texts.push(s.title, ...s.lines);
+      if (s) texts.push(s.title, ...s.lines, s.next ?? '');
     }
   }
-  return texts;
+  return texts.filter(Boolean);
 }
+
+const sentences = (text: string) => text.split(/(?<=[.?])\s+/);
 
 describe('house style', () => {
   it('uses short sentences, no exclamations, no em dashes and no please', () => {
     for (const text of allText()) {
       expect(text, text).not.toMatch(/[!—]|please/i);
-      for (const sentence of text.split(/(?<=[.?])\s+/)) {
+      for (const sentence of sentences(text)) {
         expect(sentence.split(/\s+/).length, sentence).toBeLessThanOrEqual(20);
       }
     }
@@ -59,11 +59,19 @@ describe('house style', () => {
   it('says things plainly: no question-and-answer lead-ins, no two-beat slogans, no colon slogans', () => {
     for (const text of allText()) {
       // "Want to hear the crunch first? Press Listen."
-      expect(text, text).not.toMatch(/(^|\. )[^.?]{1,40}\? [A-Z]/);
+      expect(text, text).not.toMatch(/\?/);
       // "X. Not Y."
       expect(text, text).not.toMatch(/\. Not [a-z]/);
-      // A short label, a colon, then the point.
-      expect(text, text).not.toMatch(/^[^:.]{1,16}: [a-z]/);
+      // A short label, a colon, then the point. "Next: …" keys name the step they lead to.
+      if (!text.startsWith('Next: ')) expect(text, text).not.toMatch(/^[^:.]{1,16}: [a-z]/);
+    }
+  });
+
+  it('writes like a reference: no ", so" chains, no negative contractions, no tutor’s asides', () => {
+    for (const text of allText()) {
+      expect(text, text).not.toMatch(/, so\b/);
+      expect(text, text).not.toMatch(/n’t\b/);
+      expect(text, text).not.toMatch(/\bremember\b|\bfor real\b|\bfor the curious\b|\bguess\b|\bpredict/i);
     }
   });
 
@@ -74,13 +82,8 @@ describe('house style', () => {
     }
   });
 
-  it('labels the zoom the way the brief asks', () => {
-    expect(copy.SCOPES.zoom).toBe('Zoomed in to about 30 thousandths of a second');
-  });
-
   it('keeps numbers and their units together', () => {
-    expect(copy.DETAILS.distortionNote).toContain('at\u00a05%');
-    for (const text of allText()) expect(text, text).not.toMatch(/\d[ \u2009\u202f](dB|Hz|kHz|%)/);
+    for (const text of allText()) expect(text, text).not.toMatch(/\d[   ](dB|Hz|kHz|%)/);
   });
 
   it('never points up or down the page: each step carries its own keys', () => {
@@ -88,59 +91,56 @@ describe('house style', () => {
     for (const text of allText()) expect(text, text).not.toMatch(/\b(below|above)\b(?! ceiling)/i);
   });
 
-  it('states the model’s caveat once, as an assumption, and points to About the demos', () => {
+  it('points to the guide’s one home for what the makers leave out, and states the gap only there', () => {
     // Howler publishes no maximum input level, so ceiling 2 is an assumption (model.ts).
-    expect(allText().filter((t) => /we assume/i.test(t))).toEqual([copy.MODEL_NOTE.text]);
-    expect(copy.MODEL_NOTE).toMatchObject({ link: 'About the demos', href: '#model' });
+    const makers = section('red-top');
+    expect(copy.MODEL_NOTE).toEqual({
+      text: 'Ceiling 2 is an assumption.',
+      link: `See ${makers.number}`,
+      href: `#${makers.id}`,
+    });
+    expect(allText().filter((t) => /publish|assum/i.test(t))).toEqual([copy.MODEL_NOTE.text]);
   });
 });
 
-describe('our wiring', () => {
-  it('names MASTER LEVEL as the record level, never BOOTH', () => {
-    expect(copy.CONTROLS.knob.label).toBe('Record level (MASTER LEVEL)');
-    expect(copy.CHAIN.knob).toEqual({ name: 'Record level', sub: 'MASTER LEVEL' });
-    // BOOTH as printed on the mixer. The booth itself, where DJs play, is fine.
-    expect(`${JSON.stringify(copy)} ${allText().join(' ')}`).not.toMatch(/BOOTH|[Rr]ecorder knob/);
+describe('the words the guide uses', () => {
+  it('calls the knob the recording level, and never names the knobs taped on the night', () => {
+    expect(copy.CONTROLS.knob.label).toBe('Recording level');
+    expect(copy.CHAIN.knob).toEqual({ name: 'Recording level' });
+    // MASTER LEVEL stays taped fully up, so the lab never turns it, and never has to explain why.
+    const all = `${JSON.stringify(copy)} ${allText().join(' ')}`;
+    expect(all).not.toMatch(/MASTER LEVEL|MASTER ATT|UTILITY|BOOTH|\brecord level\b|middle meters/);
   });
 
-  it('keeps MASTER LEVEL up on the night and turns the recording down with MASTER ATT', () => {
-    expect(copy.ON_THE_NIGHT).toMatch(/MASTER LEVEL stays fully up/);
-    expect(copy.ON_THE_NIGHT).toMatch(/MASTER ATT in UTILITY/);
-    // Pioneer doesn't say whether MASTER ATT reaches MASTER 2, so it's never stated as fact.
-    expect(copy.ON_THE_NIGHT).toMatch(/if the setup test shows it reaches MASTER 2/);
-    expect(copy.successFeedback(4, at(9, -4))!.lines).toContain(copy.ON_THE_NIGHT);
-  });
-
-  it('says first that the knob stands for the record level, since MASTER LEVEL stays taped up', () => {
-    expect(copy.CONTROLS.knob.hint).toMatch(
-      /^On the night, MASTER LEVEL stays taped fully up\. Here the knob stands for the record level\./,
-    );
+  it('reuses the DJ rule’s own words for where a channel should peak', () => {
+    const line = copy
+      .successFeedback(2, at(9, -12))!
+      .lines.join(' ')
+      .replace(/\u00a0/g, ' ');
+    expect(DJ_RULES.some((r) => line.includes(r.response))).toBe(true);
   });
 });
 
 describe('the state sentence', () => {
   it('names where the clipping happened', () => {
-    expect(copy.stateSentence(at(18, -12))).toMatch(/^Clipped inside the mixer\./);
-    expect(copy.stateSentence(at(18, 0))).toMatch(/^Clipped twice\./);
-    expect(copy.stateSentence(at(9, 0))).toMatch(/^Clipped at the Howler’s input only\./);
-    expect(copy.stateSentence(at(3, -9))).toMatch(/^Clean all the way through\./);
+    expect(copy.stateSentence(at(18, -12))).toBe('Clipped in the mixer.');
+    expect(copy.stateSentence(at(18, 0))).toMatch(/^Clipped in the mixer and at the Howler’s input\./);
+    expect(copy.stateSentence(at(18, -6))).toMatch(/^Clipped in the mixer\. The flat tops touch the Howler’s limit\./);
+    expect(copy.stateSentence(at(9, 0))).toBe('Clipped at the Howler’s input.');
+    expect(copy.stateSentence(at(9, -3))).toMatch(/^Touching the Howler’s limit\./);
     expect(copy.stateSentence(at(12, -12))).toMatch(/^Touching the red\./);
+    expect(copy.stateSentence(at(3, -9))).toBe('Clean at both ceilings.');
   });
 
-  it('keeps the answer to the prediction back until the challenge is over', () => {
-    const early = copy.stateSentence(at(18, -12), false);
-    expect(early).not.toMatch(/knob|level|quieter/i);
-    expect(copy.stateSentence(at(18, -12), true)).toMatch(/quieter/);
-    // The line under the recording's screen holds back where its flat tops came from, too.
-    for (const knob of [-12, -18, -24]) {
-      expect(copy.scopeClaims(at(18, knob), false).recording).not.toMatch(/mixer|knob|level/i);
-      expect(copy.scopeClaims(at(18, knob), true).recording).toMatch(/cut in the mixer/);
+  it('gives nothing away in step 1: it says where, not what the recording level can do', () => {
+    for (let knob = KNOB.min; knob <= KNOB.max; knob++) {
+      expect(copy.stateSentence(at(18, knob))).not.toMatch(/recording level|quieter|fix/i);
     }
   });
 });
 
 describe('the scope lines', () => {
-  it('say what each screen shows, with no answer to give away once the mixer is clean', () => {
+  it('say what each screen shows', () => {
     expect(copy.scopeClaims(at(18, -12)).mixer).toMatch(/cut flat/);
     expect(copy.scopeClaims(at(12, -12)).mixer).toMatch(/just touch ceiling 1/);
     expect(copy.scopeClaims(at(3, -9)).mixer).toMatch(/fits under ceiling 1/);
@@ -149,48 +149,38 @@ describe('the scope lines', () => {
     expect(copy.scopeClaims(at(9, -3)).recording).toMatch(/just touch ceiling 2/);
     expect(copy.scopeClaims(at(3, -9), false)).toEqual(copy.scopeClaims(at(3, -9), true));
   });
+
+  it('keep back where the recording’s flat tops came from until step 1 is over', () => {
+    for (const knob of [-12, -18, -24]) {
+      expect(copy.scopeClaims(at(18, knob), false).recording).not.toMatch(/mixer|level/i);
+      expect(copy.scopeClaims(at(18, knob), true).recording).toMatch(/cut in the mixer/);
+    }
+  });
 });
 
-describe('the guided steps', () => {
-  it('asks for everything step 3 checks: Clean, the red light dark and the Howler green', () => {
-    expect(copy.STEPS[3].body).toMatch(/Clean/);
-    expect(copy.STEPS[3].body).toMatch(/red light dark/);
-    expect(copy.STEPS[3].body).toMatch(/Howler’s LEVEL light green/);
+describe('the steps', () => {
+  it('asks for the recording level by name in step 1, with the channel locked in the red', () => {
+    expect(copy.STEPS[1].body).toBe(
+      'The channel is locked in the red. Try to remove the crunch with the recording level.',
+    );
+  });
+
+  it('asks for everything step 2 checks: Clean, the red light dark and the Howler green', () => {
+    expect(copy.STEPS[2].body).toMatch(/Clean/);
+    expect(copy.STEPS[2].body).toMatch(/red light is dark/);
+    expect(copy.STEPS[2].body).toMatch(/LEVEL light is green/);
   });
 
   it('never calls the top orange light fine', () => {
-    expect(copy.STEPS[4].body).not.toMatch(/fine/);
+    for (const s of Object.values(copy.STEPS)) expect(s.body).not.toMatch(/fine/);
   });
 
-  it('asks for the listen where the Listen key is, and for the knob by name in the challenge', () => {
-    expect(copy.STEPS[1].body).toMatch(/Press Listen to hear the crunch first\.$/);
-    expect(copy.STEPS[2].body).toMatch(/^The channels are locked in the red\. Turn the record level/);
-  });
-});
-
-describe('the quick check', () => {
-  it('gives each place the answer canFix gives, in words', () => {
-    // Only the channel for the mixer; both for the recorder.
-    expect(copy.CHECK.why.mixer).toMatch(/^Only the channel\./);
-    expect(copy.CHECK.why.recorder).toMatch(/^Both\./);
-    expect(copy.CHECK.why.recorder).toMatch(/MASTER ATT/);
+  it('counts the steps in words', () => {
+    expect(copy.stepCounter(2, 3)).toBe('Step 2 of 3');
   });
 });
 
 describe('readouts', () => {
-  it('says what waits for a guess, and what to do once there is one', () => {
-    expect(copy.WAITING).toEqual({ before: 'Guess first', after: 'Press Next' });
-  });
-
-  it('names the last step plainly, and says what still works without sound', () => {
-    expect(copy.STEPS[5].title).toBe('Free play');
-    expect(copy.NAV).toMatchObject({ skip: 'Skip to free play', restart: 'Start the lab again' });
-    expect(copy.SOUND.unavailable).toBe(
-      'This browser can’t play the sound. Everything else works; try another browser to hear it.',
-    );
-    expect(copy.HOWLER_WORDS.red.meaning).toBe('Level too high');
-  });
-
   it('puts the channel meter into words beside its lights', () => {
     expect(copy.levelWords(18)).toBe('In the red');
     expect(copy.levelWords(12)).toBe('In the red');
@@ -198,64 +188,50 @@ describe('readouts', () => {
     expect(copy.levelWords(-6)).toBe('In the green');
   });
 
-  it('puts the recording peak into words', () => {
-    expect(copy.peakWords(0)).toBe('Hitting the top');
-    expect(copy.peakWords(-1)).toBe('Close to the top');
-    expect(copy.peakWords(-6)).toBe('Comfortable');
-    expect(copy.peakWords(-12)).toBe('Comfortable');
-    expect(copy.peakWords(-18)).toBe('Low, that’s fine');
-    expect(copy.peakWords(-36)).toBe('Very low');
-  });
-
-  it('writes the numbers for the curious', () => {
-    expect(copy.percentText(0)).toBe('0%');
-    expect(copy.percentText(0.004)).toBe('0.40%');
-    expect(copy.percentText(0.14995)).toBe('15.0%');
-    expect(copy.dbfsText(-6)).toBe('−6.0\u00a0dBFS');
-    // The channel meter tops out at +12, so a level past it is never called a reading on it.
-    expect(copy.mixerPeakText(at(18, -12))).toBe('+18 dB, 6 dB past ceiling 1');
-    expect(copy.mixerPeakText(at(3, -9))).toBe('+3 dB, 9 dB under ceiling 1');
-    expect(copy.DETAILS.mixerNote).toMatch(/stops at \+12, its red light/);
+  it('names the Howler’s light by what it does, and says what works without sound', () => {
+    expect(copy.HOWLER_WORDS.red).toEqual({ state: 'Blinking red', meaning: 'Level too high' });
+    expect(copy.SOUND.unavailable).toBe(
+      'This browser cannot play the sound. Everything else works. To hear it, try another browser.',
+    );
   });
 });
 
 describe('feedback', () => {
-  it('answers the prediction, and singles out confident mistakes', () => {
-    const cases: Array<[Prediction | null, RegExp | null]> = [
-      ['quieter-stays', /^You predicted this\./],
-      ['not-sure', null],
-      [null, null],
-    ];
-    for (const [p, expected] of cases) {
-      const note = copy.predictionNote(p, 'certain');
-      if (expected) expect(note).toMatch(expected);
-      else expect(note).toBeNull();
-    }
-    expect(copy.predictionNote('goes-away', 'certain')).toMatch(/^You were certain/);
-    expect(copy.predictionNote('goes-away', 'guessing')).toMatch(/^You predicted it would go away\./);
+  it('ends step 1 on what happened, with a way on to the channel', () => {
+    const reveal = copy.revealFeedback(at(18, -12));
+    expect(reveal.title).toBe('The crunch is still there');
+    expect(reveal.lines[0]).toMatch(/^The recording level comes after the mixer’s ceiling\./);
+    expect(reveal.next).toBe(`Next: ${copy.STEPS[2].title.toLowerCase()}`);
   });
 
-  it('points out the green Howler light only when it is green', () => {
-    expect(copy.revealFeedback(at(18, -12), null, null).lines.join(' ')).toMatch(/LEVEL light stayed green/);
-    expect(copy.revealFeedback(at(18, 0), null, null).lines.join(' ')).not.toMatch(/stayed green/);
+  it('points out the green LEVEL light only when it is green', () => {
+    expect(copy.revealFeedback(at(18, -12)).lines.join(' ')).toMatch(/LEVEL light stayed green/);
+    expect(copy.revealFeedback(at(18, 0)).lines.join(' ')).not.toMatch(/stayed green/);
   });
 
-  it('adds the house tip when the channels are still high in the orange', () => {
-    expect(copy.successFeedback(3, at(3, -9))!.lines[1]).toMatch(/leaves room for a blend/);
-    expect(copy.successFeedback(3, at(9, -12))!.lines[1]).toMatch(/first orange light/);
-    expect(copy.successFeedback(4, at(9, -4))!.lines[1]).toMatch(/close to the top/);
-    expect(copy.successFeedback(4, at(9, -12))!.lines).toEqual([
-      expect.stringMatching(/record level can fix/),
-      copy.ON_THE_NIGHT,
-    ]);
-    expect(copy.successFeedback(2, at(9, -12))).toBeNull();
+  it('counts a blend as two more lights, the gap the model puts between kicks and their blend', () => {
+    const orange = METER_SEGMENTS.filter((s) => s.zone !== 'green').map((s) => s.db);
+    expect(orange[2]! - orange[0]!).toBe(KICKS_TOGETHER_DB);
   });
 
   it('never lets one track out of the red pass for a safe blend', () => {
     for (let channels = -6; channels <= 11; channels++) {
-      const text = copy.successFeedback(3, at(channels, -12))!.lines.join(' ');
-      expect(text, `channels ${channels}`).toMatch(/A blend can add two more|room for a blend/);
-      expect(text).not.toMatch(/the channels out of the red/);
+      const r = at(channels, STEP_SETUP[2].start.knob);
+      expect(goalMet(2, r), `channels ${channels}`).toBe(true);
+      const text = copy.successFeedback(2, r)!.lines.join(' ');
+      expect(text, `channels ${channels}`).toMatch(/A blend can add two more lights/);
+      // A blend lands KICKS_TOGETHER_DB higher: from +6 up it reaches the red light.
+      if (channels + KICKS_TOGETHER_DB >= 12) expect(text).toMatch(/reach the red\. Keep CH1 on the first/);
+      else expect(text).toMatch(/stay out of the\u00a0red\.$/);
     }
+  });
+
+  it('says a recording close to the top leaves no headroom for a blend, and ends the lab after step 3', () => {
+    expect(copy.successFeedback(3, at(9, -4))!.lines[1]).toMatch(/close to the top/);
+    expect(copy.successFeedback(3, at(9, -12))!.lines).toEqual([
+      'The recording level comes before the Howler’s input.',
+    ]);
+    expect(copy.successFeedback(3, at(9, -12))!.next).toBeNull();
+    expect(copy.successFeedback(1, at(9, -12))).toBeNull();
   });
 });

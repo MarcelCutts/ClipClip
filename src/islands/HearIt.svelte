@@ -1,9 +1,10 @@
 <script lang="ts">
   /**
-   * W5 "Can you hear it?": a blind listening test. Three rounds of the same loop, clean against
-   * clipped (pushed 12, 6, then 3 dB past the mixer's ceiling), with the clipped copy turned
-   * down to the same loudness so volume can't give it away. Pick the clipped one, say how sure
-   * you are, then see both waveforms. A device switch changes the explanation, never the sound.
+   * W5 "Can you hear it?": a blind listening test, the guide's proof in Part 1. Three rounds of
+   * the same loop, clean against clipped (pushed 12, 6, then 3 dB past the mixer's red), with the
+   * clipped copy always turned down to the same loudness, so volume never gives it away. Pick the
+   * clipped one, say how sure you are, then see both waveforms. A device switch changes the words,
+   * never the sound.
    *
    * One surface: the panel, divided by printed lines. The only boxes in it are the two screens.
    * What you listen on is a slide switch (a setting); the answers are pads.
@@ -38,7 +39,6 @@
   import Scope from './hear-it/Scope.svelte';
   import HwButton from './ui/HwButton.svelte';
   import ListenKey from './ui/ListenKey.svelte';
-  import Pad from './ui/Pad.svelte';
 
   interface Props {
     /** Prefix for element ids and the audio owner. Change it if a page shows this widget twice. */
@@ -57,7 +57,6 @@
   /** The round on screen; ROUND_COUNT once the result shows. */
   let current = $state(0);
   let device = $state<Device>('phone');
-  let unmatched = $state(false);
   let playing = $state<Side | null>(null);
   /** The headphone volume warning shows until the first play on headphones. */
   let warned = $state(false);
@@ -70,7 +69,6 @@
   let title = $state<HTMLElement>();
   let screens = $state<HTMLElement>();
   let verdict = $state<HTMLElement>();
-  let unmatchedBox = $state<HTMLElement>();
 
   const done = $derived(current >= ROUND_COUNT);
   const index = $derived(Math.min(current, ROUND_COUNT - 1));
@@ -85,8 +83,7 @@
 
   /** The rate the reveal is drawn at: the device's, if sound has played, so the buffers are shared. */
   const drawRate = (): number => audio.context?.sampleRate ?? 48_000;
-  const view = $derived(isRevealed ? revealView(versionsFor(drawRate()), index, unmatched) : null);
-  const matchDb = $derived(isRevealed ? (versionsFor(drawRate()).matchDb[index] ?? 0) : 0);
+  const view = $derived(isRevealed ? revealView(versionsFor(drawRate()), index) : null);
 
   const pickOptions = SIDES.map((side) => ({ value: side, label: copy.letter(side) }));
   const sureOptions = CONFIDENCES.map((c) => ({ value: c, label: copy.CONFIDENCE_LABELS[c] }));
@@ -97,9 +94,9 @@
   let player: LoopPlayer | null = null;
   let starting = false;
 
-  /** Whatever should be sounding right now. Called by the player at start and on every change. */
+  /** Whatever should be sounding right now, always loudness-matched. Called at start and on every change. */
   function render(sampleRate: number): Float32Array {
-    return bufferFor(versionsFor(sampleRate), index, round, playing ?? 'a', unmatched && isRevealed);
+    return bufferFor(versionsFor(sampleRate), index, round, playing ?? 'a');
   }
 
   /** A Play key: start that side, switch to it, or stop it if it is already the one playing. */
@@ -139,35 +136,6 @@
     if (!starting) player?.stop();
   }
 
-  /** The toggle is there to be heard: switching it on plays the clipped one at the mixer's level. */
-  async function toggleUnmatched(): Promise<void> {
-    unmatched = !unmatched;
-    if (unmatched) await listen(round.clipped);
-    else if (player?.playing && playing === round.clipped) player.update(render);
-    keepClearOfBar(unmatchedBox);
-  }
-
-  /**
-   * The toggle sits at the foot of the reveal, and starting sound opens the page-wide Stop bar
-   * over the bottom of the screen: right where its note just changed. The bar reserves its space
-   * by setting the page's scroll-padding-bottom, in a step or two as it measures itself. Once
-   * that has held steady for a couple of frames, scroll the toggle and its note clear of the bar.
-   */
-  function keepClearOfBar(el: HTMLElement | undefined): void {
-    if (!el) return;
-    let last = '';
-    let steady = 0;
-    let frames = 0;
-    const step = () => {
-      const reserved = getComputedStyle(document.documentElement).scrollPaddingBottom;
-      steady = reserved === last ? steady + 1 : 0;
-      last = reserved;
-      if ((steady >= 2 && reserved !== 'auto') || ++frames > 30) el.scrollIntoView({ block: 'nearest' });
-      else requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }
-
   /* Rounds ----------------------------------------------------------------------------------- */
 
   function focusGroup(name: string): void {
@@ -203,7 +171,7 @@
     await tick();
     // On a phone the reveal lands below the button. Bring the verdict and both waveforms into
     // view (smoothly unless motion is reduced: the page sets scroll-behavior), then move focus to
-    // the verdict so it is read out and Tab carries on to the Play keys, the toggle and Next.
+    // the verdict so it is read out and Tab carries on to the Play keys and Next.
     screens?.scrollIntoView({ block: 'nearest' });
     verdict?.focus({ preventScroll: true });
   }
@@ -221,7 +189,6 @@
 
   function next(): Promise<void> {
     stop();
-    unmatched = false;
     live = '';
     current += 1;
     return showTop();
@@ -232,7 +199,6 @@
     rounds = assignRounds();
     answers = freshAnswers();
     revealed = revealed.map(() => false);
-    unmatched = false;
     message = '';
     live = '';
     current = 0;
@@ -345,8 +311,8 @@
               <Scope
                 id="{id}-scope-{side}"
                 letter={copy.letter(side)}
-                title={copy.scopeTitle(clipped, unmatched)}
-                label={copy.scopeLabel(side, clipped, unmatched)}
+                title={copy.scopeTitle(clipped)}
+                label={copy.scopeLabel(side, clipped)}
                 view={clipped ? view.clipped : view.clean}
                 geometry={REVEAL_SCOPE}
                 playing={playing === side}
@@ -363,20 +329,9 @@
           {/each}
         </div>
         {#if isRevealed && view}
-          <div class="scope-notes">
-            <div class="keys">
-              <p class="key"><span class="swatch" aria-hidden="true"></span>{copy.FLAT_KEY}</p>
-              <p class="key"><span class="dash" aria-hidden="true"></span>{copy.CEILING_KEY}</p>
-            </div>
-            <p class="caption">{copy.scopeCaption(unmatched)}</p>
-          </div>
-          <div class="unmatched" bind:this={unmatchedBox}>
-            <Pad pressed={unmatched} onclick={toggleUnmatched} aria-describedby="{id}-unmatched-hint">
-              {copy.UNMATCHED_LABEL}
-            </Pad>
-            <p class="hint" id="{id}-unmatched-hint">
-              {unmatched ? copy.unmatchedNote(round, matchDb) : copy.unmatchedHint(matchDb)}
-            </p>
+          <div class="keys">
+            <p class="key"><span class="swatch" aria-hidden="true"></span>{copy.FLAT_KEY}</p>
+            <p class="key"><span class="dash" aria-hidden="true"></span>{copy.CEILING_KEY}</p>
           </div>
         {/if}
       </div>
@@ -417,14 +372,11 @@
           {@render deviceChoice()}
           <p class="explain">{copy.DEVICE_EXPLANATIONS[device]}</p>
         </div>
-        <p class="final">{copy.FINAL_LINE}</p>
         <div class="actions">
           <HwButton onclick={restart}>{copy.TRY_AGAIN}</HwButton>
         </div>
       </div>
     {/if}
-
-    <p class="model">{copy.MODEL_NOTE}</p>
   </div>
   <p class="visually-hidden" aria-live="polite">{live}</p>
 </div>
@@ -516,10 +468,7 @@
   }
 
   .tip,
-  .note,
-  .hint,
-  .caption,
-  .model {
+  .note {
     margin: 0;
     font-size: var(--text-sm);
     line-height: 1.5;
@@ -624,11 +573,6 @@
     gap: 0.9rem;
   }
 
-  .scope-notes {
-    display: grid;
-    gap: 0.35rem;
-  }
-
   /* The two keys share a row when there's room, and stack on a phone. */
   .keys {
     display: flex;
@@ -657,12 +601,6 @@
     flex: none;
     width: 1.1rem;
     border-top: 1.5px dashed var(--screen-text);
-  }
-
-  .unmatched {
-    display: grid;
-    justify-items: start;
-    gap: 0.5rem;
   }
 
   /* The result -------------------------------------------------------------------------------- */
@@ -718,28 +656,9 @@
     color: var(--hw-label);
   }
 
-  /* Being sure and wrong is the line to remember: brighter than the rest, with no bar beside it. */
+  /* Being sure and wrong ends on what to do in the booth: brighter than the rest. */
   .hyper {
     color: var(--hw-bright);
-  }
-
-  .final {
-    margin: 0;
-    font-size: var(--text-lede);
-    font-weight: 700;
-    line-height: 1.35;
-    color: var(--hw-bright);
-    text-wrap: pretty;
-  }
-
-  /* The rule runs the panel's width; the words keep a reading measure. */
-  .model {
-    padding-top: 0.9rem;
-    border-top: 1px solid var(--hw-edge);
-  }
-
-  .layout > .model {
-    padding-right: max(0px, 100% - 44rem);
   }
 
   /* A mid-width panel: the two screens side by side. ------------------------------------------ */
@@ -766,13 +685,12 @@
     .layout {
       grid-template-columns: minmax(0, 26rem) minmax(0, 1fr);
       /* The last row soaks up the screens' extra height, so Next sits right under the questions. */
-      grid-template-rows: auto auto auto 1fr auto;
+      grid-template-rows: auto auto auto 1fr;
       grid-template-areas:
         'head head'
         'controls screens'
         'actions screens'
-        '. screens'
-        'model model';
+        '. screens';
       align-items: start;
       column-gap: 2.5rem;
     }
@@ -804,10 +722,6 @@
 
     .scopes {
       grid-template-columns: 1fr;
-    }
-
-    .layout > .model {
-      grid-area: model;
     }
 
     /* The result is reading, not operating: one column at a comfortable measure. */

@@ -45,7 +45,7 @@ export async function readWavInfo(read: ReadBytes, fileSize: number): Promise<Wa
   const head = await read(0, 12);
   const riff = ascii(head, 0, 4);
   if (head.length < 12 || !['RIFF', 'RF64', 'BW64'].includes(riff) || ascii(head, 8, 4) !== 'WAVE') {
-    throw new Error('Not a WAV file: it doesn’t start with a RIFF/WAVE header.');
+    throw new Error('Not a WAV file: it does not start with a RIFF/WAVE header.');
   }
 
   let format: Omit<WavInfo, 'dataOffset' | 'dataBytes' | 'frames' | 'truncated' | 'started'> | undefined;

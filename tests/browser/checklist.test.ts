@@ -5,10 +5,10 @@ import { render } from 'vitest-browser-svelte';
 import '../../src/styles/tokens.css';
 import Checklist from '../../src/islands/Checklist.svelte';
 import {
-  budgetLabel,
   CHECKLIST_ORDER,
   CHECKLISTS,
   type ChecklistId,
+  HOWLER_RED_FIRST_ACTION,
   progressText,
   serialiseTicks,
   storageKey,
@@ -59,7 +59,7 @@ beforeEach(() => {
  */
 const clearTicks = (title: string) => new RegExp(`^Clear ticks ?, ${title}$`);
 
-/** A list's name, as its title strip gives it: "C3 After the night". */
+/** A list's name, as its title strip gives it: "C3 End of the night". */
 const nameOf = (list: ChecklistId) => `${CHECKLISTS[list].code} ${CHECKLISTS[list].title}`;
 
 test('a checklist is a named list under its own heading, not another landmark', async () => {
@@ -68,7 +68,7 @@ test('a checklist is a named list under its own heading, not another landmark', 
   await expect.element(screen.getByRole('heading', { level: 3, name: nameOf('after'), exact: true })).toBeVisible();
   await expect.element(screen.getByRole('list', { name: nameOf('after'), exact: true })).toBeVisible();
   expect(screen.getByRole('checkbox').elements()).toHaveLength(items.length);
-  // The page's sections are the landmarks, and the crew page has its own "After the night".
+  // The page's sections are the landmarks.
   expect(screen.getByRole('region').elements()).toHaveLength(0);
 });
 
@@ -80,18 +80,14 @@ test('links from the group chat land on each list', async () => {
   }
 });
 
-test('its title strip carries the list’s code and, on a timed list, the time budget', async () => {
+test('its title strip carries the list’s code, and the line under it says when to run it, nothing more', async () => {
   const screen = await render(Checklist, { list: 'doors' });
   const strip = screen.container.querySelector('.strip')!;
   expect(strip.querySelector('.code')?.textContent).toBe('C1');
-  const budget = strip.querySelector('.budget');
-  expect(budget?.textContent).toBe(budgetLabel(60));
-  // The line under the strip says it in words, so the figure is only for the eye.
-  expect(budget?.getAttribute('aria-hidden')).toBe('true');
-  await expect.element(screen.getByText(/Under a minute\.$/)).toBeVisible();
-  await screen.unmount();
-  const untimed = await render(Checklist, { list: 'after' });
-  expect(untimed.container.querySelector('.budget')).toBeNull();
+  // Read-and-do, for one person: no time budget on the strip, no method to learn, no call to say.
+  expect(strip.textContent?.trim()).toBe(`C1 ${CHECKLISTS.doors.title}`);
+  expect(screen.container.querySelector('.when')?.textContent).toBe('Before the doors open.');
+  expect(screen.container.textContent).not.toMatch(/from memory|read down|Under a minute|Say: “[^”]*complete/);
 });
 
 test('is a printed card, in the page’s colours, not a hardware panel', async () => {
@@ -185,10 +181,8 @@ test('an open page catches up when you come back to it', async () => {
   const total = ids('changeover').length;
   const screen = await render(Checklist, { list: 'changeover' });
   for (const box of screen.getByRole('checkbox').all()) await box.click();
-  // Just finished: the call is the news, not when it ran.
-  await expect
-    .element(screen.getByRole('status').first())
-    .toHaveTextContent(`${progressText(total, total)}. Say: “${CHECKLISTS.changeover.call}”`);
+  // Just finished: the count is the news, not when it ran.
+  await expect.element(screen.getByRole('status').first()).toHaveTextContent(progressText(total, total));
   expect(screen.getByText(/^Last run/).query()).toBeNull();
 
   // Back for the next changeover, a set later: this one was the last run.
@@ -273,26 +267,40 @@ test('Undo goes once the cleared ticks would have gone anyway', async () => {
   }
 });
 
-test('the Howler line sends the crew to F1 when its light blinks red', async () => {
+test('the Howler line gives the first action for a red light, then sends the crew to F1', async () => {
   const screen = await render(Checklist, { list: 'changeover' });
-  const link = screen.getByRole('link', { name: 'see F1' });
+  const link = screen.getByRole('link', { name: 'go to F1' });
   await expect.element(link).toBeVisible();
   expect(link.element().getAttribute('href')).toMatch(/\/night\/#fix-howler-red$/);
-  // The note describes its box, so a screen reader hears where to go with the line.
+  // The note describes its box, so a screen reader hears what to do with the line.
   const box = screen.getByRole('checkbox').first();
-  await expect.element(box).toHaveAccessibleDescription('If it blinks red, see F1.');
+  await expect
+    .element(box)
+    .toHaveAccessibleDescription(
+      `${HOWLER_RED_FIRST_ACTION} If they are red, say to the DJ: “Pull a channel fader down a little.” If they are below red, go to F1.`,
+    );
   // The link sits outside the row's label: following it never ticks the box.
   expect(link.element().closest('label')).toBeNull();
 });
 
-test('the call waits in grey, then goes live in the action colour, with no radio circle before it', async () => {
-  const screen = await render(Checklist, { list: 'changeover' });
-  const call = screen.getByText(`Say: “${CHECKLISTS.changeover.call}”`);
-  await expect.element(call).toBeVisible();
-  expect(call.element().querySelector('svg')).toBeNull();
-  expect(getComputedStyle(call.element()).color).toBe(token('--ink-3'));
-  for (const box of screen.getByRole('checkbox').all()) await box.click();
-  await expect.poll(() => getComputedStyle(call.element()).color).toBe(token('--action'));
+test('a line with two drills sets each one apart as its own sentence', async () => {
+  const screen = await render(Checklist, { list: 'setup' });
+  const note = [...screen.container.querySelectorAll('.item-note')].at(-1);
+  expect(note?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+    'If it hums, go to F10. If a side is missing, go to F11.',
+  );
+});
+
+test('says what a line costs before it, at full strength, outside the row, and never as a note', async () => {
+  const screen = await render(Checklist, { list: 'files' });
+  const before = screen.getByText(/^Clearing the SD card deletes the original recordings\./);
+  await expect.element(before).toBeVisible();
+  const line = before.element().closest('li')!;
+  // It comes before the box, so it's read before the line is done.
+  expect(line.firstElementChild).toBe(before.element());
+  expect(before.element().closest('label')).toBeNull();
+  expect(getComputedStyle(before.element()).color).toBe(token('--ink'));
+  expect(Number.parseFloat(getComputedStyle(before.element()).fontSize)).toBeGreaterThanOrEqual(15);
 });
 
 test('notes read at an instruction’s strength and 15px or more, until their line is ticked', async () => {
@@ -300,10 +308,14 @@ test('notes read at an instruction’s strength and 15px or more, until their li
   const instruction = token('--ink-2');
   const notes = [...screen.container.querySelectorAll<HTMLElement>('.item-note')];
   expect(notes.length).toBeGreaterThan(1);
-  for (const text of [screen.container.querySelector<HTMLElement>('.how')!, ...notes]) {
+  for (const text of notes) {
     expect(Number.parseFloat(getComputedStyle(text).fontSize)).toBeGreaterThanOrEqual(15);
     expect(getComputedStyle(text).color).toBe(instruction);
   }
+  // When to run it is read first, at full strength.
+  const when = screen.container.querySelector<HTMLElement>('.when')!;
+  expect(Number.parseFloat(getComputedStyle(when).fontSize)).toBeGreaterThanOrEqual(15);
+  expect(getComputedStyle(when).color).toBe(token('--ink'));
   const [ticked, next] = notes.map((note) => note.closest('li')!);
   await page.elementLocator(ticked!.querySelector('input')!).click();
   // A ticked line steps back; the next one still reads as a job to do, its response in the action colour.

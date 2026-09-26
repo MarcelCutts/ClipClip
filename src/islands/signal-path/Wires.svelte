@@ -8,19 +8,18 @@
 
   interface Props {
     layout: Layout;
-    /** Edge ids on the highlighted path, or null when nothing is picked. */
-    lit: ReadonlySet<string> | null;
+    /** Edge ids on the highlighted path: something is always picked. */
+    lit: ReadonlySet<string>;
   }
 
   let { layout, lit }: Props = $props();
 
-  const litWires = $derived(lit ? layout.wires.filter((w) => lit.has(w.edge)) : []);
-  const litDots = $derived(lit ? layout.dots.filter((d) => d.edges.some((e) => lit.has(e))) : []);
+  const litWires = $derived(layout.wires.filter((w) => lit.has(w.edge)));
+  const litDots = $derived(layout.dots.filter((d) => d.edges.some((e) => lit.has(e))));
 </script>
 
 <svg
   class="wires"
-  class:dim={lit !== null}
   data-layout={layout.name}
   viewBox="0 0 {layout.width} {layout.height}"
   aria-hidden="true"
@@ -57,7 +56,7 @@
   </g>
 
   {#each layout.labels as label (label.edge)}
-    <text class="lead" class:on={lit?.has(label.edge)} x={label.x} y={label.y} text-anchor={label.anchor}>
+    <text class="lead" class:on={lit.has(label.edge)} x={label.x} y={label.y} text-anchor={label.anchor}>
       {#each label.lines as line, i (i)}
         <tspan x={label.x} dy={i === 0 ? 0 : '1.2em'}>{line}</tspan>
       {/each}
@@ -98,12 +97,8 @@
     stroke-linejoin: round;
   }
 
-  /* At rest the wires read clearly; once something is picked they step back to 3:1. */
+  /* Wires off the picked path step back to 3:1, so the lit path leads. */
   .base {
-    --wire: color-mix(in oklab, var(--hw-label-2) 88%, var(--hw));
-  }
-
-  .dim .base {
     --wire: color-mix(in oklab, var(--hw-label-2) 62%, var(--hw));
   }
 
@@ -149,8 +144,7 @@
       fill: black;
     }
 
-    .base,
-    .dim .base {
+    .base {
       --wire: darkgray;
     }
 
@@ -176,8 +170,7 @@
       fill: CanvasText;
     }
 
-    .base,
-    .dim .base {
+    .base {
       --wire: GrayText;
     }
 

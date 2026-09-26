@@ -106,9 +106,9 @@ const gain = (db) => 10 ** (db / 20);
 const PUSH = { from: -9, to: 4.5 };
 const DOWN = -9;
 const CARDS = [
-  { at: 0, head: 'A channel in the orange', cap: 'The peaks sit under the ceiling, with room to spare.' },
-  { at: 2, head: 'Past the ceiling', cap: 'If you turn TRIM up too far, the mixer slices the tops flat, which adds crunch.' },
-  { at: 6, head: 'Turned down afterwards', cap: 'The recording only gets quieter. The tops stay flat, and the crunch stays in the file.' },
+  { at: 0, head: 'A channel in the orange', cap: 'The peaks stay below the ceiling.' },
+  { at: 2, head: 'Past the ceiling', cap: 'If TRIM is too high, the mixer cuts the tops flat. That is the crunch.' },
+  { at: 6, head: 'Turned down afterwards', cap: 'The crunch gets quieter. It does not go away.' },
 ];
 
 // The XDJ-RX2's channel meter (src/lib/xdj.ts): a light is lit once the level reaches its mark. The ceiling is

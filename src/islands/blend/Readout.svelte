@@ -1,6 +1,6 @@
 <script lang="ts">
   /**
-   * The verdict by the middle meters, the biggest words in the lab: where the mix peaks and its
+   * The verdict by the MASTER meters, the biggest words in the lab: where the mix peaks and its
    * colour, like "Mix +12 dB" over "in the red". Its square lamp is lit in the zone's colour, the
    * same signal state the meters show. "Mix" is our word, not a legend on the unit, so it's set
    * in sentence case, not in the panel lettering.

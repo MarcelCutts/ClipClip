@@ -10,16 +10,12 @@
    * - With `pads`, rubber pads (ui/RadioPad) in one row of equal widths, for an answer, laid out
    *   like every "How sure are you?" on the site (quiz/Sure). `letters` prints the pads' words as
    *   big letters (the A/B pick).
-   *
-   * The blend lab's Kicks switch uses the switch too (blend/KicksSwitch).
    */
   import RadioPad from '../ui/RadioPad.svelte';
 
   interface Option {
     value: T;
     label: string;
-    /** A smaller line under the name, like "not beatmatched". Screen readers hear it too. */
-    detail?: string | undefined;
   }
 
   interface Props {
@@ -47,7 +43,6 @@
           {name}
           value={option.value}
           label={option.label}
-          detail={option.detail}
           checked={value === option.value}
           {disabled}
           onchange={() => onchange(option.value)}
@@ -67,7 +62,7 @@
             onchange={() => onchange(option.value)}
           />
           <span class="slot" aria-hidden="true"><span class="cap"></span></span>
-          <span class="name">{option.label}{#if option.detail}<small>{option.detail}</small>{/if}</span>
+          <span class="name">{option.label}</span>
         </label>
       {/each}
     </div>
@@ -185,11 +180,6 @@
     line-height: 1.25;
     text-align: center;
     color: var(--hw-label);
-  }
-
-  small {
-    font-size: var(--text-xs);
-    line-height: 1.3;
   }
 
   .position:has(input:checked) .name {

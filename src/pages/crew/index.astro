@@ -1,5 +1,5 @@
 ---
-// The crew page split in two: the night's checklists and fixes, and the one-off setup.
+// The crew page split in two: the night's checklists and drills, and the setup at every event.
 import Moved from '../../layouts/Moved.astro';
 ---
 
@@ -12,13 +12,12 @@ import Moved from '../../layouts/Moved.astro';
     'record-level': '/setup/#record-level',
     checklists: '/night/#doors',
     troubleshooting: '/night/#fixes',
-    backup: '/setup/#backup',
-    power: '/setup/#power',
-    'test-night': '/setup/#tests',
+    power: '/setup/#setup',
+    'test-night': '/setup/#setup',
     print: '/print/',
   }}
   links={[
-    { path: '/night/', label: 'On the night: the checklists and fixes' },
-    { path: '/setup/', label: 'Setting up: wiring, record level and tests' },
+    { path: '/night/', label: 'Crew on the night: the checklists and drills' },
+    { path: '/setup/', label: 'Setting up: the wiring and the recording level' },
   ]}
 />

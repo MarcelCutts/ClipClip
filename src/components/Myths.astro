@@ -1,10 +1,9 @@
 ---
 /**
  * Things DJs say about the red, set out as a reference table: what people say, and what's true.
- * The belief is quoted in italic; what's true follows at the same weight, then one paragraph with
- * the part of the claim that's fair, what actually happens and what to do instead, and the maker's
- * page where one backs it. Everything is visible: a sceptic scans the left column for their own
- * belief. On phones each row stacks.
+ * The belief is quoted in italic; what's true follows at the same weight, then the answer and the
+ * one thing to do, and the maker's page where one backs it. Everything is visible: a sceptic scans
+ * the left column for their own belief. On phones each row stacks.
  */
 import type { Myth } from '../lib/myths';
 
@@ -28,7 +27,7 @@ const stop = (source: Source) => (source.page || !/[?!.]$/.test(source.title) ? 
     <p class="claim"><span class="visually-hidden">What people say: </span>“{m.claim}”</p>
     <div class="true">
       <p class="truth"><span class="visually-hidden">What’s true: </span>{m.truth}</p>
-      <p>{m.fair} {m.actually} {m.instead}</p>
+      <p>{m.answer} {m.action}</p>
       {m.source?.publisher && (
       <p class="source">
         Source: {m.source.publisher}, “<a href={link(m.source)} rel="external">{m.source.title}</a>”{stop(m.source)}
@@ -36,7 +35,7 @@ const stop = (source: Source) => (source.page || !/[?!.]$/.test(source.title) ? 
     )}
       {m.source && !m.source.publisher && (
       <p class="source">
-        Source: <a href={link(m.source)} rel="external">{m.source.title}</a>{m.source.page && `, page\u00a0${m.source.page}`}{stop(m.source)}
+        Source: <a href={link(m.source)} rel="external">{m.source.title}</a>{m.source.page && `, p.\u00a0${m.source.page}`}{stop(m.source)}
       </p>
     )}
     </div>

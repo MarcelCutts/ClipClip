@@ -1,15 +1,13 @@
 ---
 /**
  * The guide's index, set like a quick reference handbook's: each part a row with its thumb tab,
- * number, title and reading time, and a last row, F, for the drills on the night page. On phones
- * and laptops it's a list near the top; on wide screens it sits in the rail left of the text, stays
- * in view, and opens the part you're in. The thumb tab of the part you're in is filled.
+ * number, title and reading time. On phones and laptops it's a list near the top; on wide screens
+ * it sits in the rail left of the text, stays in view, and opens the part you're in. The thumb tab
+ * of the part you're in is filled.
  *
  * Without JavaScript it's a plain list of links. With it, the part and section you're in are
  * marked here and on the phone's tab strip (Tabs.astro).
  */
-import { href } from '../lib/url';
-
 export interface ContentsEntry {
   id: string;
   label: string;
@@ -25,11 +23,9 @@ interface Props {
   entries: ContentsEntry[];
   /** How many rows of the guide's grid the rail runs beside. */
   rows: number;
-  /** A last row for the night page's drills. */
-  drills?: boolean;
 }
 
-const { entries, rows, drills = false } = Astro.props;
+const { entries, rows } = Astro.props;
 ---
 
 <nav class="toc" aria-labelledby="toc-title" data-toc style={`--toc-rows: ${rows}`}>
@@ -58,18 +54,6 @@ const { entries, rows, drills = false } = Astro.props;
   )}
   </li>
 ))}
-    {drills && (
-  <li class="part">
-    <a href={href('/night/#fixes')}>
-      <span class="marker" aria-hidden="true"></span>
-      <span class="no"><span class="lamp" aria-hidden="true"></span>F</span>
-      <span class="text">
-        <span class="label">Something’s wrong</span>
-        <span class="time">On the night</span>
-      </span>
-    </a>
-  </li>
-)}
   </ol>
 </nav>
 
@@ -188,7 +172,7 @@ const { entries, rows, drills = false } = Astro.props;
     font-weight: 700;
   }
 
-  /* The drills' lamp, as on their tab: the only red in the index. */
+  /* The drills' lamp on the night page, as on their tab: the only red in the index. */
   .lamp {
     flex: none;
     width: 0.5rem;

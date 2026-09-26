@@ -3,7 +3,6 @@
  * levels, then where to listen.
  */
 import { TARGET } from '../model';
-import { section } from '../sections';
 import type { ClipCheckResult } from './analyse';
 import type { WavInfo } from './wav';
 
@@ -54,21 +53,20 @@ export function formatReport(
   const layout = info.channels === 2 ? 'stereo' : info.channels === 1 ? 'mono' : `${info.channels} channels`;
   lines.push(name, `${duration(r.seconds)}, ${info.sampleRate / 1000}${NBSP}kHz, ${kind}, ${layout}`);
   if (info.truncated) {
-    lines.push('The file never had its length written, as when a recording is cut off; read to its end.');
+    lines.push('Its length was never written, as happens when a recording is cut off. It was read to its end.');
   }
   lines.push('');
 
   // The verdict.
-  const recordLevel = section('record-level');
   const c = r.ceiling;
   if (r.verdict === 'recorder') {
     const longestMs = (r.overloads.longest / r.sampleRate) * 1000;
     lines.push(
       'Verdict: the recorder overloaded.',
       `  ${plural(r.overloads.count, 'time')} its input ran past full scale (the longest for ${longestMs.toFixed(1)}${NBSP}ms).`,
-      `  Turn the record level down: see ${recordLevel.number} ${recordLevel.title} in the guide.`,
+      '  Turn the recording level down. The steps are in S3 on the Setting up page.',
     );
-    if (c) lines.push(`  Flat tops also pile up at ${dbfs(c.levelDb)}, below full scale: see below.`);
+    if (c) lines.push(`  Flat tops also pile up at ${dbfs(c.levelDb)}, below full scale. The minutes are below.`);
   } else if (c) {
     const span = (c.lastAt - c.firstAt) / r.sampleRate;
     const where =
@@ -81,25 +79,23 @@ export function formatReport(
       `  Both sides of the wave are flattened (${count(c.tops)} tops, ${count(c.bottoms)} bottoms). The recorder itself never overloaded.`,
     );
     if (c.stretches > 1 || span > ONE_TRACK_SECONDS) {
-      lines.push(
-        '  One level that keeps coming back, track after track, is a ceiling in the rig: most likely the mixer.',
-      );
+      lines.push('  The same level comes back track after track. That is a ceiling in the rig, most likely the mixer.');
     } else {
       lines.push(
-        '  That’s short enough to be one track mastered with flat tops of its own, or the mixer during one',
-        '  blend. Listen there, and ask who was playing.',
+        '  That can be one track mastered with flat tops of its own, or the mixer during one blend.',
+        '  Listen there, and ask who was playing.',
       );
     }
   } else {
     lines.push('Verdict: clean. The recorder never overloaded, and no flat tops pile up at one level.');
     if (r.flatTops.count > 0) {
       lines.push(
-        `  ${plural(r.flatTops.count, 'flat top')} turn up scattered over many levels. Tracks mastered with flat tops`,
-        '  do that on their own, so this isn’t the rig.',
+        `  ${plural(r.flatTops.count, 'flat top')} are scattered over many levels. Tracks mastered with flat tops`,
+        '  do that on their own. This is not the rig.',
       );
     }
   }
-  if (r.overs > 0) lines.push(`  ${plural(r.overs, 'sample')} go past full scale, which only a float file can hold.`);
+  if (r.overs > 0) lines.push(`  ${plural(r.overs, 'sample')} go past full scale. Only a float file can hold them.`);
   lines.push('');
 
   // The levels, against the guide's target.

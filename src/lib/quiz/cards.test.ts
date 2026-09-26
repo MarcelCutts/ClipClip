@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { KICKS_TOGETHER_DB } from '../model';
+import { KICKS_TOGETHER_DB, TARGET_PEAK_DB } from '../model';
+import { section } from '../sections';
 import { MASTER_TAG, MONITOR_TAG, REC_TAG, SHORT_TAGS } from '../tags';
 import { CEILING_DB, litCount, zoneFor } from '../xdj';
 import {
@@ -11,6 +12,7 @@ import {
   correctChoice,
   feedbackFor,
   isCorrect,
+  REVIEW_LEAD,
   reviewLinks,
   scoreLine,
   summarise,
@@ -19,57 +21,64 @@ import {
 } from './cards';
 
 /**
- * Where a card may send the reader: the guide's sections that teach these ideas. The quiz sits in
- * the guide itself (/#check), so every link is a jump within the page.
+ * Where a card may send the reader: the Part 2 sections, where a DJ's rules are taught. The check
+ * sits at the end of Part 2, so every link is a jump back up the same page.
  */
-const TAUGHT_AT = new Set(['/#trim', '/#meters', '/#blends', '/#knobs', '/#myths', '/#two-ceilings', '/#record-level']);
+const TAUGHT_AT = new Set(['/#trim', '/#meters', '/#knobs', '/#blends']);
 
 /** The page source behind a site path, to check that a linked #section really exists. */
 const pageSource = (path: string) =>
   readFileSync(new URL(`../../pages${path.replace(/#.*$/, '')}index.astro`, import.meta.url), 'utf8');
 
 /** Every string a reader sees on the cards. */
-const copyOf = (card: Card) => [
-  card.question,
-  card.learn.text,
-  ...(card.scene?.kind === 'meters' && card.scene.caption ? [card.scene.caption] : []),
-  ...card.choices.flatMap((c) => [c.label, c.feedback]),
-];
+const copyOf = (card: Card) => [card.question, card.learn.text, ...card.choices.flatMap((c) => [c.label, c.feedback])];
 
 const sentences = (text: string) => text.split(/(?<=[.?])\s+/).filter(Boolean);
 const words = (sentence: string) => sentence.split(/\s+/).filter(Boolean).length;
-
-const scene = (id: string) => {
-  const card = CARDS.find((c) => c.id === id);
-  if (card?.scene?.kind !== 'meters') throw new Error(`${id} has no meters`);
-  return card.scene;
+const card = (id: string) => {
+  const found = CARDS.find((c) => c.id === id);
+  if (!found) throw new Error(`No card ${id}`);
+  return found;
 };
+const choice = (cardId: string, id: string) => card(cardId).choices.find((c) => c.id === id);
 
 const answerAll = (picks: Array<[choice: string, confidence: Answer['confidence']] | undefined>) =>
   picks.map((p) => (p ? { choice: p[0], confidence: p[1] } : undefined));
 
 describe('the cards', () => {
-  it('are five, each with two or three choices and exactly one right answer', () => {
-    expect(CARDS).toHaveLength(5);
-    for (const card of CARDS) {
-      expect(card.choices.length, card.id).toBeGreaterThanOrEqual(2);
-      expect(card.choices.length, card.id).toBeLessThanOrEqual(3);
+  it('are four DJ questions, in the order of the box to know by heart', () => {
+    expect(CARDS.map((c) => c.id)).toEqual(['peak', 'meters', 'room', 'monitor']);
+  });
+
+  it('each have two or three choices and exactly one right answer', () => {
+    for (const c of CARDS) {
+      expect(c.choices.length, c.id).toBeGreaterThanOrEqual(2);
+      expect(c.choices.length, c.id).toBeLessThanOrEqual(3);
       expect(
-        card.choices.filter((c) => c.correct),
-        card.id,
+        c.choices.filter((x) => x.correct),
+        c.id,
       ).toHaveLength(1);
-      expect(new Set(card.choices.map((c) => c.id)).size, card.id).toBe(card.choices.length);
+      expect(new Set(c.choices.map((x) => x.id)).size, c.id).toBe(c.choices.length);
     }
-    expect(new Set(CARDS.map((c) => c.id)).size).toBe(CARDS.length);
   });
 
   it('keep the right answer out of a fixed slot, so position gives nothing away', () => {
-    const slots = CARDS.map((card) => card.choices.findIndex((c) => c.correct));
+    const slots = CARDS.map((c) => c.choices.findIndex((x) => x.correct));
     expect(new Set(slots).size).toBeGreaterThan(1);
   });
 
-  it('link only to where the site teaches the idea', () => {
-    for (const card of CARDS) expect(TAUGHT_AT.has(card.learn.path), card.learn.path).toBe(true);
+  it('never ask the crew’s questions: no Howler, no recording level', () => {
+    for (const text of CARDS.flatMap((c) => [c.question, ...c.choices.map((x) => x.label)])) {
+      expect(text, text).not.toMatch(/Howler|LEVEL light|MASTER ATT|recording level|turn the recording down/i);
+    }
+  });
+
+  it('link only to the Part 2 sections that teach the idea, named as the index names them', () => {
+    for (const c of CARDS) {
+      expect(TAUGHT_AT.has(c.learn.path), c.learn.path).toBe(true);
+      const { number, title } = section(c.learn.path.split('#')[1] ?? '');
+      expect(c.learn.text).toBe(`${number} ${title}`);
+    }
   });
 
   it('link to sections that exist on their pages', () => {
@@ -85,7 +94,7 @@ describe('the cards', () => {
 });
 
 describe('card copy follows the house style', () => {
-  const all = CARDS.flatMap(copyOf);
+  const all = [...CARDS.flatMap(copyOf), REVIEW_LEAD];
 
   it('keeps every sentence to 20 words or fewer', () => {
     for (const text of all) for (const s of sentences(text)) expect(words(s), s).toBeLessThanOrEqual(20);
@@ -106,78 +115,103 @@ describe('card copy follows the house style', () => {
     }
   });
 
-  it('writes the knob names as printed on the unit', () => {
-    for (const text of all) expect(text, text).not.toMatch(/\b(Booth|Master) (knob|level|meter)/);
+  it('writes the knob names as printed on the unit, and the pair in the middle as the MASTER meters', () => {
+    for (const text of all) {
+      expect(text, text).not.toMatch(/\b(Booth|Master) (knob|level|meter)/);
+      expect(text, text).not.toMatch(/middle meters?/i);
+    }
+  });
+
+  it('states facts: no negative contractions, no ", so" chains, no idioms', () => {
+    // The link texts are the guide's section titles (sections.ts), worded there.
+    const own = all.filter((text) => !CARDS.some((c) => c.learn.text === text));
+    for (const text of own) {
+      expect(text, text).not.toMatch(/n’t\b|n't\b/);
+      expect(text, text).not.toMatch(/, so\b/);
+      expect(text, text).not.toMatch(/\b(go over|keep an eye|ease|a notch|on cue)\b/i);
+    }
   });
 });
 
-describe('card scenes agree with the model', () => {
-  it('shows the red channel on the turn-down card', () => {
-    expect(zoneFor(scene('turn-down').ch1)).toBe('red');
+describe('where a channel peaks', () => {
+  it('asks for the first or second orange, in the box’s words', () => {
+    expect(correctChoice(card('peak')).label).toBe('The first or second orange');
+    expect(correctChoice(card('peak')).feedback).toBe('That leaves room for the two lights a blend adds.');
   });
 
-  it('puts two top-orange tracks into the red once their kicks line up', () => {
-    const blend = scene('blend');
-    expect(litCount(blend.ch1)).toBe(11);
-    expect(zoneFor(blend.ch1)).toBe('orange');
-    expect(blend.master).toBe(blend.ch1 + KICKS_TOGETHER_DB);
-    expect(blend.master).toBeGreaterThanOrEqual(CEILING_DB);
-    expect(blend.hideMaster).toBe(true);
-  });
-
-  it('shows the house rule working: channels at the first orange, a blend still out of the red', () => {
-    const which = scene('which-meters');
-    expect(litCount(which.ch1)).toBe(8);
-    expect(which.master).toBe(which.ch1 + KICKS_TOGETHER_DB);
-    expect(zoneFor(which.master)).toBe('orange');
+  it('answers the top orange with what a blend adds, and red with Pioneer’s page', () => {
+    // From the top orange (+9) two lights (6 dB) lands past the red (+12).
+    expect(TARGET_PEAK_DB.top + KICKS_TOGETHER_DB).toBeGreaterThan(CEILING_DB);
+    expect(TARGET_PEAK_DB.second + KICKS_TOGETHER_DB).toBeLessThan(CEILING_DB);
+    expect(choice('peak', 'top')?.feedback.replaceAll(' ', ' ')).toBe(
+      'A blend can add 6 dB, two lights. From the top orange, that is past the red.',
+    );
+    expect(choice('peak', 'red')?.feedback).toMatch(/or the sound may be distorted \(p\. 31\)\.$/);
   });
 });
 
-describe('the monitor card agrees with the knob tags', () => {
-  const monitor = CARDS.find((c) => c.id === 'monitor');
-  if (!monitor) throw new Error('No monitor card');
-  const choice = (id: string) => monitor.choices.find((c) => c.id === id);
+describe('which meters show a blend', () => {
+  const scene = card('meters').scene;
 
-  it('sends DJs to BOOTH MONITOR, the knob the print kit tags as theirs', () => {
+  it('shows the house rule working: channels on the first orange, the blend two lights up, out of the red', () => {
+    if (scene?.kind !== 'meters') throw new Error('No meters');
+    expect(litCount(scene.ch1)).toBe(8);
+    expect(scene.master).toBe(scene.ch1 + KICKS_TOGETHER_DB);
+    expect(zoneFor(scene.master)).toBe('orange');
+  });
+
+  it('names the pair in the middle as the box does', () => {
+    expect(correctChoice(card('meters')).label).toBe('The MASTER meters (the pair in the middle)');
+  });
+});
+
+describe('the volume cards agree with the knob tags', () => {
+  it('send a louder room to the crew, and louder monitors to BOOTH MONITOR', () => {
+    expect(correctChoice(card('room')).label).toBe('Ask the crew');
+    expect(correctChoice(card('monitor')).label).toBe('Turn up BOOTH MONITOR');
+  });
+
+  it('keep pushing the channels and touching MASTER LEVEL as the traps, in the same words on both', () => {
+    for (const id of ['room', 'monitor']) {
+      expect(isCorrect(card(id), 'channels')).toBe(false);
+      expect(isCorrect(card(id), 'master')).toBe(false);
+      expect(choice(id, 'channels')?.feedback).toMatch(/^Louder channels drive the MASTER meters towards the red\. /);
+    }
+    expect(choice('room', 'master')?.feedback).toBe(choice('monitor', 'master')?.feedback);
+    // MASTER LEVEL carries the REC tag: it sets the speakers and the recording.
+    expect(choice('room', 'master')?.feedback).toContain(`marked ${REC_TAG.name}`);
+    expect(choice('room', 'master')?.feedback).toMatch(/speakers and the recording/);
+  });
+
+  it('shows BOOTH MONITOR with the tag the print kit puts beside it', () => {
+    const monitor = card('monitor');
     expect(MONITOR_TAG.owner).toBe('yours');
     expect(MONITOR_TAG.where).toMatch(/BOOTH MONITOR/);
-    expect(correctChoice(monitor).label).toBe('Turn up BOOTH MONITOR');
     expect(correctChoice(monitor).feedback).toContain(`${MONITOR_TAG.name} tag`);
-    // The picture shows the knob with that tag beside it.
     expect(monitor.scene).toEqual({ kind: 'booth', tag: MONITOR_TAG });
-  });
-
-  it('keeps pushing the channels and touching MASTER LEVEL as the traps', () => {
-    expect(isCorrect(monitor, 'channels')).toBe(false);
-    expect(isCorrect(monitor, 'master')).toBe(false);
-    expect(choice('channels')?.feedback).toMatch(/Turn up BOOTH MONITOR instead\.$/);
-    // MASTER LEVEL carries the REC tag: it sets the speakers and the recording.
-    expect(choice('master')?.feedback).toContain(`marked ${REC_TAG.name}`);
-    expect(choice('master')?.feedback).toMatch(/speakers and the recording/);
   });
 
   it('says what the MASTER LEVEL tag printed on the same sheet says', () => {
     expect(SHORT_TAGS).toContain(REC_TAG);
     expect(REC_TAG.where).toMatch(/MASTER LEVEL/);
-    expect(MASTER_TAG.name).toBe('SPEAKERS + RECORDING');
     expect(MASTER_TAG.lines.at(-1)).toMatch(/ask the crew\.$/i);
   });
 });
 
 describe('answering', () => {
-  const where = CARDS[0]!;
+  const peak = CARDS[0]!;
 
   it('says right or wrong in words before the why', () => {
-    expect(correctChoice(where).id).toBe('mixer');
-    expect(isCorrect(where, 'mixer')).toBe(true);
-    expect(verdict(where, 'mixer')).toBe('Right.');
-    expect(verdict(where, 'speakers')).toBe('Not quite.');
-    expect(feedbackFor(where, 'recorder')).toMatch(/^Not quite\. A green light/);
-    expect(feedbackFor(where, 'mixer')).toMatch(/^Right\. /);
+    expect(correctChoice(peak).id).toBe('first');
+    expect(isCorrect(peak, 'first')).toBe(true);
+    expect(verdict(peak, 'first')).toBe('Right.');
+    expect(verdict(peak, 'red')).toBe('Not quite.');
+    expect(feedbackFor(peak, 'top')).toMatch(/^Not quite\. A blend can add/);
+    expect(feedbackFor(peak, 'first')).toMatch(/^Right\. /);
   });
 
   it('refuses a choice the card doesn’t have', () => {
-    expect(() => feedbackFor(where, 'nowhere')).toThrow();
+    expect(() => feedbackFor(peak, 'nowhere')).toThrow();
   });
 });
 
@@ -186,45 +220,37 @@ describe('the summary', () => {
 
   it('counts right answers and stays quiet when nothing sure was wrong', () => {
     const summary = summarise(CARDS, answerAll(right.map((id) => [id, 'certain'])));
-    expect(scoreLine(summary)).toBe('You got 5 of 5.');
+    expect(scoreLine(summary)).toBe('You got 4 of 4.');
     expect(sureLine(summary)).toBeNull();
     expect(reviewLinks(CARDS, summary)).toEqual([]);
   });
 
-  it('singles out one confident miss', () => {
+  it('says how many wrong answers were certain', () => {
     const picks = right.map((id): [string, Answer['confidence']] => [id, 'fairly']);
-    picks[1] = ['yes', 'certain'];
-    picks[3] = ['sides', 'guessing'];
+    picks[1] = ['channels', 'certain'];
+    picks[3] = ['master', 'guessing'];
     const summary = summarise(CARDS, answerAll(picks));
-    expect(scoreLine(summary)).toBe('You got 3 of 5.');
-    expect(summary.sureButWrong).toEqual(['turn-down']);
-    expect(sureLine(summary)).toBe(
-      'You were certain of one answer that was wrong. That one is worth reading about again.',
-    );
-  });
-
-  it('speaks in the plural for more than one confident miss', () => {
-    const picks = right.map((id): [string, Answer['confidence']] => [id, 'certain']);
-    picks[0] = ['recorder', 'certain'];
-    picks[4] = ['channels', 'certain'];
-    expect(sureLine(summarise(CARDS, answerAll(picks)))).toBe(
-      'You were certain of some answers that were wrong. Those are worth reading about again.',
-    );
+    expect(scoreLine(summary)).toBe('You got 2 of 4.');
+    expect(summary.sureButWrong).toEqual(['meters']);
+    expect(sureLine(summary)).toBe('You were certain of one wrong answer.');
+    picks[0] = ['top', 'certain'];
+    expect(sureLine(summarise(CARDS, answerAll(picks)))).toBe('You were certain of two wrong answers.');
   });
 
   it('counts an unanswered card as missed, never as sure', () => {
     const summary = summarise(CARDS, answerAll([[right[0]!, 'certain']]));
     expect(summary.right).toBe(1);
-    expect(summary.missed).toHaveLength(4);
+    expect(summary.missed).toHaveLength(3);
     expect(summary.sureButWrong).toEqual([]);
   });
 
-  it('lists each page to go over once, in card order', () => {
+  it('lists each section to read again once, in card order', () => {
     const picks = right.map((id): [string, Answer['confidence']] => [id, 'certain']);
-    picks[0] = ['speakers', 'guessing'];
-    picks[1] = ['yes', 'guessing'];
-    picks[3] = ['sides', 'guessing'];
+    picks[0] = ['red', 'guessing'];
+    picks[2] = ['master', 'guessing'];
+    picks[3] = ['channels', 'guessing'];
     const links = reviewLinks(CARDS, summarise(CARDS, answerAll(picks)));
-    expect(links.map((l) => l.path)).toEqual(['/#two-ceilings', '/#meters']);
+    expect(links.map((l) => l.path)).toEqual(['/#trim', '/#knobs']);
+    expect(REVIEW_LEAD).toBe('Read these again');
   });
 });

@@ -8,7 +8,7 @@ import SoundBar from '../islands/SoundBar.svelte';
 import { href } from '../lib/url';
 
 interface Props {
-  /** The page name, shown in the tab. The home page passes the site name alone. */
+  /** The page name, shown in the tab. The home page's starts with the site name, and stands alone. */
   title: string;
   description: string;
   /** Set on pages that shouldn't carry the site chrome, like the print sheet. */
@@ -19,7 +19,7 @@ interface Props {
 
 const { title, description, bare = false, canonicalPath } = Astro.props;
 const siteName = 'Out of the red';
-const fullTitle = title === siteName ? siteName : `${title} – ${siteName}`;
+const fullTitle = title.startsWith(siteName) ? title : `${title} – ${siteName}`;
 const canonical = new URL(canonicalPath ?? Astro.url.pathname, Astro.site);
 const ogImage = new URL(href('/og.png'), Astro.site);
 ---

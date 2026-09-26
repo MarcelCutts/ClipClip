@@ -1,16 +1,21 @@
 /**
- * The meter check (W7): five retrieval cards, and the rules for scoring them.
+ * The meter check: four questions on the DJ's lines to know by heart, one card each, and the
+ * rules for scoring them. In the box's order: where a channel peaks, which meters show a blend,
+ * a louder room, louder monitors.
  *
- * Every wrong option is a real misconception (pedagogy-ux §5), and its feedback refutes that
- * misconception by name before saying what actually happens. Scenes are drawn from the same
- * model as the labs (src/lib/model.ts), so a reading on a card agrees with the rest of the site.
+ * Every wrong option is a real habit, and its feedback states what happens instead. Scenes are
+ * drawn from the same model as the labs (src/lib/model.ts), so a reading on a card agrees with
+ * the rest of the site. Each card links to the guide section that covers it, named as the index
+ * names it (src/lib/sections.ts).
  */
-import { KICKS_TOGETHER_DB, MIXER_CEILING_DB, TARGET_PEAK_DB } from '../model';
+import { formatDb } from '../dsp/db';
+import { KICKS_TOGETHER_DB, TARGET_PEAK_DB } from '../model';
+import { section } from '../sections';
 import { MONITOR_TAG, REC_TAG, type ShortTag } from '../tags';
 
 export type Confidence = 'guessing' | 'fairly' | 'certain';
 
-/** "How sure are you?" Asked before the answer is shown, so a confident miss can surprise. */
+/** "How sure are you?" Asked before the answer is shown; pressing one commits the answer. */
 export const CONFIDENCE: ReadonlyArray<{ id: Confidence; label: string }> = [
   { id: 'guessing', label: 'Guessing' },
   { id: 'fairly', label: 'Fairly sure' },
@@ -19,17 +24,7 @@ export const CONFIDENCE: ReadonlyArray<{ id: Confidence; label: string }> = [
 
 /** What a card shows beside its question. Levels are on the XDJ-RX2 meter's own dB scale. */
 export type Scene =
-  | {
-      kind: 'meters';
-      ch1: number;
-      master: number;
-      ch2: number;
-      /** Keep the middle meters dark until the answer is in, then show them climbing to `master`. */
-      hideMaster?: boolean;
-      /** One short line under the meters, when the picture needs words to map it. */
-      caption?: string;
-    }
-  | { kind: 'howler'; light: 'green' | 'red' }
+  | { kind: 'meters'; ch1: number; master: number; ch2: number }
   /** The BOOTH MONITOR knob, with the print kit's tag beside it. */
   | { kind: 'booth'; tag?: ShortTag };
 
@@ -37,156 +32,125 @@ export interface Choice {
   id: string;
   label: string;
   correct?: boolean;
-  /** Shown after answering, when this was the choice. Wrong choices refute their misconception. */
+  /** Shown after answering, when this was the choice: what happens, as a fact. */
   feedback: string;
 }
 
 export interface Card {
   id: string;
-  /** The fieldset's legend: the scenario and the question. */
+  /** The fieldset's legend: the question. */
   question: string;
   scene?: Scene;
   choices: readonly Choice[];
-  /** Where the guide teaches this. `path` is site-relative; pass it through href() to link it. */
+  /** The guide section that covers this. `path` is site-relative; pass it through href() to link it. */
   learn: { path: string; text: string };
 }
 
+/** A guide section as a link: "2.1 Set TRIM …". */
+function learnAt(id: string): Card['learn'] {
+  const { number, title } = section(id);
+  return { path: `/#${id}`, text: `${number} ${title}` };
+}
+
+/** What two equal kicks landing together add: "6 dB, two lights". */
+const BLEND_ADDS = `${formatDb(KICKS_TOGETHER_DB, { signed: false })}, two lights`;
+
+/** The same two facts on both volume cards, in the same words. */
+const PUSH_CHANNELS = 'Louder channels drive the MASTER meters towards the red.';
+const MASTER_LEVEL = `MASTER LEVEL is taped fully up, marked ${REC_TAG.name}. It sets the speakers and the recording together.`;
+
 export const CARDS: readonly Card[] = [
   {
-    id: 'where',
-    question: 'The recording crunches, but the Howler’s LEVEL light stayed green all night. Where did it clip?',
-    scene: { kind: 'howler', light: 'green' },
+    id: 'peak',
+    question: 'Where should the loudest part of a track peak on its channel meter?',
     choices: [
-      // "Most likely": Howler doesn't publish where its light turns red (gear-facts §2.2).
-      {
-        id: 'recorder',
-        label: 'In the recorder',
-        feedback:
-          'A green light means the recorder most likely had room. The crunch was already in what the mixer sent it.',
-      },
-      {
-        id: 'mixer',
-        label: 'Inside the mixer, before the outputs',
-        correct: true,
-        feedback: 'A green light means the recorder most likely had room, so the crunch arrived with the signal.',
-      },
-      {
-        id: 'speakers',
-        label: 'In the PA speakers',
-        feedback: 'The speakers aren’t on the recording’s path. The crunch came from inside the mixer.',
-      },
-    ],
-    learn: { path: '/#two-ceilings', text: 'See both ceilings' },
-  },
-  {
-    id: 'turn-down',
-    // The crunch is given, not claimed: Pioneer only says red "may" distort, so the card asks
-    // about the fix (misconception M3), not whether red crunched. "The recording" rather than a knob:
-    // the crew would use MASTER ATT, which DJs never see.
-    question:
-      'The track crunches on the drop, with its channel meter in the red. The crew turn the recording down. Is it clean now?',
-    scene: { kind: 'meters', ch1: MIXER_CEILING_DB, master: 9, ch2: Number.NEGATIVE_INFINITY },
-    choices: [
-      {
-        id: 'yes',
-        label: 'Yes, it’s clean now',
-        feedback:
-          'The crunch happens in the channel, before the record level. Turning down afterwards just makes it quieter.',
-      },
-      {
-        id: 'no',
-        label: 'No, it’s quieter but still crunchy',
-        correct: true,
-        feedback: 'The crunch happens in the channel, before the record level. Turning down keeps it, just quieter.',
-      },
-    ],
-    learn: { path: '/#two-ceilings', text: 'Why turning it down doesn’t help' },
-  },
-  {
-    id: 'blend',
-    question:
-      'Both tracks reach the top orange light on their own. You bring the second one in with the kicks lined up. Where do the middle meters go?',
-    scene: {
-      kind: 'meters',
-      ch1: TARGET_PEAK_DB.top,
-      master: TARGET_PEAK_DB.top + KICKS_TOGETHER_DB,
-      ch2: TARGET_PEAK_DB.top,
-      hideMaster: true,
-    },
-    choices: [
-      {
-        id: 'down',
-        label: 'Goes down',
-        feedback: 'A second track adds level. Kicks that land together push the middle meters up, into the red.',
-      },
-      {
-        id: 'orange',
-        label: 'Stays orange',
-        feedback: 'Kicks that land together add up rather than average out, and red is one light above the top orange.',
-      },
       {
         id: 'red',
-        label: 'Into the red',
+        label: 'A flash of red on the loudest hits',
+        // Pioneer's own words, p. 31: "Make sure that the red indicator does not light up, or the sound may be distorted."
+        feedback: 'Pioneer says to keep the red light dark, or the sound may be distorted (p. 31).',
+      },
+      {
+        id: 'top',
+        label: 'The top orange, just under the red',
+        feedback: `A blend can add ${BLEND_ADDS}. From the top orange, that is past the red.`,
+      },
+      {
+        id: 'first',
+        label: 'The first or second orange',
         correct: true,
-        feedback:
-          'Kicks that land together add up, by up to 6 dB. That’s two lights, and red is one light above the top orange.',
+        feedback: 'That leaves room for the two lights a blend adds.',
       },
     ],
-    learn: { path: '/#blends', text: 'How blends add up' },
+    learn: learnAt('trim'),
   },
   {
-    id: 'which-meters',
+    id: 'meters',
     question: 'Which meters show a blend?',
+    // The house rule working: both channels on the first orange, the blend two lights higher.
     scene: {
       kind: 'meters',
       ch1: TARGET_PEAK_DB.first,
       master: TARGET_PEAK_DB.first + KICKS_TOGETHER_DB,
       ch2: TARGET_PEAK_DB.first,
-      caption: 'Two tracks mid-blend. CH1 and CH2 sit at the sides, MASTER in the middle.',
     },
     choices: [
       {
-        id: 'middle',
-        label: 'The middle meters (MASTER)',
-        correct: true,
-        feedback: 'The channel meters show each track before its fader. The middle meters show the mix.',
+        id: 'channels',
+        label: 'The channel meters (CH1 and CH2)',
+        feedback: 'The channel meters show each track before its fader. Only the MASTER meters show the mix.',
       },
       {
-        id: 'sides',
-        label: 'The channel meters (CH1 and CH2)',
-        feedback:
-          'The channel meters show each track before its fader, so they can’t show a blend. Watch the middle meters.',
+        id: 'master',
+        label: 'The MASTER meters (the pair in the middle)',
+        correct: true,
+        feedback: 'The MASTER meters show the mix. The channel meters show each track before its fader.',
       },
     ],
-    learn: { path: '/#meters', text: 'Which meters show what' },
+    learn: learnAt('meters'),
   },
   {
-    id: 'monitor',
-    // The traps are habits (misconception M10): push the channels, or reach for MASTER LEVEL. The answer
-    // is the knob the print kit tags "MONITOR · yours" (dj-culture §0.8, §7.4): BOOTH MONITOR sets only
-    // the BOOTH output (Pioneer manual p.27), while MASTER LEVEL sets MASTER 1 and 2, the PA and the Howler.
-    question: 'The booth monitors are too quiet. What do you do?',
-    scene: { kind: 'booth', tag: MONITOR_TAG },
+    id: 'room',
+    // The traps are habits: push the channels, or reach for MASTER LEVEL, which sets MASTER 1 and 2
+    // together (the PA and the Howler). The room's volume comes from the amps, which are the crew's.
+    question: 'The room needs to be louder. What do you do?',
     choices: [
       {
         id: 'channels',
         label: 'Push the channels',
-        feedback:
-          'Pushing the channels drives the mix towards the red, and any crunch goes into the recording. Turn up BOOTH MONITOR instead.',
+        feedback: `${PUSH_CHANNELS} The room’s volume comes from the amps.`,
       },
+      { id: 'master', label: 'Turn up MASTER LEVEL', feedback: MASTER_LEVEL },
       {
-        id: 'master',
-        label: 'Turn up MASTER LEVEL',
-        feedback: `MASTER LEVEL is taped fully up and marked ${REC_TAG.name}. It sets the speakers and the recording, and the monitors have their own knob, so leave it to the crew.`,
+        id: 'crew',
+        label: 'Ask the crew',
+        correct: true,
+        feedback: 'The crew turn the amps up. The amps change the room’s volume, not the recording.',
       },
+    ],
+    learn: learnAt('knobs'),
+  },
+  {
+    id: 'monitor',
+    // BOOTH MONITOR sets only the BOOTH output (Pioneer manual p. 27), so it's the DJ's: the print
+    // kit tags it MONITOR, yours.
+    question: 'The booth monitors are too quiet. What do you do?',
+    scene: { kind: 'booth', tag: MONITOR_TAG },
+    choices: [
       {
         id: 'booth',
         label: 'Turn up BOOTH MONITOR',
         correct: true,
-        feedback: `BOOTH MONITOR sets only the booth monitors, so it’s ${MONITOR_TAG.owner}: that’s the ${MONITOR_TAG.name} tag. It doesn’t touch the speakers or the recording.`,
+        feedback: `BOOTH MONITOR sets the booth monitors only. The ${MONITOR_TAG.name} tag marks it as yours.`,
+      },
+      { id: 'master', label: 'Turn up MASTER LEVEL', feedback: MASTER_LEVEL },
+      {
+        id: 'channels',
+        label: 'Push the channels',
+        feedback: `${PUSH_CHANNELS} BOOTH MONITOR sets the booth monitors.`,
       },
     ],
-    learn: { path: '/#knobs', text: 'Which knobs are yours' },
+    learn: learnAt('knobs'),
   },
 ];
 
@@ -221,7 +185,7 @@ export function feedbackFor(card: Card, choiceId: string): string {
 export interface Summary {
   right: number;
   total: number;
-  /** Cards answered wrongly with "Certain": the ones hypercorrection works best on. */
+  /** Cards answered wrongly with "Certain". */
   sureButWrong: string[];
   /** Cards answered wrongly (or not at all), in card order. */
   missed: string[];
@@ -243,24 +207,26 @@ export function summarise(cards: readonly Card[], answers: ReadonlyArray<Answer 
   return { right, total: cards.length, sureButWrong, missed };
 }
 
-/** "You got 4 of 5." No points, no badges: just the count. */
+/** "You got 3 of 4." No points, no badges: just the count. */
 export function scoreLine({ right, total }: Summary): string {
   return `You got ${right} of ${total}.`;
 }
 
-/**
- * Said only when something the reader was certain about turned out wrong. A confident miss that
- * gets corrected is the kind people remember best (hypercorrection, Brod 2021), so the line points
- * them back at it.
- */
+const COUNT_WORDS = ['no', 'one', 'two', 'three', 'four', 'five'];
+
+/** Said only when an answer the reader was certain of was wrong: how many. */
 export function sureLine({ sureButWrong }: Summary): string | null {
-  if (sureButWrong.length === 0) return null;
-  return sureButWrong.length === 1
-    ? 'You were certain of one answer that was wrong. That one is worth reading about again.'
-    : 'You were certain of some answers that were wrong. Those are worth reading about again.';
+  const n = sureButWrong.length;
+  if (n === 0) return null;
+  return n === 1
+    ? 'You were certain of one wrong answer.'
+    : `You were certain of ${COUNT_WORDS[n] ?? n} wrong answers.`;
 }
 
-/** Where to go over the missed cards, one link per page section, in card order. */
+/** Over the list of sections behind the wrong answers. */
+export const REVIEW_LEAD = 'Read these again';
+
+/** Where to go over the missed cards, one link per guide section, in card order. */
 export function reviewLinks(cards: readonly Card[], summary: Summary): Array<{ path: string; text: string }> {
   const seen = new Set<string>();
   const links: Array<{ path: string; text: string }> = [];

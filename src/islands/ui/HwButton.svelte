@@ -3,7 +3,7 @@
    * A plain hardware key that does what its label says. Rubber pads are for choices and toggles
    * (ui/Pad, ui/RadioPad), and they light up when they're on; this is for moving through a widget.
    *
-   * - `primary` is the way forward (Next, Check answer, Show me): the one key on the panel meant to
+   * - `primary` is the way forward (Next, Show the result): the one key on the panel meant to
    *   be pressed next, framed and lettered in the display's action cyan. One per step at most.
    * - Without it, a dark rubber key for everything else (Back, Start again, Reset).
    *

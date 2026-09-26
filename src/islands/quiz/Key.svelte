@@ -1,11 +1,9 @@
 <script lang="ts">
   /**
    * A key printed on a quiz card, the way the checklist cards print theirs: an outlined key for
-   * Back and Start again, and a filled one for the way on (`primary`: Next, Show me). The cards
-   * are printed things, not gear, so their keys wear the page's ink, not the panels' rubber.
-   *
-   * `locked` keeps the key on the card once it has done its job, quiet and out of the tab order,
-   * without pulling focus away (aria-disabled).
+   * Back and Start again, and a filled one for the way on (`primary`: Next question, See your
+   * score). The cards are printed things, not gear, so their keys wear the page's ink, not the
+   * panels' rubber.
    */
   import type { Snippet } from 'svelte';
 
@@ -13,23 +11,13 @@
     onclick: () => void;
     /** The way forward: filled with ink. One per step at most. */
     primary?: boolean;
-    locked?: boolean;
     children: Snippet;
   }
 
-  let { onclick, primary = false, locked = false, children }: Props = $props();
+  let { onclick, primary = false, children }: Props = $props();
 </script>
 
-<button
-  type="button"
-  class="key"
-  class:primary={primary}
-  aria-disabled={locked ? 'true' : undefined}
-  tabindex={locked ? -1 : undefined}
-  onclick={() => {
-    if (!locked) onclick();
-  }}
->
+<button type="button" class="key" class:primary={primary} {onclick}>
   {@render children()}
 </button>
 
@@ -68,15 +56,6 @@
   .key:focus-visible {
     outline: 3px solid var(--focus);
     outline-offset: 2px;
-  }
-
-  /* Done its job: printed faintly, like a line already ticked. */
-  .key[aria-disabled='true'],
-  .key[aria-disabled='true']:hover {
-    cursor: default;
-    border-color: var(--rule);
-    background: var(--paper);
-    color: var(--ink-3);
   }
 
   .key :global(svg) {

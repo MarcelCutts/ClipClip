@@ -1,47 +1,41 @@
 ---
 /**
  * A crew checklist as a laminated quick reference card, landscape: a black title strip with the
- * card's code (C1 to C3 for the night, S1 for the setup) and its time budget, when and how to run
- * it, each line as the thing to check and the state it should be in joined by leader dots, and the
- * call to say at the end. A black thumb tab with the code sticks out of the right-hand edge, a step
- * lower on each card, so a stack of them opens at the one you want. Same data as the <Checklist>
- * island on /night/ and /setup/.
+ * card's code (C1 to C3 for the night, S1 for setting up), when to run it, each line as the thing to
+ * look at and the state it should be in joined by leader dots (with any consequence said before it),
+ * and the date the words last changed.
+ * Every card is read-and-do, for one person working alone, so it has no time budget and no call to
+ * say. A black thumb tab with the code sticks out of the right-hand edge, a step lower on each card,
+ * so a stack of them opens at the one you want. Same data as the <Checklist> island on /night/ and
+ * /setup/.
  *
  * Sizes are print millimetres through container units: the printout is exact, and on a wide screen
  * the preview is too. On a narrow screen a millimetre never drops below 3 px, so the preview reflows
  * at a readable size instead of shrinking. Every sentence prints at 10 pt or more.
  */
-import {
-  budgetLabel,
-  budgetText,
-  CHECKLISTS,
-  type ChecklistId,
-  type ChecklistItem,
-  drillText,
-  howToRun,
-} from '../../lib/checklists';
+import { CHECKLISTS, type ChecklistId, type ChecklistItem, drillText } from '../../lib/checklists';
 
 interface Props {
   list: ChecklistId;
-  /** The size of the lines, strip and call, relative to the night's cards: less for the long setup
-   * card. Notes stay at 10 pt whatever it is. */
+  /** When the card's words last changed, printed at its foot: "26 September 2026". */
+  revised: string;
+  /** The size of the lines and strip, relative to the night's cards: less for the long setup card.
+   * Notes stay at 10 pt whatever it is. */
   scale?: number;
   /** Flow the lines into two columns. */
   columns?: 1 | 2;
 }
 
-const { list: id, scale = 1, columns = 1 } = Astro.props;
+const { list: id, revised, scale = 1, columns = 1 } = Astro.props;
 const list = CHECKLISTS[id];
 
-/** The cards as they stack, top tab first: the night's three in order, then the one-off setup. */
+/** The cards as they stack, top tab first: the night's three in order, then setting up. */
 const STACK: readonly ChecklistId[] = ['doors', 'changeover', 'after', 'setup'];
 
-// The strip gives the time budget, or says the setup is done once; the line under it says how to
-// run the list.
-const budget = list.seconds ? budgetLabel(list.seconds) : id === 'setup' ? 'Once' : '';
-const how = list.seconds ? howToRun(list).replace(budgetText(list.seconds), '').trim() : howToRun(list);
+/** The strip says when the setup is done, as the setup page's cards do. The night's cards say it on their "when" line. */
+const done = id === 'setup' ? 'Every event' : '';
 
-/** Under a line: its note, then the drill for when it isn't so ("If it blinks red, see F1."), as on /night/. */
+/** Under a line: its note, then the drill for when it isn't so ("If it blinks red, go to F1."), as on /night/. */
 const noteOf = (item: ChecklistItem): string =>
   [item.note, item.drill && drillText(item.drill)].filter(Boolean).join(' ');
 ---
@@ -51,13 +45,14 @@ const noteOf = (item: ChecklistItem): string =>
     <div class="body">
       <p class="strip">
         <span><span class="code">{list.code}</span>{list.title}</span>
-        {budget && <span class="budget">{budget}</span>}
+        {done && <span class="done">{done}</span>}
       </p>
-      <p class="how"><strong>{list.when}</strong> {how}</p>
+      <p class="how"><strong>{list.when}</strong></p>
       <ol class="items">
         {
           list.items.map((item) => (
             <li class="item">
+              {item.before && <p class="before">{item.before}</p>}
               <p class="line">
                 <span class="check">{item.check}</span>
                 <span class="visually-hidden">:</span>
@@ -69,7 +64,7 @@ const noteOf = (item: ChecklistItem): string =>
           ))
         }
       </ol>
-      <p class="call">Say: “{list.call}”</p>
+      <p class="revised">Revised {revised}</p>
     </div>
     <p class="tab" aria-hidden="true">{list.code}</p>
   </article>
@@ -144,13 +139,13 @@ const noteOf = (item: ChecklistItem): string =>
     margin-inline-end: 0.6em;
   }
 
-  .budget {
+  .done {
     flex: none;
     font-size: calc(var(--pt) * 12 * var(--scale));
     font-weight: 400;
   }
 
-  /* 10.5 pt: when to run it and how, read before starting. */
+  /* 10.5 pt: when to run it, read before starting. */
   .how {
     font-size: calc(var(--pt) * 10.5);
     line-height: 1.35;
@@ -192,6 +187,11 @@ const noteOf = (item: ChecklistItem): string =>
     font-weight: 700;
   }
 
+  /* The number stays beside its line, under any consequence said before it. */
+  .item:has(> .before)::before {
+    grid-row: 2;
+  }
+
   /* The line to read, about 12.5 pt: what to check, dots, the state it should be in. A state too
      long for the line drops to the next one and sits at the right. */
   .line {
@@ -219,6 +219,15 @@ const noteOf = (item: ChecklistItem): string =>
     text-align: right;
   }
 
+  /* What doing the line costs, said before it at full strength: 10 pt bold, never in a note. */
+  .before {
+    grid-column: 2;
+    margin-bottom: calc(var(--mm) * 0.8);
+    font-size: calc(var(--pt) * 10);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
   /* How or why, under its line: 10 pt, like every sentence on the card. */
   .note {
     grid-column: 2;
@@ -227,11 +236,11 @@ const noteOf = (item: ChecklistItem): string =>
     line-height: 1.3;
   }
 
-  /* The completion call, said out loud: 14 pt. */
-  .call {
-    font-size: calc(var(--pt) * 14 * var(--scale));
-    font-weight: 700;
-    line-height: 1.2;
+  /* 8 pt at the foot: when the card's words last changed, to check it against the site. A label,
+     not a sentence. */
+  .revised {
+    font-size: calc(var(--pt) * 8);
+    color: color-mix(in srgb, CanvasText 75%, Canvas);
   }
 
   /* The thumb tab: black like the strip, sticking out of the right-hand edge, a step lower on each

@@ -3,13 +3,13 @@
  * A knob tag for the gear, sized to sit on a strip of 19 mm console tape: 18 mm tall, and 60 mm
  * long unless it says more. Stencil type, black on white. Sizes are in print millimetres, scaled
  * through container units so the on-screen preview shrinks to fit. A long tag's lines are
- * sentences, so they print at 10 pt or more. A tag can carry blanks for settings the crew write in
- * by hand, like the REC tape's two attenuators.
+ * sentences, so they print at 10 pt or more, in the text face. A tag can carry blanks for settings
+ * the crew write in by hand, like the REC tape's two attenuators.
  */
 interface Props {
   /** The big word, as it would be written on the tape: REC, MONITOR, RIG. */
   name: string;
-  /** Whose knob it is, shown after the name: "set by crew", "yours". */
+  /** Whose knob it is, shown after the name: "crew", "yours". */
   owner?: string;
   /** Extra lines for a long-form tag that says why. */
   lines?: readonly string[];
@@ -111,13 +111,15 @@ const { name, owner, lines = [], blanks = [], width = 60 } = Astro.props;
     font-size: calc(var(--mm) * 6.2);
   }
 
-  /* 10.2 pt: the smallest a sentence prints. */
+  /* 10.2 pt: the smallest a sentence prints. Sentences are set in the text face: the stencil's
+     breaks cost legibility at this size in a dim booth. */
   .lines {
     display: grid;
-    gap: calc(var(--mm) * 0.7);
+    gap: calc(var(--mm) * 0.5);
+    font-family: var(--font-body);
     font-size: calc(var(--mm) * 3.6);
-    font-weight: 720;
-    letter-spacing: 0.015em;
+    font-weight: 700;
+    letter-spacing: 0;
   }
 
   /* With blanks the big word gives up some height, and the blanks take a row of their own. */

@@ -45,18 +45,3 @@ export const TARGET = {
 
 /** How much two beatmatched kicks add when they land together (the synth loops measure 6.0). */
 export const KICKS_TOGETHER_DB = 6;
-
-/**
- * Howler publishes no noise figure, so the headroom ladder shows its converter's floor as a
- * deliberately wide guess, in dBFS.
- */
-export const HOWLER_NOISE_GUESS_DBFS = { top: -90, bottom: -110 } as const;
-
-/**
- * The research's worked example for the equal-loudness demo: at a club a 50 Hz bass reaches
- * about 100 dB SPL; home listening is about 30 dB quieter.
- */
-export const CLUB_BASS_DB_SPL = 100;
-
-/** How much quieter home listening is, in the same example (audio-science §11 D5; verify-audio-science B17). */
-export const HOME_BELOW_CLUB_DB = 30;

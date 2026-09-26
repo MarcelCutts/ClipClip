@@ -6,8 +6,8 @@
    * affects (or, for a meter or a box, the path that feeds it) and says so in words. The graph, the
    * words and the geometry all live in src/lib/rig.ts; this component only draws them.
    *
-   * One page can show both views (the guide does), so the ids and the radios' name come from
-   * $props.id(). Complete at rest: the server renders the default pick with its path lit.
+   * The ids and the radios' name come from $props.id(). Complete at rest: the server renders the
+   * default pick with its path lit.
    *
    * On a phone the drawing is taller than the screen, so the readout (what the pick is, and what it
    * reaches) rides along the bottom of the screen while the drawing scrolls under it: whichever
@@ -15,61 +15,39 @@
    */
   import {
     accessibleName,
-    captionFor,
-    flowOrder,
+    type Caption,
+    COPY,
+    DEFAULT_SELECTION,
+    DRAWING_NAME,
+    FLOW,
     highlightFor,
-    idleCaption,
     layoutFor,
-    modelNote,
+    MODEL_NOTE,
     NODES,
     type NodeId,
-    resolveSelection,
     type Summary,
     summaryFor,
     TALL_HIT_PAD,
-    tapeFor,
-    type Variant,
-    VIEW_NAME,
-    WHOSE,
   } from '../lib/rig';
   import NodeGlyph from './signal-path/NodeGlyph.svelte';
   import Wires from './signal-path/Wires.svelte';
 
-  interface Props {
-    /** 'dj' hides the DriveRack's insides, drops the lead names and says whose each knob is. */
-    variant?: Variant | undefined;
-    /**
-     * What starts picked. Defaults to the recorder in the full view and MASTER LEVEL in the DJ
-     * view; pass null to start with nothing picked.
-     */
-    initialSelection?: NodeId | null | undefined;
-  }
-
-  let { variant = 'full', initialSelection }: Props = $props();
-
   const uid = $props.id();
   const BANDS = ['HI', 'MID', 'LOW'] as const;
+  const tall = layoutFor('tall');
+  const wide = layoutFor('wide');
+  /** Every readout the drawing can show, to size the readout by its longest (see the markup). */
+  const sizers = FLOW.map((id) => ({ id, caption: COPY[id], summary: summaryFor(id) }));
 
   /** The readout's height, so focus scrolling keeps a part clear of it where it rides along. */
   let readoutH = $state(0);
+  let selected = $state<NodeId>(DEFAULT_SELECTION);
 
-  // Seeded from the props, then owned by the reader.
-  let selected: NodeId | null = $derived(resolveSelection(initialSelection, variant));
+  const focus = $derived(highlightFor(selected));
+  const caption = $derived(COPY[selected]);
+  const summary = $derived(summaryFor(selected));
 
-  const order = $derived(flowOrder(variant));
-  const tall = $derived(layoutFor('tall', variant));
-  const wide = $derived(layoutFor('wide', variant));
-  const focus = $derived(selected ? highlightFor(selected, variant) : null);
-  const caption = $derived(selected ? captionFor(selected, variant) : idleCaption(variant));
-  const summary = $derived(selected ? summaryFor(selected, variant) : null);
-  /** Every readout the view can show, to size the readout by its longest (see the markup). */
-  const sizers = $derived([
-    { id: 'idle', caption: idleCaption(variant), summary: null },
-    ...order.map((id) => ({ id, caption: captionFor(id, variant), summary: summaryFor(id, variant) })),
-  ]);
-
-  function stateOf(id: NodeId): 'rest' | 'selected' | 'on' | 'off' {
-    if (!focus) return 'rest';
+  function stateOf(id: NodeId): 'selected' | 'on' | 'off' {
     if (id === selected) return 'selected';
     return focus.nodes.has(id) ? 'on' : 'off';
   }
@@ -78,7 +56,7 @@
   function jump(event: KeyboardEvent) {
     if (event.key !== 'Home' && event.key !== 'End') return;
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-    const id = event.key === 'Home' ? order[0] : order.at(-1);
+    const id = event.key === 'Home' ? FLOW[0] : FLOW.at(-1);
     if (!id) return;
     event.preventDefault();
     selected = id;
@@ -88,24 +66,10 @@
 
 <section
   class="signal-path panel"
-  data-variant={variant}
-  aria-label={VIEW_NAME[variant]}
+  aria-label={DRAWING_NAME}
   style:--readout-h={readoutH > 0 ? `${readoutH}px` : undefined}
 >
   <div class="head">
-    {#if variant === 'dj'}
-      <!-- Whose knobs are whose, taped as on the real gear. -->
-      <dl class="whose">
-        <div>
-          <dt><span class="gaffer">Yours</span></dt>
-          <dd>{WHOSE.yours}</dd>
-        </div>
-        <div>
-          <dt><span class="gaffer">Crew</span></dt>
-          <dd>{WHOSE.crew}</dd>
-        </div>
-      </dl>
-    {/if}
     <ul class="key">
       <li class="pick" id="{uid}-pick">
         <svg class="swatch path" viewBox="0 0 26 12" aria-hidden="true" focusable="false">
@@ -118,18 +82,19 @@
     </ul>
   </div>
 
-  {#snippet words(said: { text: string }, sum: Summary | null)}
-    <p class="text">{said.text}</p>
-    {#if sum}
-      <dl class="summary">
-        <dt>{sum.label}</dt>
-        <dd>{sum.items}</dd>
-        {#if sum.notLabel && sum.notItems}
-          <dt>{sum.notLabel}</dt>
-          <dd>{sum.notItems}</dd>
-        {/if}
-      </dl>
+  <!-- A line only where the part has one, then the summary worked out from the graph. -->
+  {#snippet words(said: Caption, sum: Summary)}
+    {#if said.text}
+      <p class="text">{said.text}</p>
     {/if}
+    <dl class="summary">
+      <dt>{sum.label}</dt>
+      <dd>{sum.items}</dd>
+      {#if sum.notLabel && sum.notItems}
+        <dt>{sum.notLabel}</dt>
+        <dd>{sum.notItems}</dd>
+      {/if}
+    </dl>
   {/snippet}
 
   <div class="body">
@@ -138,8 +103,8 @@
         <p class="title">{caption.title}</p>
         <div class="details" aria-live="polite" aria-atomic="true">{@render words(caption, summary)}</div>
       </div>
-      <!-- Every readout the view can show, stacked unseen in the same place: the readout is always as
-           tall as its longest, so a new pick never moves the drawing, or the page under it. -->
+      <!-- Every readout the drawing can show, stacked unseen in the same place: the readout is always
+           as tall as its longest, so a new pick never moves the drawing, or the page under it. -->
       {#each sizers as s (s.id)}
         <div class="card sizer" aria-hidden="true">
           <p class="title">{s.caption.title}</p>
@@ -159,14 +124,13 @@
       style:--hit-x={TALL_HIT_PAD.x}
       style:--hit-y={TALL_HIT_PAD.y}
     >
-      <div class="layer" data-layout="tall"><Wires layout={tall} lit={focus?.edges ?? null} /></div>
-      <div class="layer" data-layout="wide"><Wires layout={wide} lit={focus?.edges ?? null} /></div>
+      <div class="layer" data-layout="tall"><Wires layout={tall} lit={focus.edges} /></div>
+      <div class="layer" data-layout="wide"><Wires layout={wide} lit={focus.edges} /></div>
 
-      {#each order as id (id)}
+      {#each FLOW as id (id)}
         {@const node = NODES[id]}
-        {@const t = tall.rects[id]!}
-        {@const w = wide.rects[id]!}
-        {@const tape = tapeFor(id, variant)}
+        {@const t = tall.rects[id]}
+        {@const w = wide.rects[id]}
         <label
           class="node"
           data-kind={node.kind}
@@ -189,7 +153,7 @@
             name="{uid}-part"
             value={id}
             checked={selected === id}
-            aria-label={accessibleName(id, variant)}
+            aria-label={accessibleName(id)}
             onchange={() => (selected = id)}
             onkeydown={jump}
           />
@@ -210,15 +174,12 @@
               {/if}
             </span>
           {/if}
-          {#if tape}
-            <span class="tapemark" aria-hidden="true">{tape}</span>
-          {/if}
         </label>
       {/each}
     </div>
   </div>
 
-  <p class="note">{modelNote(variant)}</p>
+  <p class="note">{MODEL_NOTE.text} <a href={MODEL_NOTE.href}>{MODEL_NOTE.link}</a>.</p>
 </section>
 
 <style>
@@ -228,7 +189,7 @@
     gap: 1rem;
   }
 
-  /* ---- Key, and in the DJ view whose knobs are whose ---- */
+  /* ---- Key ---- */
 
   .head {
     display: flex;
@@ -236,28 +197,6 @@
     align-items: start;
     justify-content: space-between;
     gap: 0.75rem 2rem;
-  }
-
-  /* Tapes in one column, knobs in the next, so the two lists line up. */
-  .whose {
-    display: grid;
-    grid-template-columns: max-content minmax(0, 1fr);
-    gap: 0.5rem 0.9rem;
-    margin: 0;
-    font-size: var(--text-sm);
-    line-height: 1.35;
-    color: var(--hw-label);
-  }
-
-  .whose div {
-    display: grid;
-    grid-column: 1 / -1;
-    grid-template-columns: subgrid;
-    align-items: center;
-  }
-
-  .whose dd {
-    margin: 0;
   }
 
   .key {
@@ -306,26 +245,6 @@
 
   .swatch.path .head {
     fill: var(--sig);
-  }
-
-  /* Gaffer tape with torn ends, like the tags crew stick on the gear. */
-  .gaffer,
-  .tapemark {
-    background: var(--tape);
-    color: var(--tape-ink);
-    font-family: var(--font-stencil);
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    line-height: 1;
-    clip-path: polygon(0 8%, 4% 0, 100% 0, 97% 30%, 100% 62%, 96% 100%, 3% 100%, 0 70%, 3% 38%);
-  }
-
-  .gaffer {
-    display: inline-block;
-    padding: 0.25rem 0.5rem 0.2rem;
-    font-size: 0.8rem;
-    rotate: -3deg;
   }
 
   /* ---- The drawing ---- */
@@ -499,15 +418,6 @@
     letter-spacing: 0.03em;
   }
 
-  .tapemark {
-    position: absolute;
-    top: -0.6em;
-    right: -0.4em;
-    padding: 0.2em 0.45em 0.12em;
-    font-size: 0.8em;
-    rotate: 5deg;
-  }
-
   /* ---- Picked, on the path, off it ---- */
 
   /* On the path: a blue edge, and the name printed brightest. */
@@ -617,12 +527,23 @@
     margin: 0;
   }
 
+  /* The drawing's caveat, once, pointing to the guide's section on what the makers publish. */
   .note {
     padding-top: 0.75rem;
     border-top: 1px solid var(--hw-edge);
-    font-size: var(--text-xs);
-    line-height: 1.5;
-    color: var(--hw-label-2);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    color: var(--hw-label);
+  }
+
+  /* Links on the panel are printed in the panel's own white, whatever the page's light. */
+  .note a {
+    color: var(--hw-bright);
+    text-decoration-color: color-mix(in oklab, var(--hw-bright) 60%, transparent);
+  }
+
+  .note a:hover {
+    text-decoration-color: currentColor;
   }
 
   /* Phones: the drawing runs down the page, taller than the screen, so the readout rides along the
@@ -756,8 +677,8 @@
     }
 
     .signal-path .key,
-    .signal-path .whose,
     .signal-path .note,
+    .signal-path .note a,
     .signal-path .title,
     .signal-path .text,
     .signal-path .summary,
@@ -828,13 +749,6 @@
 
     .readout {
       border-top-color: CanvasText;
-    }
-
-    /* The tape loses its colour too: an outlined tag instead of torn tape. */
-    .gaffer,
-    .tapemark {
-      clip-path: none;
-      border: 1px solid CanvasText;
     }
 
     .swatch.path .line {

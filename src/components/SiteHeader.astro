@@ -5,10 +5,11 @@ const here = Astro.url.pathname.replace(/\/+$/, '');
 const isCurrent = (path: string) => here === href(path).replace(/\/+$/, '');
 // The guide's own title is the site's name, so on the guide the header doesn't repeat it.
 const home = isCurrent('/');
-// The guide teaches; the other three are tools for doing the job.
+// The guide teaches; the other three are tools for doing the job. "Crew" is the night page, so a DJ
+// scanning the header can see it isn't theirs.
 const links = [
   { path: '/', label: 'Guide' },
-  { path: '/night/', label: 'On the night' },
+  { path: '/night/', label: 'Crew' },
   { path: '/setup/', label: 'Setting up' },
   { path: '/print/', label: 'Print kit' },
 ];

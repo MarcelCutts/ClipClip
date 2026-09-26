@@ -1,18 +1,32 @@
 ---
 /**
  * One drill for when something goes wrong, set like a quick reference handbook's: a black title strip
- * with the light you're looking at drawn lit, the title and the drill's number; the condition and the
- * objective; then numbered steps. A step is a control and what to do with it, joined by leader dots,
- * or a line starting "If". What a step also does (turning the room down, say) is a plain sentence
- * just before it. "Choose one" lists what you might find, each branch ending the drill (■ ■ ■ ■),
- * jumping to a step or another drill, or carrying on with the next step. Why it works comes last, as
- * additional information that needn't be read.
+ * with the light you're looking at drawn lit, the title and the drill's number; a condition only where
+ * it adds to the title, and the objective; then numbered steps. A booth drill heads its steps "Now",
+ * and puts what can wait in a second block, "At the changeover", numbered on from the first.
+ *
+ * A step is a control and the state to leave it in, joined by leader dots; an instruction; the words
+ * to say to the DJ, in bold; or a line starting "If". A consequence someone must know first is a plain
+ * sentence just before its step. "Choose one" lists what you can see, each finding ending the drill
+ * (■ ■ ■ ■) or going to a step or another drill. Why it works comes last, as additional information
+ * that needn't be read, with where the guide explains it.
  *
  * The drill is linkable as /night/#fix-<id>, and each step as #fix-<id>-step-<n>; a jump lands clear of
  * the page's tabs (global.css) and outlines the step in the action colour. The light sits on a scrap
  * of black faceplate, because lit colour only ever means a signal state and LEDs sit on black.
  */
-import { drill, drillAnchor, type Fix, isIfStep, type Next } from '../lib/fixes';
+import {
+  type Branch,
+  drill,
+  drillAnchor,
+  type Fix,
+  isDoStep,
+  isIfStep,
+  isSayStep,
+  type Next,
+  SAY_TO,
+  type Step,
+} from '../lib/fixes';
 import { section } from '../lib/sections';
 import { href } from '../lib/url';
 
@@ -28,12 +42,42 @@ const anchor = drillAnchor(fix.id);
 const titleId = `${anchor}-title`;
 const see = fix.see ? section(fix.see) : undefined;
 
-/** Where a jump lands, and its words: "Go to step 3", or "Go to F4" with the drill's title for screen readers. */
+/** The drill's blocks of steps, numbered on from each other: "Now", then what waits. */
+const blocks = [
+  { label: fix.where === 'booth' ? 'Now' : undefined, steps: fix.steps, start: 1 },
+  ...(fix.later ? [{ label: fix.later.when, steps: fix.later.steps, start: fix.steps.length + 1 }] : []),
+];
+
+/**
+ * Where a jump lands, and its words: "Go to step 3", "Go to F4" or "Go to F1, step 2", with the other
+ * drill's title for screen readers.
+ */
 function jump(next: Next): { to: string; text: string; title?: string } {
   if (typeof next === 'number') return { to: `#${drillAnchor(fix.id, next)}`, text: `Go to step ${next}` };
-  const target = drill(next);
-  return { to: `#${drillAnchor(target.id)}`, text: `Go to ${target.code}`, title: target.title };
+  if (typeof next === 'string') {
+    const target = drill(next);
+    return { to: `#${drillAnchor(target.id)}`, text: `Go to ${target.code}`, title: target.title };
+  }
+  const target = drill(next.drill);
+  return {
+    to: `#${drillAnchor(target.id, next.step)}`,
+    text: `Go to ${target.code}, step ${next.step}`,
+    title: target.title,
+  };
 }
+
+/** The same jump in the middle of a sentence: "If the DJ wants it louder, go to F4." */
+const inline = (next: Next) => {
+  const j = jump(next);
+  return { ...j, text: `g${j.text.slice(1)}` };
+};
+
+/** The words before a quote: "Say to the DJ:" unless the step or finding says otherwise. */
+const lead = (s: { to?: string }) => s.to ?? SAY_TO;
+
+const beforeOf = (step: Step) => step.before;
+const noteOf = (step: Step) => (isIfStep(step) ? undefined : step.note);
+const chooseOf = (step: Step): readonly Branch[] | undefined => (isIfStep(step) ? undefined : step.choose);
 ---
 
 <article class="drill" id={anchor} aria-labelledby={titleId}>
@@ -63,89 +107,96 @@ function jump(next: Next): { to: string; text: string; title?: string } {
 
   <div class="body">
     <div class="lines">
-      <p><em>Condition.</em> {fix.condition}</p>
+      {fix.condition && <p><em>Condition.</em> {fix.condition}</p>}
       <p><em>Objective.</em> {fix.objective}</p>
     </div>
     {fix.warning && (
   <p class="warning"><strong>Warning.</strong> {fix.warning}</p>
 )}
 
-    <ol class="steps">
-      {fix.steps.map((step, i) => (
-  <li class="step" id={drillAnchor(fix.id, i + 1)}>
-    {!isIfStep(step) && step.before && <p class="before">{step.before}</p>}
-    <span class="n">{i + 1}</span>
-    {isIfStep(step) ? (
-      <p class="if">
-        <strong>If</strong>{step.if.slice(2)}
-        {step.see && (
-        <Fragment>
-          {' '}<a class="ref" href={href(step.see.path)}>See {step.see.code}<span class="visually-hidden">, {step.see.title}</span></a>
-        </Fragment>
-      )}
-        {step.next !== undefined && (
-        <Fragment>
-          {' '}<a class="go" href={jump(step.next).to}>{jump(step.next).text}{jump(step.next).title && <span class="visually-hidden">: {jump(step.next).title}</span>}</a>
-        </Fragment>
-      )}
-        {step.end && (
-        <Fragment>
-          {' '}<span class="stop"><span class="visually-hidden">End of {fix.code}.</span><span class="marks" aria-hidden="true"><span /><span /><span /><span /></span></span>
-        </Fragment>
-      )}
-      </p>
-    ) : (
-      <div class="action">
-        <p class="line">
-          <span class="challenge">{step.challenge}</span><span class="visually-hidden">,</span>
-          <span class="dots" aria-hidden="true"></span>
-          <span class="response">{step.response}</span>
+    {blocks.map((block) => (
+  <div class="block">
+    {block.label && <p class="block-label">{block.label}</p>}
+    <ol class="steps" start={block.start}>
+      {block.steps.map((step, i) => (
+      <li class="step" id={drillAnchor(fix.id, block.start + i)}>
+        {beforeOf(step) && <p class="before">{beforeOf(step)}</p>}
+        <span class="n">{block.start + i}</span>
+        {isIfStep(step) ? (
+        <p class="if">
+          <strong>If</strong>{step.if.slice(2)}{(step.action || step.next !== undefined) && ','}
+          {step.action && <Fragment>{' '}{step.action}</Fragment>}
+          {step.say && <Fragment>{' '}<strong class="words">“{step.say}”</strong></Fragment>}
+          {step.next !== undefined && (
+          <Fragment>
+            {' '}<a class="go" href={inline(step.next).to}>{inline(step.next).text}{inline(step.next).title && <span class="visually-hidden">: {inline(step.next).title}</span>}</a>.
+          </Fragment>
+        )}
+          {step.end && (
+          <Fragment>
+            {' '}<span class="stop"><span class="visually-hidden">End of {fix.code}.</span><span class="marks" aria-hidden="true"><span /><span /><span /><span /></span></span>
+          </Fragment>
+        )}
         </p>
-        {step.note && <p class="note">{step.note}</p>}
-        {step.choose && (
-        <div class="choose">
-          <p class="choose-one">Choose one:</p>
-          <ul class="branches">
-            {step.choose.map((b) => (
-            <li class="branch">
-              <span class="diamond" aria-hidden="true"></span>
-              <p>
-                <strong>{b.finding}:</strong>
-                {b.action && <Fragment>{' '}{b.action}</Fragment>}
-                {b.next !== undefined && (
-                <Fragment>
-                  {' '}<a class="go" href={jump(b.next).to}>{jump(b.next).text}{jump(b.next).title && <span class="visually-hidden">: {jump(b.next).title}</span>}</a>
-                </Fragment>
-              )}
-                {b.end && (
-                <Fragment>
-                  {' '}<span class="stop"><span class="visually-hidden">End of {fix.code}.</span><span class="marks" aria-hidden="true"><span /><span /><span /><span /></span></span>
-                </Fragment>
-              )}
-              </p>
-            </li>
-          ))}
-          </ul>
+      ) : (
+        <div class="action">
+          {isSayStep(step) ? (
+          <p class="say">{lead(step)}{' '}<strong class="words">“{step.say}”</strong></p>
+        ) : isDoStep(step) ? (
+          <p class="do">{step.do}</p>
+        ) : (
+          <p class="line">
+            <span class="challenge">{step.challenge}</span><span class="visually-hidden">,</span>
+            <span class="dots" aria-hidden="true"></span>
+            <span class="response">{step.response}</span>
+          </p>
+        )}
+          {noteOf(step) && <p class="note">{noteOf(step)}</p>}
+          {chooseOf(step) && (
+          <div class="choose">
+            <p class="choose-one">Choose one:</p>
+            <ul class="branches">
+              {chooseOf(step)?.map((b) => (
+              <li class="branch">
+                <span class="diamond" aria-hidden="true"></span>
+                <p>
+                  <strong>{b.finding}:</strong>
+                  {b.action && <Fragment>{' '}{b.action}</Fragment>}
+                  {b.say && <Fragment>{' '}{lead(b)}{' '}<strong class="words">“{b.say}”</strong></Fragment>}
+                  {b.next !== undefined && (
+                  <Fragment>
+                    {' '}<a class="go" href={jump(b.next).to}>{jump(b.next).text}{jump(b.next).title && <span class="visually-hidden">: {jump(b.next).title}</span>}</a>
+                  </Fragment>
+                )}
+                  {b.end && (
+                  <Fragment>
+                    {' '}<span class="stop"><span class="visually-hidden">End of {fix.code}.</span><span class="marks" aria-hidden="true"><span /><span /><span /><span /></span></span>
+                  </Fragment>
+                )}
+                </p>
+              </li>
+            ))}
+            </ul>
+          </div>
+        )}
         </div>
       )}
-      </div>
-    )}
-  </li>
-))}
+      </li>
+    ))}
     </ol>
+  </div>
+))}
 
     <p class="end"><span class="visually-hidden">End of {fix.code}.</span><span class="marks" aria-hidden="true"><span /><span /><span /><span /></span></p>
 
-    {fix.why && (
-  <p class="why">
-    <strong>Why.</strong> {fix.why}
-    {see && (
-    <Fragment>
-      {' '}<a class="ref" href={href(`/${fix.see}`)}>See {see.number}<span class="visually-hidden">, {see.title}</span></a>
-    </Fragment>
-  )}
-  </p>
-)}
+    <p class="why">
+      <strong>Why.</strong> {fix.why}
+      {see && (
+      <Fragment>
+        {' '}<a class="ref" href={href(`/${fix.seeAt ?? fix.see}`)}>See {see.number} in the guide<span class="visually-hidden">: {see.title}</span></a>
+      </Fragment>
+    )}
+    </p>
   </div>
 </article>
 
@@ -248,8 +299,8 @@ function jump(next: Next): { to: string; text: string; title?: string } {
 
   .body {
     display: grid;
-    gap: 0.8rem;
-    padding: 0.75rem 0.8rem 0.9rem;
+    gap: 0.7rem;
+    padding: 0.7rem 0.8rem 0.8rem;
   }
 
   .lines {
@@ -266,13 +317,27 @@ function jump(next: Next): { to: string; text: string; title?: string } {
     color: var(--warning);
   }
 
+  /* A block of steps: "Now", or what waits. The first sits under a hairline, like a card's steps. */
+  .block {
+    display: grid;
+    gap: 0.35rem;
+    padding-block-start: 0.6rem;
+    border-top: 1px solid var(--rule);
+  }
+
+  .block-label {
+    font-size: var(--text-sm);
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--ink);
+  }
+
   .steps {
     display: grid;
-    gap: 0.75rem;
+    gap: 0.6rem;
     margin: 0;
-    padding: 0.8rem 0 0;
+    padding: 0;
     list-style: none;
-    border-top: 1px solid var(--rule);
   }
 
   .step {
@@ -288,11 +353,11 @@ function jump(next: Next): { to: string; text: string; title?: string } {
     outline-offset: 0.4rem;
   }
 
-  /* What the step also does, said before it in plain words, at full strength. The step's number
+  /* What someone must know before the step, said in plain words at full strength. The step's number
      stays with the step. */
   .before {
     grid-column: 2;
-    margin-block-end: 0.35rem;
+    margin-block-end: 0.3rem;
     line-height: 1.5;
   }
 
@@ -303,7 +368,7 @@ function jump(next: Next): { to: string; text: string; title?: string } {
 
   .action {
     display: grid;
-    gap: 0.3rem;
+    gap: 0.25rem;
   }
 
   /* Challenge, dots, response. When the response doesn't fit, it takes its own line at the right,
@@ -335,20 +400,34 @@ function jump(next: Next): { to: string; text: string; title?: string } {
     text-wrap: balance;
   }
 
+  /* An instruction with no state to leave: set like a challenge, the thing to do first. */
+  .do {
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  .say,
+  .if,
+  .branch p {
+    line-height: 1.45;
+    text-wrap: pretty;
+  }
+
+  /* The words to say, as said: bold, so they can be read out at a glance. */
+  .words {
+    font-weight: 700;
+  }
+
   .note {
     font-size: var(--text-sm);
     line-height: 1.5;
     color: var(--ink-2);
   }
 
-  .if {
-    line-height: 1.5;
-  }
-
   .choose {
     display: grid;
-    gap: 0.4rem;
-    margin-block-start: 0.2rem;
+    gap: 0.3rem;
+    margin-block-start: 0.15rem;
   }
 
   .choose-one {
@@ -359,7 +438,7 @@ function jump(next: Next): { to: string; text: string; title?: string } {
 
   .branches {
     display: grid;
-    gap: 0.5rem;
+    gap: 0.35rem;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -369,7 +448,6 @@ function jump(next: Next): { to: string; text: string; title?: string } {
     display: grid;
     grid-template-columns: 1.15rem minmax(0, 1fr);
     align-items: baseline;
-    line-height: 1.5;
   }
 
   .diamond {
@@ -381,7 +459,7 @@ function jump(next: Next): { to: string; text: string; title?: string } {
   }
 
   /* A jump is something to do, so it takes the action colour. It sits in a line of text but is a
-     thumb's height tall (44px), so the line it ends opens up to fit it. */
+     thumb's height tall (44px), so the line it ends opens up to fit it, and two jumps never overlap. */
   .go {
     display: inline-flex;
     align-items: center;
@@ -416,7 +494,7 @@ function jump(next: Next): { to: string; text: string; title?: string } {
   .end {
     display: flex;
     justify-content: center;
-    padding-block: 0.15rem;
+    padding-block: 0.1rem;
   }
 
   .end .marks {
@@ -430,7 +508,7 @@ function jump(next: Next): { to: string; text: string; title?: string } {
 
   /* Additional information: it never has to be read to do the drill. */
   .why {
-    padding-block-start: 0.65rem;
+    padding-block-start: 0.6rem;
     border-block-start: 1px solid var(--rule);
     font-size: var(--text-sm);
     line-height: 1.5;
@@ -443,7 +521,6 @@ function jump(next: Next): { to: string; text: string; title?: string } {
 
   .ref {
     font-weight: 700;
-    white-space: nowrap;
   }
 
   /* System colours: the strip keeps its fill, and the light becomes a lit mark on a plain bezel.

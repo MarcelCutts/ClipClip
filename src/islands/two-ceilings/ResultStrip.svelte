@@ -5,10 +5,6 @@
    * in a word and the Howler's LEVEL light. The channel meter is the XDJ-RX2's twelve lights laid
    * on their side, with the zone in words beside them, so colour is never the only cue.
    *
-   * Until the reader has committed a guess, the two outcomes wait in words ("Guess first"), the
-   * way the listening test's screens say "Shows after you answer". The channel's red stays lit:
-   * it's the question, not the answer.
-   *
    * With room, one row of three. On a phone, two rows: the channel across the top, then the crunch
    * beside the Howler light, so every value keeps to one line.
    *
@@ -24,14 +20,11 @@
   interface Props {
     /** The channel's loudest peak, on the meter's own dB scale. */
     channels: number;
-    /** Null while the outcome waits for a guess. */
-    crunch: Crunch | null;
-    howler: 'green' | 'red' | null;
-    /** What a waiting outcome says. */
-    waiting: string;
+    crunch: Crunch;
+    howler: 'green' | 'red';
   }
 
-  let { channels, crunch, howler, waiting }: Props = $props();
+  let { channels, crunch, howler }: Props = $props();
 
   const lit = $derived(litCount(channels));
   // The same reading LedMeter gives, so the strip and the rest of the site speak alike.
@@ -65,22 +58,14 @@
     </div>
     <div class="cell">
       <dt>{READOUTS.crunch}</dt>
-      {#if crunch}
-        <dd class="value" data-crunch={crunch}>
-          <CrunchGlyph {crunch} />
-          <span>{CRUNCH_WORDS[crunch]}</span>
-        </dd>
-      {:else}
-        <dd class="wait">{waiting}</dd>
-      {/if}
+      <dd class="value" data-crunch={crunch}>
+        <CrunchGlyph {crunch} />
+        <span>{CRUNCH_WORDS[crunch]}</span>
+      </dd>
     </div>
     <div class="cell">
       <dt>{READOUTS.howler}</dt>
-      {#if howler}
-        <dd><HowlerLight light={howler} state={HOWLER_WORDS[howler].state} meaning={HOWLER_WORDS[howler].meaning} /></dd>
-      {:else}
-        <dd class="wait">{waiting}</dd>
-      {/if}
+      <dd><HowlerLight light={howler} state={HOWLER_WORDS[howler].state} meaning={HOWLER_WORDS[howler].meaning} /></dd>
     </div>
   </dl>
 </div>
@@ -220,13 +205,6 @@
   .value :global(svg) {
     width: 1.9rem;
     height: auto;
-  }
-
-  /* Waiting for a guess: quiet, but still words someone acts on, so full size and readable. */
-  .wait {
-    font-size: var(--text-sm);
-    line-height: 1.3;
-    color: var(--hw-label);
   }
 
   /* A phone: the channel across the top, its lights and zone on one line, then two cells. */

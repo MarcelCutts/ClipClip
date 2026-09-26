@@ -1,9 +1,9 @@
 ---
 /**
- * The print kit. On screen: the site's header, each printable once with where it goes, and the chat
- * messages with copy buttons. On paper: four A4 sheets laid out for cutting and laminating: the
- * booth cards, the tape tags, then the crew's checklists as quick reference cards, C1 and C2 on one
- * sheet and C3 and S1 on the next.
+ * The print kit. On screen: the site's header, each printable once with where it goes (the crew
+ * cards by one sample, C1), and the chat messages with copy buttons. On paper: four A4 sheets laid
+ * out for cutting and laminating: the booth cards, the tape tags, then the crew's checklists as quick
+ * reference cards, C1 and C3 on one sheet and C2 and S1 on the next.
  * One wiring throughout: MASTER LEVEL feeds the PA and the Howler (REC), BOOTH the booth monitors.
  * The two views are separate trees, so each can be laid out for its own medium. Its sections are
  * left unnamed, so they aren't landmarks: the headings are how to move round.
@@ -15,19 +15,27 @@ import KnobTag from '../components/print/KnobTag.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import CopyText from '../islands/CopyText.svelte';
 import Base from '../layouts/Base.astro';
-import { chatMessages } from '../lib/messages';
+import { chatMessages, NAME_BLANK } from '../lib/messages';
+import { section } from '../lib/sections';
 import { MASTER_TAG, SHORT_TAGS } from '../lib/tags';
 import { href } from '../lib/url';
 
 const site = Astro.site ?? Astro.url;
 const messages = chatMessages((path) => new URL(href(path), site).toString());
 
+/**
+ * The date on every printed card. Change it whenever a card's words change, so a laminated card in
+ * the booth can be checked against this page.
+ */
+const REVISED = '26 September 2026';
+
 /** The setup list is the longest, so its card sets the lines smaller, in two columns. */
-const SETUP_CARD = { list: 'setup', scale: 0.88, columns: 2 } as const;
+const SETUP_CARD = { list: 'setup', scale: 0.88, columns: 2, revised: REVISED } as const;
 
 const shortTags = SHORT_TAGS;
 const masterTag = MASTER_TAG;
 const copies = (n: number) => Array.from({ length: n }, (_, i) => i);
+const trim = section('trim');
 ---
 
 <Base
@@ -38,14 +46,11 @@ const copies = (n: number) => Array.from({ length: n }, (_, i) => i);
   <div class="screen-view">
     <SiteHeader />
 
-    <PageHeader
-      title="Print kit"
-      lede="A card for the booth, tape tags for the knobs and the crew’s checklists as cards, on four sheets of A4."
-    >
+    <PageHeader title="Print kit" lede="Four A4 sheets: the booth card, tape tags and the crew’s checklist cards.">
       <ol class="steps">
-        <li>Print on A4 at 100&nbsp;% scale, with “Fit to page” turned off.</li>
+        <li>Print on A4 at 100% scale, with “Fit to page” turned off.</li>
         <li>Cut on the dashed lines.</li>
-        <li>Laminate the cards in matt film if you can, because gloss glares under booth lights.</li>
+        <li>If you can, laminate the cards in matt film. Gloss glares under booth lights.</li>
       </ol>
       <p class="actions">
         <span class="print">
@@ -54,17 +59,21 @@ const copies = (n: number) => Array.from({ length: n }, (_, i) => i);
         </span>
         <a href="#messages">Messages for the group chat</a>
       </p>
+      <p class="revised">
+        Every card carries the date its words last changed: {REVISED}. If a card in the booth has an older date, print
+        a new one.
+      </p>
     </PageHeader>
 
     <section class="block flow">
       <h2 id="booth-title">Booth card</h2>
       <p>
         Page 1 prints two, each A6. Put one by the meters, where the DJ looks while mixing. Its QR code opens the guide
-        at setting TRIM.
+        at {trim.number} {trim.title}. Write tonight’s crew on its line with a dry-wipe marker.
       </p>
       <div class="wide stage">
         <div data-paper class="paper cuts booth-cuts">
-          <BoothCard />
+          <BoothCard revised={REVISED} />
         </div>
       </div>
     </section>
@@ -93,30 +102,22 @@ const copies = (n: number) => Array.from({ length: n }, (_, i) => i);
           <p>{masterTag.where}</p>
         </li>
       </ul>
-      <p>Then draw a line across each knob and onto the panel, so any turn shows at a glance.</p>
+      <p>Then draw a line across each knob and onto the panel. If a knob turns, its line breaks.</p>
     </section>
 
     <section class="block flow">
       <h2 id="crew-title">Crew cards</h2>
-      <p>
-        Pages 3 and 4 print the checklists as cards. C1 to C3 are for every night, from the
-        <a href={href('/night/')}>night page</a>, so keep them in the booth. S1 is the
-        <a href={href('/setup/')}>first-time setup</a>, for before the first night. Each card’s tab sits a step lower
-        than the last, so a stack of them opens at the one you want.
-      </p>
-      <p>On a phone, the night page keeps your ticks for the night.</p>
+      <p>Pages 3 and 4 print the checklists as cards: C1 to C3 for the booth, and S1 for setting up. This is C1.</p>
       <div class="wide crew-list">
-        {(['doors', 'changeover', 'after', 'setup'] as const).map((id) => (
-  <div data-paper class="sheet-preview">
-    <ChecklistCard {...(id === 'setup' ? SETUP_CARD : { list: id })} />
-  </div>
-))}
+        <div data-paper class="sheet-preview">
+          <ChecklistCard list="doors" revised={REVISED} />
+        </div>
       </div>
     </section>
 
     <section class="block flow" id="messages">
       <h2 id="messages-title">Messages for the group chat</h2>
-      <p>Formatted for WhatsApp. Copy one, paste it into the chat, and change anything before you send.</p>
+      <p>Formatted for WhatsApp. In the DJ briefing, put the crew’s name in place of {NAME_BLANK}.</p>
       <div class="wide messages">
         {
           messages.map((m) => (
@@ -132,9 +133,8 @@ const copies = (n: number) => Array.from({ length: n }, (_, i) => i);
         <h3 id="clip-title">A ten-second clip</h3>
         <figure>
           <figcaption id="clip-print-caption">
-            For people who won’t open a link. It needs no sound. Turning TRIM up pushes a wave past the ceiling, and the
-            mixer slices its tops flat. Turning the recording down afterwards only makes it quieter, and the tops stay
-            flat. It ends on a strip of tape that says “Keep channel meters out of the red”.
+            For people who will not open a link. With no sound, it shows TRIM pushing a wave past the mixer’s ceiling,
+            and its flat tops staying flat when the recording is turned down.
           </figcaption>
           <video
             controls
@@ -158,7 +158,7 @@ const copies = (n: number) => Array.from({ length: n }, (_, i) => i);
     <section class="sheet">
       <p class="sheet-head">Out of the red: booth cards, A6. Cut on the dashed lines.</p>
       <div class="cuts booth-cuts">
-        {copies(2).map(() => <BoothCard />)}
+        {copies(2).map(() => <BoothCard revised={REVISED} />)}
       </div>
     </section>
     <section class="sheet">
@@ -174,16 +174,17 @@ const copies = (n: number) => Array.from({ length: n }, (_, i) => i);
     <section class="sheet">
       <p class="sheet-head">Out of the red: crew cards C1 and C3, for every night. Cut round the cards and tabs.</p>
       <div class="crew-cards">
-        <ChecklistCard list="doors" />
-        <ChecklistCard list="after" />
+        <ChecklistCard list="doors" revised={REVISED} />
+        <ChecklistCard list="after" revised={REVISED} />
       </div>
     </section>
     <section class="sheet">
       <p class="sheet-head">
-        Out of the red: crew card C2, for every night, and S1, for the first-time setup. Cut round the cards and tabs.
+        Out of the red: crew card C2, for every night, and S1, for setting up at every event. Cut round the cards and
+        tabs.
       </p>
       <div class="crew-cards">
-        <ChecklistCard list="changeover" />
+        <ChecklistCard list="changeover" revised={REVISED} />
         <ChecklistCard {...SETUP_CARD} />
       </div>
     </section>
@@ -252,7 +253,8 @@ const copies = (n: number) => Array.from({ length: n }, (_, i) => i);
     gap: 0.5rem 1rem;
   }
 
-  .print-hint {
+  .print-hint,
+  .revised {
     font-size: var(--text-sm);
     color: var(--ink-2);
   }

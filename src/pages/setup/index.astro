@@ -1,27 +1,24 @@
 ---
 /**
- * The one-off setup, for whoever sets up the rig, as a quick reference handbook's cards. S1 is the
- * whole job in order (the setup checklist). S2 to S6 go through each part: the wiring, the record
- * level, the DriveRack and amps, generator power and the USB backup. T1 to T6 are the tests that
- * answer what the manuals don't say. Done once, and again whenever the rig changes. Why it works is
- * in the guide.
+ * Setting up, at every event, for whoever builds the rig, working alone with the kit in front of
+ * them. S1 is the whole job in order (checklists.ts). The cards after it follow S1's order: S2 the
+ * wiring, as a table built from the guide's signal drawing (lib/rig.ts); T2, the one-off test of
+ * whether MASTER ATT reaches MASTER 2; S3 the recording level (lib/record/flow.ts); S4 the DriveRack
+ * and amps; S5 the DriveRack's setup wizard, once. Each card says when it's done: every event, or
+ * once. Why it works is in the guide.
  *
- * S2 is the rig as a table, built from the guide's signal drawing (lib/rig.ts): what feeds each
- * part, how it's set and which tape goes on it. The drawing itself stays in the guide (3.1). S3 is
- * the record level's steps (lib/record/flow.ts), with a practice rig under them.
- *
- * The anchors stay put: the old /crew/ page forwards to #wiring, #record-level, #backup, #power and
- * #tests, the guide links to #record-level and #test-att, and #setup is the checklist's own.
+ * The anchors other pages use stay put: #setup is the checklist's, the guide links to #record-level
+ * and #test-att, and the old /crew/ page forwards to #wiring and #record-level.
  */
 import Contents, { type ContentsEntry } from '../../components/Contents.astro';
 import PageHeader from '../../components/PageHeader.astro';
 import Procedure from '../../components/Procedure.astro';
 import Term from '../../components/Term.astro';
 import Checklist from '../../islands/Checklist.svelte';
-import RecordLevel from '../../islands/RecordLevel.svelte';
 import Base from '../../layouts/Base.astro';
-import { CHECKLISTS, LEVEL_FALLBACK } from '../../lib/checklists';
-import { ROOM_NOTE, STEPS } from '../../lib/record/flow';
+import { CHECKLISTS, OPEN_UTILITY } from '../../lib/checklists';
+import { FIXES } from '../../lib/fixes';
+import { ATT_SETTINGS, CONSEQUENCE, SAVE_NOTE, STEPS } from '../../lib/record/flow';
 import { edgesFor, NODES, type NodeId } from '../../lib/rig';
 import { section } from '../../lib/sections';
 import { SOURCES } from '../../lib/sources';
@@ -36,7 +33,6 @@ const doc = (title: string): string => {
 };
 const MANUAL = doc('XDJ-RX2 Operating Instructions');
 const QUICK_START = doc('XDJ-RX2 Quick Start Guide and specifications');
-const REC_FAQ = doc('XDJ-RX2 FAQ: recording with MASTER REC');
 const DBX = doc('DriveRack PA2 Owner’s Manual');
 const DBX_TUNINGS = doc('DriveRack PA2 speaker and amplifier tunings');
 const QSC = doc('GX3, GX5 and GX7 user manual');
@@ -44,7 +40,16 @@ const HOWLER = doc('Recorder+Streamer MK1 manual');
 const RANE = doc('Sound System Interconnection (RaneNote 110)');
 
 /** A no-break space, between a number and its unit. */
-const nb = '\u00a0';
+const nb = ' ';
+const MINUS = '−';
+
+/** When a card is done, on the right of its title strip. */
+const EVERY_EVENT = 'Every event';
+const ONCE = 'Once';
+
+/** The earth warning, in the words of the hum drill (F10), so the setup page and the night page agree. */
+const EARTH_WARNING = FIXES.find((f) => f.id === 'hum')?.warning;
+if (!EARTH_WARNING) throw new Error('The hum drill (F10) has no earth warning for S2 to repeat');
 
 // ---- S2: the rig as a table -----------------------------------------------------------------
 
@@ -68,8 +73,6 @@ interface RigRow {
   setNote?: string;
   /** The card that sets the rest: "See S4." */
   see?: { code: string; id: string; for?: string };
-  /** A second line under the tape: what's written on it. */
-  tapeNote?: string;
   sources: Cite[];
 }
 
@@ -84,15 +87,14 @@ const RIG_ROWS: RigRow[] = [
   {
     node: 'masterLevel',
     set: 'fully up',
-    setNote: 'It sets MASTER 1 and MASTER 2 together, so it sets the room and the recording at once.',
-    tapeNote: 'Write MASTER ATT and BOOTH ATT on it.',
+    setNote: 'It sets MASTER 1 and MASTER 2 together.',
     sources: [OI(27)],
   },
   {
     node: 'driverack',
     lead: `XLR, L and R`,
     set: `input switch on +4${nb}dBu`,
-    see: { code: 'S4', id: 'driverack', for: 'the setup wizard' },
+    see: { code: 'S4', id: 'driverack' },
     sources: [QSG(20), { label: `dbx manual p.${nb}5`, url: `${DBX}#page=5` }],
   },
   {
@@ -107,7 +109,7 @@ const RIG_ROWS: RigRow[] = [
     lead: 'RCA, L and R',
     leadNote: `One stereo RCA lead, under 3${nb}m, with no adapters.`,
     set: 'WAV',
-    see: { code: 'S3', id: 'record-level', for: 'its record level' },
+    see: { code: 'S3', id: 'record-level', for: 'its recording level' },
     sources: [QSG(20), { label: 'RaneNote 110', url: RANE }, { label: 'Howler manual', url: HOWLER }],
   },
   {
@@ -126,11 +128,13 @@ const RIG_ROWS: RigRow[] = [
 ];
 
 /**
- * What feeds a part, as the drawing wires it (the DJ view, where the limiter is part of the
- * DriveRack): a socket by its printed name, anything else as "the DriveRack PA2", "the mix".
+ * What feeds a part, by lead: a socket by its printed name, anything else as "the DriveRack PA2".
+ * The limiter is inside the DriveRack, so the amps' lead comes from the DriveRack itself.
  */
 function feed(id: NodeId): string {
-  const from = edgesFor('dj').find((e) => e.to === id)?.from;
+  const edges = edgesFor();
+  let from = edges.find((e) => e.to === id)?.from;
+  if (from === 'limiter') from = edges.find((e) => e.to === 'limiter')?.from;
   if (!from) throw new Error(`Nothing feeds ${id}`);
   const node = NODES[from];
   if (node.printed) return node.label;
@@ -152,157 +156,93 @@ const rigRows = RIG_ROWS.map((r, i) => {
 
 const signal = section('signal');
 
-// ---- S3: the record level -------------------------------------------------------------------
+// ---- T2: whether MASTER ATT reaches MASTER 2 -------------------------------------------------
 
-const recordSteps = STEPS.map((s) => ({ challenge: s.label, response: s.target, note: s.instruction }));
-
-// ---- T1 to T6 -------------------------------------------------------------------------------
-
-interface Test {
-  id: string;
-  number: string;
-  title: string;
-  /** The index rail's name for it: about 20 characters. */
-  short: string;
-  steps: { challenge: string; response: string; note?: string }[];
-  note?: string;
-  /** What a good result looks like, and what to do if you don't get it. */
-  expected: string;
-  /** A card to go to next, named after the expected result: "(S3)". */
-  see?: { code: string; id: string };
-}
-
-/** A test that moves MASTER LEVEL or MASTER ATT ends by putting them back. */
-const PUT_BACK = { challenge: 'MASTER LEVEL and MASTER ATT', response: 'back as on the tape' };
-
-// Pioneer and Howler leave these unpublished, so the only way to know is to try them on our kit.
-const tests: Test[] = [
+// Pioneer's fix for distortion is MASTER ATT (manual p.34; UTILITY table p.32), but the manual only says it
+// "sets the master output attenuator". The table prints +12 dB; the Quick Start Guide (p.17) has −12 dB.
+const attDb = (v: number) => (v === 0 ? `0${nb}dB` : `${MINUS}${Math.abs(v)}${nb}dB`);
+const [attFull, , attLowest] = ATT_SETTINGS;
+const T2_STEPS = [
+  { challenge: 'Loud track', response: 'recording on the Howler' },
   {
-    // Howler doesn't publish where its light turns red (MK1 manual, FAQ).
-    id: 'test-howler',
-    number: 'T1',
-    title: 'Where the Howler turns red',
-    short: 'Howler turns red',
-    steps: [
-      { challenge: 'MASTER LEVEL', response: 'fully up' },
-      { challenge: 'MASTER ATT', response: `0${nb}dB` },
-      { challenge: 'Loud track', response: 'playing' },
-      { challenge: 'Its TRIM', response: 'up, slowly' },
-      { challenge: 'Middle meters', response: 'read when the LEVEL light first blinks red' },
-      PUT_BACK,
-    ],
-    expected:
-      'A reading on the middle meters. Write it on the REC tape. If the middle meters reach red first, the Howler has room to spare.',
+    challenge: 'MASTER ATT, halfway through',
+    response: attDb(attLowest),
+    note: `It is in UTILITY. ${OPEN_UTILITY} Its settings are ${ATT_SETTINGS.map(attDb).join(', ').replace(/, ([^,]+)$/, ' and $1')}. The Operating Instructions misprint the last as +12${nb}dB, and the Quick Start Guide has it right.`,
   },
-  {
-    // Pioneer's fix for distortion is MASTER ATT (manual p.34; UTILITY table p.32), but the manual only says it
-    // "sets the master output attenuator". The table prints +12 dB; the Quick Start Guide (p.17) has −12 dB.
-    id: 'test-att',
-    number: 'T2',
-    title: `Whether MASTER${nb}ATT reaches MASTER${nb}2`,
-    short: 'MASTER ATT',
-    steps: [
-      { challenge: 'Loud track', response: 'recording on the Howler' },
-      { challenge: 'MASTER ATT', response: 'down, halfway through' },
-      PUT_BACK,
-    ],
-    note: `Pioneer doesn’t say whether it does. MASTER ATT’s settings are 0, −6 and −12${nb}dB. The Operating Instructions misprint the last as +12${nb}dB, and the Quick Start Guide has it right.`,
-    // If MASTER ATT doesn't reach MASTER 2, MASTER LEVEL is the only record level: the one fallback rule, in the
-    // words S1, S3 and F1 use (checklists.ts).
-    expected: `The second half comes out quieter. If it doesn’t, MASTER ATT can’t turn the recording down. Play the loudest blend, and if the LEVEL light blinks red, turn ${LEVEL_FALLBACK.challenge} down ${LEVEL_FALLBACK.how}, and re-mark the REC tape.`,
-  },
-  {
-    // VirtualDJ's layout notes and Pioneer's own TRIM procedure put the channel meters before the fader. Nobody
-    // says whether they read after the EQ; the guide's drawing assumes they do.
-    id: 'test-channel-meters',
-    number: 'T3',
-    title: 'What the channel meters show',
-    short: 'Channel meters',
-    steps: [
-      { challenge: 'LOW', response: 'up, on a playing track' },
-      { challenge: 'Its channel meter', response: 'watch it' },
-      { challenge: 'Its channel fader', response: 'down, then up' },
-    ],
-    expected:
-      'The channel meter doesn’t move with the fader. Pioneer doesn’t say whether it moves with LOW. If it does, it reads after the EQ, as the guide’s drawing assumes.',
-  },
-  {
-    // Pioneer manual p.31: red means the sound "may be distorted". MASTER REC records before MASTER LEVEL (FAQ),
-    // so a clipped channel arrives in the file turned down, below full scale.
-    id: 'test-red',
-    number: 'T4',
-    title: 'Whether red really clips',
-    short: 'Whether red clips',
-    steps: [
-      { challenge: 'MASTER LEVEL', response: 'down' },
-      { challenge: 'One channel', response: 'into the red' },
-      { challenge: 'MASTER REC', response: 'recording onto a USB stick' },
-      { challenge: 'The file', response: 'zoomed in' },
-      PUT_BACK,
-    ],
-    expected:
-      'If red clips, the loudest peaks have flat tops. They can sit below the top of the file, so look at any height.',
-  },
-  {
-    id: 'test-leads',
-    number: 'T5',
-    title: 'The leads',
-    short: 'The leads',
-    steps: [{ challenge: 'Test recording', response: 'on headphones' }],
-    expected: 'Both sides play, and there’s no hum.',
-  },
-  {
-    id: 'test-level',
-    number: 'T6',
-    title: 'The taped record level',
-    short: 'Taped record level',
-    steps: [
-      { challenge: 'Loudest blend', response: 'a minute, recorded at the taped setting' },
-      { challenge: 'The file', response: 'open in Audacity' },
-    ],
-    expected: `It peaks around −6 to −9${nb}dBFS. If it peaks higher, turn the record level down and re-mark the REC tape`,
-    see: { code: 'S3', id: 'record-level' },
-  },
+  { challenge: 'MASTER ATT', response: `back to ${attDb(attFull)}` },
 ];
 
-// The index names each card by its code, as the cards do. Short enough for the rail.
+// ---- S4 and S5: the DriveRack and the amps ----------------------------------------------------
+
+const S4_STEPS = [
+  {
+    challenge: 'Input switch, on the back of the DriveRack',
+    response: `+4${nb}dBu`,
+    note: `MASTER 1 runs at about +6${nb}dBu, Pioneer’s standard level. On ${MINUS}10${nb}dBV the DriveRack’s input clips about 10${nb}dB early. dbx advises flipping the switch only with the amps off or its outputs muted.`,
+  },
+  {
+    challenge: 'Both GX7 amps, on the back',
+    response: 'FULL RANGE',
+    note: 'The DriveRack already splits the subs from the top speakers.',
+  },
+  { challenge: 'DriveRack setup wizard', response: 'done once (S5)' },
+  {
+    challenge: 'Both GX7 amps',
+    response: 'switched on last',
+    note: `dbx says to switch the amps on after everything else, and off first, about 10${nb}seconds apart.`,
+  },
+  { challenge: 'DriveRack input CLIP lights', response: 'dark on the loudest blend' },
+  { challenge: 'Amp gain knobs, on the loudest blend', response: 'as loud as the room needs, CLIP lights dark' },
+];
+
+const S5_STEPS = [
+  { challenge: 'Top speakers', response: 'Yamaha S/C115V' },
+  {
+    challenge: 'Amps',
+    response: 'QSC GX7',
+    note: 'With these two picked, the wizard sets the limiters for the GX7s.',
+  },
+  { challenge: 'Subs', response: '“not listed”', note: 'The EV EKX-18S subs are not in its list.' },
+];
+
+// The index names each card by its code, as the cards do, in the order S1 uses them.
 const contents: ContentsEntry[] = [
   { id: CHECKLISTS.setup.anchor, number: CHECKLISTS.setup.code, label: CHECKLISTS.setup.title },
   { id: 'wiring', number: 'S2', label: 'Wiring' },
-  { id: 'record-level', number: 'S3', label: 'Record level' },
+  { id: 'test-att', number: 'T2', label: 'MASTER ATT test' },
+  { id: 'record-level', number: 'S3', label: 'Recording level' },
   { id: 'driverack', number: 'S4', label: 'DriveRack and amps' },
-  { id: 'power', number: 'S5', label: 'Generator power' },
-  { id: 'backup', number: 'S6', label: 'USB backup' },
-  {
-    id: 'tests',
-    number: 'T',
-    label: 'One-off tests',
-    subs: tests.map((t) => ({ id: t.id, label: `${t.number} ${t.short}` })),
-  },
-  { id: 'print', label: 'Print kit' },
+  { id: 'wizard', number: 'S5', label: 'Setup wizard' },
 ];
 ---
 
 <Base
   title="Setting up"
-  description="For whoever sets up the rig: the setup checklist, then cards for the wiring, the record level, the DriveRack PA2 and amps, generator power, the USB backup and the one-off tests."
+  description="For whoever sets up the rig at every event: the setup checklist, the wiring table, and cards for the recording level, the DriveRack PA2 and the amps."
 >
-  <PageHeader
-    title="Setting up"
-    lede="Once, before the first night, and again whenever the rig changes. S1 is the whole job in order, to work through with the kit in front of you. S2 to S6 go through each part, and T1 to T6 test what the manuals leave out."
-  />
+  <PageHeader title="Setting up">
+    <Fragment slot="lede">
+      At every event, before the doors open. Work through S1 with the kit in front of you. The tape tags are in the
+      <a href={href('/print/')}>Print kit</a>.
+    </Fragment>
+  </PageHeader>
 
   <div class="page flow">
-    <Contents entries={contents} rows={contents.length} />
+    <Contents entries={contents} rows={contents.length + 1} />
 
     <div class="job">
       <Checklist list="setup" headingLevel={2} client:visible />
+      <p class="source after">
+        QSC’s <a href={QSC} rel="external">GX manual</a> for what the amps draw, and Howler’s
+        <a href={HOWLER} rel="external">MK1 manual</a> for the battery.
+      </p>
     </div>
 
-    <!-- The table needs the page's wide column; its card has no steps, only the table. -->
+    <!-- The table needs the page's wide column; its card has no steps, only the warning and the table. -->
     <div class="job subflow">
       <div class="wide wiring">
-        <Procedure id="wiring" number="S2" title="Wiring" kind="Once" level={2} steps={[]}>
+        <Procedure id="wiring" number="S2" title="Wiring" kind={EVERY_EVENT} level={2} steps={[]}>
+          <p class="warning"><strong>Warning.</strong> {EARTH_WARNING}</p>
           <!-- Wide: a table, one row per part. Narrow: the same rows as a list, each field labelled. -->
           <table class="rig-table">
             <caption class="visually-hidden">What feeds each part of the rig, how it’s set and its tape</caption>
@@ -339,10 +279,7 @@ const contents: ContentsEntry[] = [
                         </span>
                       )}
                     </td>
-                    <td>
-                      {r.tape ? <span class="tag">{r.tape.name}</span> : <span class="none">none</span>}
-                      {r.tapeNote && <span class="sub">{r.tapeNote}</span>}
-                    </td>
+                    <td>{r.tape ? <span class="tag">{r.tape.name}</span> : <span class="none">none</span>}</td>
                     <td>
                       <span class="cites">
                         {r.sources.map((c) => (
@@ -396,7 +333,6 @@ const contents: ContentsEntry[] = [
                         <dt>Tape tag</dt>
                         <dd>
                           <span class="tag">{r.tape.name}</span>
-                          {r.tapeNote && <span class="sub">{r.tapeNote}</span>}
                         </dd>
                       </div>
                     )}
@@ -417,211 +353,78 @@ const contents: ContentsEntry[] = [
               ))
             }
           </ol>
-          <p class="note">
-            <strong>Note.</strong> The room’s volume comes from the <Term of="amps">amps</Term>, never from
-            <Term of="masterLevel">MASTER LEVEL</Term>. To see what each part feeds, pick it in the drawing in
-            <a href={href(`/#${signal.id}`)}>{signal.number} {signal.title}</a>.
+          <p class="next">
+            The drawing in <a href={href(`/#${signal.id}`)}>{signal.number} {signal.title}</a> shows what each part feeds.
           </p>
         </Procedure>
       </div>
     </div>
 
-    <div class="job subflow">
+    <div class="job">
+      <Procedure
+        id="test-att"
+        number="T2"
+        title={`Whether MASTER${nb}ATT reaches MASTER${nb}2`}
+        kind={ONCE}
+        level={2}
+        caution="Pioneer’s manual says only that MASTER ATT “sets the master output attenuator”. It does not say whether that includes MASTER 2, the Howler’s socket."
+        steps={T2_STEPS}
+      >
+        <p class="expected">
+          <strong>Expected.</strong> The second half of the file is quieter. If it is not, MASTER ATT does not reach
+          {`MASTER${nb}2`}. In S3, leave it at {attDb(attFull)} and skip its two steps.
+        </p>
+        <p class="source">
+          Pioneer’s Operating Instructions (<a href={`${MANUAL}#page=32`} rel="external">p.{nb}32</a>) and Quick Start
+          Guide (<a href={`${QUICK_START}#page=17`} rel="external">p.{nb}17</a>).
+        </p>
+      </Procedure>
+    </div>
+
+    <div class="job">
       <Procedure
         id="record-level"
         number="S3"
-        title="Record level"
-        kind="Once"
+        title="Recording level"
+        kind={EVERY_EVENT}
         level={2}
-        caution="The Howler has no input knob, only its LEVEL light, which blinks green when the level is fine and red when it’s too high. So MASTER LEVEL and MASTER ATT set the record level. Pioneer doesn’t say whether MASTER ATT reaches MASTER 2, so run T2 first."
-        steps={recordSteps}
-        note={ROOM_NOTE}
+        caution={CONSEQUENCE}
+        steps={[...STEPS]}
+        note={SAVE_NOTE}
       >
         <p class="source">
-          Pioneer’s Operating Instructions (<a href={`${MANUAL}#page=27`} rel="external">page 27</a> for MASTER LEVEL,
-          <a href={`${MANUAL}#page=31`} rel="external">page 31</a> for UTILITY and
-          <a href={`${MANUAL}#page=32`} rel="external">page 32</a> for MASTER ATT), and Howler’s
+          Pioneer’s Operating Instructions (<a href={`${MANUAL}#page=27`} rel="external">p.{nb}27</a> for MASTER LEVEL,
+          <a href={`${MANUAL}#page=31`} rel="external">p.{nb}31</a> for UTILITY and
+          <a href={`${MANUAL}#page=32`} rel="external">p.{nb}32</a> for MASTER ATT), and Howler’s
           <a href={HOWLER} rel="external">MK1 manual</a> for the LEVEL light.
         </p>
       </Procedure>
-      <div class="wide practice"><RecordLevel client:visible /></div>
     </div>
 
     <div class="job">
-      <Procedure
-        id="driverack"
-        number="S4"
-        title="DriveRack and amps"
-        kind="Once"
-        level={2}
-        caution="Mute the DriveRack’s outputs before you flip its input switch."
-        steps={[
-          {
-            challenge: 'Input switch, on the back',
-            response: `+4${nb}dBu`,
-            note: `MASTER 1 runs at about +6${nb}dBu, Pioneer’s standard level, so the DriveRack wants its professional setting.`,
-          },
-          { challenge: 'Setup wizard, tops', response: 'Yamaha S/C115V' },
-          {
-            challenge: 'Setup wizard, amps',
-            response: 'QSC GX7',
-            note: 'With these two picked, the wizard sets the limiters for them.',
-          },
-          {
-            challenge: 'Setup wizard, subs',
-            response: '“not listed”',
-            note: 'The EV EKX-18S subs aren’t in its list.',
-          },
-          {
-            challenge: 'Both GX7 amps, on the back',
-            response: 'FULL RANGE',
-            note: 'The DriveRack already splits the subs from the tops.',
-          },
-          { challenge: 'DriveRack input CLIP lights', response: 'dark on the loudest blend' },
-          {
-            challenge: 'Amp gain knobs',
-            response: 'up to what the room needs',
-            note: 'Then tape them and mark them RIG.',
-          },
-        ]}
-      >
+      <Procedure id="driverack" number="S4" title="DriveRack and amps" kind={EVERY_EVENT} level={2} steps={S4_STEPS}>
         <p class="source">
-          dbx’s <a href={`${DBX}#page=5`} rel="external">DriveRack PA2 manual</a> and its
-          <a href={DBX_TUNINGS} rel="external">list of tunings</a>, which names the Yamaha tops and the QSC amps but no
-          EV subs. QSC’s <a href={QSC} rel="external">GX manual</a> for FULL RANGE and the gain knobs.
+          dbx’s DriveRack PA2 manual (<a href={`${DBX}#page=5`} rel="external">p.{nb}5</a> for the input switch,
+          <a href={`${DBX}#page=10`} rel="external">p.{nb}10</a> for the order) and QSC’s
+          <a href={QSC} rel="external">GX manual</a> for FULL RANGE, the gain knobs and the CLIP lights.
         </p>
       </Procedure>
     </div>
 
     <div class="job">
-      <Procedure
-        id="power"
-        number="S5"
-        title="Generator power"
-        kind="Once"
-        level={2}
-        caution="Never cure hum by disconnecting an earth, with a ground-lift adapter or a taped or cut earth pin. The earth is what stops a faulty case giving someone a shock."
-        steps={[
-          {
-            challenge: 'Generator',
-            response: 'sized for the peaks',
-            note: `QSC puts each GX7 at about 3.8${nb}A on a normal night and 6.7${nb}A on a heavy one, so the pair can pull about 3${nb}kW.`,
-          },
-          {
-            challenge: 'Howler battery',
-            response: 'charged, and charging while it records',
-            note: `It runs for about 30${nb}hours on its battery, and saves the file before the battery runs flat.`,
-          },
-          { challenge: 'Sound gear', response: 'all on one supply' },
-          {
-            challenge: 'Howler’s lead',
-            response: 'through an isolation transformer',
-            note: 'It breaks an earth loop in the audio lead, and every earth stays connected.',
-          },
-          {
-            challenge: 'Amps',
-            response: 'on last, off first',
-            note: `Switch the GX7s on after everything else and off before it, about 10${nb}seconds apart.`,
-          },
-        ]}
-        note="If the generator cuts out, the room goes quiet but the Howler keeps recording on its battery. The XDJ-RX2 has no battery. Pioneer warns that cutting the power while it writes to USB can leave the file unreadable, so a cut can cost you the MASTER REC backup. Trust the Howler’s file."
-      >
-        <p class="next">
-          If the power cuts out on the night, follow the
-          <a href={href('/night/#fix-power-cut')}>power-cut drill on the night page</a>.
-        </p>
+      <Procedure id="wizard" number="S5" title="DriveRack setup wizard" kind={ONCE} level={2} steps={S5_STEPS}>
         <p class="source">
-          Howler’s <a href={HOWLER} rel="external">MK1 manual</a> for the battery, Pioneer’s Operating Instructions
-          (<a href={`${MANUAL}#page=30`} rel="external">page 30</a>) for switching off mid-write, dbx’s manual
-          (<a href={`${DBX}#page=10`} rel="external">page 10</a>) for the order, and QSC’s
-          <a href={QSC} rel="external">GX manual</a> for current draw and earthing.
+          dbx’s <a href={DBX_TUNINGS} rel="external">list of tunings</a>, which names the Yamaha top speakers and the QSC
+          amps but no EV subs.
         </p>
       </Procedure>
     </div>
 
-    <div class="job">
-      <Procedure
-        id="backup"
-        number="S6"
-        title="USB backup"
-        kind="Once"
-        level={2}
-        caution="Don’t pull the stick or switch off while its USB light is lit or flashing. The file can end up unreadable."
-        steps={[
-          {
-            challenge: 'USB stick',
-            response: 'in the USB2 slot',
-            note: `About 90${nb}minutes of recording per gigabyte. Files split every three hours.`,
-          },
-          {
-            challenge: 'MASTER REC',
-            response: 'press to start',
-            note: 'It flashes while it records. It records before MASTER LEVEL, though a clipped mix still records clipped.',
-          },
-          {
-            challenge: 'Howler',
-            response: 'recording too',
-            note: 'If the USB file is clean and the Howler’s isn’t, the crunch came in on the way to the Howler.',
-          },
-          { challenge: 'MASTER REC', response: 'press to stop', note: 'Wait until it stops flashing.' },
-          { challenge: 'USB STOP', response: `hold for over 2${nb}seconds` },
-          { challenge: 'USB stick', response: 'out once its light is off' },
-        ]}
-        note="Pioneer doesn’t publish its bit depth, and some owners report glitches, so treat it as the spare and try it at home first."
-      >
-        <p class="source">
-          Pioneer’s Operating Instructions (<a href={`${MANUAL}#page=12`} rel="external">page 12</a> for recording,
-          <a href={`${MANUAL}#page=30`} rel="external">page 30</a> for USB STOP) and its
-          <a href={REC_FAQ} rel="external">MASTER REC answers</a>.
-        </p>
-      </Procedure>
-    </div>
-
-    <section class="job tests subflow" id="tests">
-      <h2 class="bar" id="tests-title">One-off tests</h2>
-      <p class="intro">
-        Pioneer and Howler leave a few things unpublished. One quiet afternoon with the kit answers them for good.
-        Write the answers on the tape.
-      </p>
-      {
-        tests.map((t) => (
-          <Procedure
-            id={t.id}
-            number={t.number}
-            title={t.title}
-            kind="Test"
-            level={3}
-            steps={t.steps}
-            {...(t.note ? { note: t.note } : {})}
-          >
-            <p class="expected">
-              <strong>Expected.</strong> {t.expected}
-              {t.see ? (
-                <>
-                  {' '}
-                  (<a href={`#${t.see.id}`}>{t.see.code}</a>).
-                </>
-              ) : null}
-            </p>
-            {t.id === 'test-leads' && (
-              <p class="next">
-                If it hums or sounds one-sided, the night page has drills for
-                <a href={href('/night/#fix-hum')}>hum</a> and for a
-                <a href={href('/night/#fix-hollow')}>hollow or one-sided recording</a>.
-              </p>
-            )}
-          </Procedure>
-        ))
-      }
-    </section>
-
-    <section class="job subflow" id="print">
-      <h2 id="print-title">Print kit</h2>
-      <p>
-        The <a href={href('/print/')}>print page</a> has the booth card for the DJs, tape tags for REC, MONITOR and RIG,
-        the checklists as laminated cards (C1 to C3 for the night, and S1), and messages to paste into the group chat.
-      </p>
-    </section>
+    <p class="job check">
+      <strong>Check it yourself.</strong> If a channel meter rises when you turn up LOW, it reads after the EQ, as the
+      guide’s drawing assumes. If a channel pushed into the red records with flat tops at any height while MASTER LEVEL
+      is down, red <Term of="clipping" then=".">clips</Term>
+    </p>
   </div>
 </Base>
 
@@ -642,8 +445,8 @@ const contents: ContentsEntry[] = [
     }
   }
 
-  /* One job to a row of the page's grid, so the rail runs beside all of them. A job with a lab keeps
-     the page's columns, so the lab can take the wide one. */
+  /* One job to a row of the page's grid, so the rail runs beside all of them. A job with a table
+     keeps the page's columns, so the table can take the wide one. */
   .job {
     margin-block-start: var(--job-gap);
   }
@@ -660,13 +463,27 @@ const contents: ContentsEntry[] = [
     }
   }
 
-  .practice {
-    margin-block-start: 0.5rem;
+  /* Under S1: where its notes' numbers come from, as the cards' own source lines are. */
+  .source.after {
+    margin-block-start: 0.75rem;
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+
+  /* The earth warning, set as the drills set it: the signal word bold, in the warning colour. */
+  .warning {
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+
+  .warning strong {
+    color: var(--warning);
   }
 
   /* ---- S2: the rig table ---------------------------------------------------------------------- */
 
-  /* The card has no steps: the table is its body. */
+  /* The card has no steps: the warning and the table are its body. */
   .wiring {
     container-type: inline-size;
   }
@@ -818,52 +635,23 @@ const contents: ContentsEntry[] = [
     }
   }
 
-  .note {
-    font-size: var(--text-sm);
-    line-height: 1.5;
-  }
-
-  /* ---- The tests ------------------------------------------------------------------------------ */
-
-  /* The tests' heading: a bar like a part of the guide, over cards of their own. Its edge lifts it
-     off the display by night. */
-  .bar {
-    padding: 0.5rem 0.8rem;
-    border-top: 2px solid var(--strip-edge);
-    background: var(--strip);
-    color: var(--on-strip);
-    font-size: var(--text-h2);
-    line-height: 1.2;
-  }
-
-  .tests > :global(.proc) {
-    margin-block-start: 0.5rem;
-  }
-
   .expected {
     line-height: 1.5;
   }
 
-  .next {
+  .next,
+  .check {
     font-size: var(--text-sm);
     line-height: 1.5;
   }
 
   @media (forced-colors: active) {
-    .bar {
-      forced-color-adjust: none;
-      border-top-color: CanvasText;
-      background: CanvasText;
-      color: Canvas;
-    }
-
     .tag {
       border: 1px solid CanvasText;
     }
   }
 
   @media print {
-    .bar,
     .tag {
       print-color-adjust: exact;
       -webkit-print-color-adjust: exact;

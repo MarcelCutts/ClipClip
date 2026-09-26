@@ -19,19 +19,26 @@ export interface GuidePart extends Section {
 }
 
 export const GUIDE: GuidePart[] = [
-  { id: 'why', number: '1', title: 'Why it matters', tab: 'Why', minutes: 1, sections: [] },
+  {
+    id: 'why',
+    number: '1',
+    title: 'Why it matters',
+    tab: 'Why',
+    minutes: 3,
+    sections: [{ id: 'hear', number: '1.1', title: 'A blind listening test', short: 'Listening test' }],
+  },
   {
     id: 'playing',
     number: '2',
     title: 'Playing a set',
     tab: 'Playing',
-    minutes: 10,
+    minutes: 7,
     sections: [
-      { id: 'trim', number: '2.1', title: 'Set TRIM on cue' },
+      { id: 'trim', number: '2.1', title: 'Set TRIM in your headphones', short: 'Set TRIM' },
       { id: 'meters', number: '2.2', title: 'Read the right meter', short: 'The meters' },
       { id: 'knobs', number: '2.3', title: 'Whose knobs are whose', short: 'Whose knobs' },
-      { id: 'blends', number: '2.4', title: 'Watch the middle meters in a blend', short: 'Blends' },
-      { id: 'self-check', number: '2.5', title: 'Meter check' },
+      { id: 'blends', number: '2.4', title: 'Keep the MASTER meters below red in a blend', short: 'Blends' },
+      { id: 'check', number: '2.5', title: 'Meter check' },
       { id: 'myths', number: '2.6', title: 'What people say about the red', short: 'What people say' },
     ],
   },
@@ -40,37 +47,42 @@ export const GUIDE: GuidePart[] = [
     number: '3',
     title: 'The rig and the recording',
     tab: 'Rig',
-    minutes: 10,
+    minutes: 4,
     sections: [
       { id: 'signal', number: '3.1', title: 'What goes where' },
       { id: 'two-ceilings', number: '3.2', title: 'Two ceilings' },
-      { id: 'hear', number: '3.3', title: 'Can you hear it?' },
-      { id: 'record-level', number: '3.4', title: 'The record level', short: 'Record level' },
     ],
   },
   {
+    // The id is the old part's, so links to /#hood still land here.
     id: 'hood',
     number: '4',
-    title: 'Under the hood',
-    tab: 'Hood',
-    minutes: 10,
+    title: 'How it works',
+    tab: 'How',
+    minutes: 3,
     sections: [
       { id: 'worse', number: '4.1', title: 'Why the recording sounds worse', short: 'Why it sounds worse' },
-      { id: 'undo', number: '4.2', title: 'Why clipping can’t be undone', short: 'No undo' },
-      { id: 'quiet', number: '4.3', title: 'Why recording quietly is free', short: 'Quiet is free' },
-      { id: 'loud', number: '4.4', title: 'Loudness and clipping' },
-      { id: 'red-top', number: '4.5', title: 'Is red really the top?', short: 'Is red the top?' },
-      { id: 'float', number: '4.6', title: 'Float recorders' },
-      { id: 'ears', number: '4.7', title: 'Look after your ears', short: 'Your ears' },
-      { id: 'model', number: '4.8', title: 'About the demos' },
+      { id: 'undo', number: '4.2', title: 'Why clipping cannot be undone', short: 'Why clipping stays' },
+      { id: 'quiet', number: '4.3', title: 'Why a quiet recording loses nothing', short: 'Why quiet is fine' },
+      {
+        id: 'red-top',
+        number: '4.4',
+        title: 'What the makers publish, and what we assume',
+        short: 'What makers publish',
+      },
     ],
   },
 ];
 
 /**
+ * Old section ids that the drills and the clip checker still link to, with the section that holds
+ * that topic now. The guide keeps an element with the old id where it can, so the link lands there.
+ */
+const MOVED: Readonly<Record<string, string>> = { 'record-level': 'two-ceilings', loud: 'myths' };
+
+/**
  * The guide's parts as thumb tabs (Tabs.astro): the part's number over its one word, named in
- * full for screen readers. There's no tab for the drills: they're on the night page, and the
- * index's F row and the header go there.
+ * full for screen readers. The drills have no tab here: they're on the crew page.
  */
 export const GUIDE_TABS = GUIDE.map((p) => ({
   code: p.number,
@@ -84,8 +96,9 @@ const all = GUIDE.flatMap((p) => [p, ...p.sections]);
 
 /** A section by its anchor, with or without the '#': its number and title. */
 export function section(anchor: string): Section {
-  const id = anchor.replace(/^#/, '');
+  const asked = anchor.replace(/^#/, '');
+  const id = MOVED[asked] ?? asked;
   const found = all.find((s) => s.id === id);
-  if (!found) throw new Error(`No guide section with the id "${id}"`);
+  if (!found) throw new Error(`No guide section with the id "${asked}"`);
   return found;
 }

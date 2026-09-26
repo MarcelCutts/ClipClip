@@ -1,18 +1,18 @@
 <script lang="ts">
   /**
-   * W7 · Meter check: five retrieval questions, one at a time, printed as a card like the
-   * checklists: a title strip saying which question it is, the question, ruled answers, and
-   * "How sure are you?".
+   * W7 · Meter check: four questions on the DJ's lines to know by heart, one at a time, printed
+   * as a card like the checklists: a title strip saying which question it is, the question, ruled
+   * answers, and "How sure are you?".
    *
-   * Each question is a fieldset: the scenario as its legend, a picture of the booth where it
-   * helps, two or three answers (the wrong ones are real misconceptions), then the confidence
-   * scale. Saying how sure commits the answer; the feedback says right or wrong in words, gives
-   * the one-line why and links to where the guide teaches it. At the end: the count, and a nudge
-   * when a confident answer was wrong (those are the ones people remember). No points, badges or
-   * timers. The root carries id="check" so the group chat can link straight here.
+   * Each question is a fieldset: the question as its legend, a picture of the booth where it
+   * helps, two or three answers (the wrong ones are real habits), then the confidence scale.
+   * Saying how sure commits the answer; the feedback says right or wrong in words, gives the
+   * one-line why and links to the guide section that covers it. At the end: the count, how many
+   * wrong answers were certain, and the sections to read again. No points, badges or timers. The
+   * group chat links to the guide's heading above this card, which carries the anchor.
    *
    * A card, not a panel: black is kept for the gear. The pictures of the booth (the meters, the
-   * Howler, the BOOTH MONITOR knob) are gear, so each sits on a scrap of black faceplate.
+   * BOOTH MONITOR knob) are gear, so each sits on a scrap of black faceplate.
    */
   import { tick } from 'svelte';
   import {
@@ -22,6 +22,7 @@
     correctChoice,
     feedbackFor,
     isCorrect,
+    REVIEW_LEAD,
     reviewLinks,
     scoreLine,
     summarise,
@@ -31,7 +32,6 @@
   import { href } from '../lib/url';
   import BoothKnob from './quiz/BoothKnob.svelte';
   import Choices from './quiz/Choices.svelte';
-  import HowlerLight from './quiz/HowlerLight.svelte';
   import Key from './quiz/Key.svelte';
   import MeterBridge from './quiz/MeterBridge.svelte';
   import Sure from './quiz/Sure.svelte';
@@ -89,7 +89,7 @@
 
 <!-- Named for screen readers; the guide's heading above it shows the name, so the strip shows
      how far through you are instead of saying it twice. -->
-<section id="check" class="check" aria-label="Meter check" bind:this={rootEl}>
+<section class="check" aria-label="Meter check" bind:this={rootEl}>
   <header class="strip">
     <p class="title">{#if done}Done{:else}Question {index + 1} of {CARDS.length}{/if}</p>
   </header>
@@ -107,23 +107,13 @@
               <figure class="scene" data-kind={card.scene.kind}>
                 <div class="plate">
                   {#if card.scene.kind === 'meters'}
-                    <MeterBridge
-                      ch1={card.scene.ch1}
-                      master={card.scene.master}
-                      ch2={card.scene.ch2}
-                      hideMaster={card.scene.hideMaster === true && !answer}
-                    />
-                  {:else if card.scene.kind === 'howler'}
-                    <HowlerLight light={card.scene.light} />
+                    <MeterBridge ch1={card.scene.ch1} master={card.scene.master} ch2={card.scene.ch2} />
                   {:else if card.scene.tag}
                     <BoothKnob tape={card.scene.tag.name} owner={card.scene.tag.owner} />
                   {:else}
                     <BoothKnob />
                   {/if}
                 </div>
-                {#if card.scene.kind === 'meters' && card.scene.caption}
-                  <figcaption>{card.scene.caption}</figcaption>
-                {/if}
               </figure>
             {/if}
 
@@ -172,7 +162,7 @@
           {#if answer}
             <span class="next">
               <Key primary onclick={() => go(index + 1)}>
-                {index === CARDS.length - 1 ? 'See how you did' : 'Next question'}
+                {index === CARDS.length - 1 ? 'See your score' : 'Next question'}
                 <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" /></svg>
               </Key>
             </span>
@@ -186,7 +176,7 @@
           <p class="sure-line">{sure}</p>
         {/if}
         {#if review.length > 0}
-          <p class="review-lead" id="{uid}-review">Go over these again</p>
+          <p class="review-lead" id="{uid}-review">{REVIEW_LEAD}</p>
           <ul class="review" aria-labelledby="{uid}-review">
             {#each review as link (link.path)}
               <li><a href={href(link.path)}>{link.text}</a></li>
@@ -292,12 +282,6 @@
     border: 1px solid var(--panel-edge);
     border-radius: var(--radius-panel);
     background: var(--hw);
-  }
-
-  .scene figcaption {
-    font-size: var(--text-sm);
-    line-height: 1.45;
-    color: var(--ink-2);
   }
 
   .respond {

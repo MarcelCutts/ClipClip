@@ -44,7 +44,7 @@ const green = ends('green');
 const orange = ends('orange');
 const red = ends('red');
 const zones = [
-  { zone: 'green', name: 'Green', meaning: 'room to spare', mark: span(green.first, green.last), words: span(green.first, green.last) },
+  { zone: 'green', name: 'Green', meaning: 'headroom', mark: span(green.first, green.last), words: span(green.first, green.last) },
   {
     zone: 'orange',
     name: 'Orange',
@@ -56,7 +56,7 @@ const zones = [
 ];
 
 const litCount = segments.filter((s) => s.lit).length;
-const caption = `The mixer’s meter, lit up to the second orange light, ${litCount} lights out of ${segments.length}. Aim for the first two orange lights, ${scaleLabel(TARGET_PEAK_DB.first)} and ${scaleLabel(TARGET_PEAK_DB.second)}. Green is room to spare, orange is for the loudest parts, and red may distort.`;
+const caption = `The mixer’s meter, lit up to the second orange light, ${litCount} lights out of ${segments.length}. Aim for the first two orange lights, ${scaleLabel(TARGET_PEAK_DB.first)} and ${scaleLabel(TARGET_PEAK_DB.second)}. Green is headroom, orange is for the loudest parts, and red may distort.`;
 ---
 
 <header class="hero flow">

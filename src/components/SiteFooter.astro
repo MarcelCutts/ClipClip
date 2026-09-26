@@ -1,9 +1,11 @@
 ---
 import { href } from '../lib/url';
 
+// Only the guide has demos, so only the guide's footer says what they are.
+const onGuide = Astro.url.pathname.replace(/\/+$/, '') === href('/').replace(/\/+$/, '');
 const links = [
   { path: '/#sources', label: 'Sources' },
-  { path: '/night/', label: 'On the night' },
+  { path: '/night/', label: 'Crew' },
   { path: '/setup/', label: 'Setting up' },
   { path: '/print/', label: 'Print kit' },
 ];
@@ -12,8 +14,10 @@ const links = [
 <footer class="site-footer flow">
   <div class="inner">
     <p>
-      Made for the DJs and crew at our nights. The sounds on this site are synthesised in your browser. The demos use a
-      simplified model of the mixer, which clips more neatly than real gear does, but in the same way.
+      Made for the DJs and crew at our nights.{
+        onGuide &&
+          ' The sounds on this page are synthesised in your browser. The demos use a simplified model of the mixer. It clips the way real gear does, only more neatly.'
+      }
     </p>
     <ul class="links">
       {links.map((l) => (

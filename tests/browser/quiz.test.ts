@@ -1,12 +1,11 @@
 import { expect, test } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import MeterCheck from '../../src/islands/MeterCheck.svelte';
-import Predict from '../../src/islands/Predict.svelte';
 import MeterPicture from '../../src/islands/quiz/MeterBridge.svelte';
 
 test('a meter check answer commits on "How sure are you?", then locks and marks itself in words', async () => {
   const screen = await render(MeterCheck);
-  await screen.getByRole('radio', { name: 'In the recorder' }).click();
+  await screen.getByRole('radio', { name: 'The top orange, just under the red' }).click();
   const certain = screen.getByRole('button', { name: 'Certain' });
   await expect.element(certain).toHaveAttribute('aria-pressed', 'false');
   await certain.click();
@@ -17,73 +16,56 @@ test('a meter check answer commits on "How sure are you?", then locks and marks 
   for (const radio of screen.getByRole('radio').elements()) expect(radio).toBeDisabled();
   await expect.element(screen.getByText('Your answer')).toBeVisible();
   await expect.element(screen.getByText('Right answer')).toBeVisible();
-  await expect.element(screen.getByRole('status')).toMatchTextContent(/^Not quite\. A green light/);
+  await expect.element(screen.getByRole('status')).toMatchTextContent(/^Not quite\. A blend can add/);
   // The way on is the lit key; the rest stay rubber.
   await expect.element(screen.getByRole('button', { name: 'Next question' })).toHaveClass('primary');
 });
 
 test('the meter check counts its questions in words, with no progress dots beside them', async () => {
   const screen = await render(MeterCheck);
-  await expect.element(screen.getByText('Question 1 of 5')).toBeVisible();
+  await expect.element(screen.getByText('Question 1 of 4')).toBeVisible();
   expect(screen.container.querySelector('.pips')).toBeNull();
-  // The Howler is drawn, and named for screen readers with its light's state.
-  await expect.element(screen.getByRole('img', { name: 'The Howler recorder, its LEVEL light green.' })).toBeVisible();
+  // The guide's heading carries the anchor the group chat links to, so the card has no id of its own.
+  expect(screen.container.querySelector('#check')).toBeNull();
 });
 
-test('a sure bet on "Goes away" gets its surprise named, on screen and in the announcement', async () => {
-  const screen = await render(Predict);
-  await screen.getByRole('radio', { name: 'Goes away' }).click();
-  await screen.getByRole('button', { name: 'Certain' }).click();
-  const line =
-    'You were certain it would go away. A confident wrong guess is the kind people remember once it’s put right.';
-  await expect.element(screen.getByText(line)).toBeVisible();
-  await expect.element(screen.getByRole('status')).toMatchTextContent(line);
+test('the meter check links each answer to its section, and ends on the score and what to read again', async () => {
+  const screen = await render(MeterCheck);
+  const answers = [
+    'A flash of red on the loudest hits',
+    'The MASTER meters (the pair in the middle)',
+    'Ask the crew',
+    'Turn up BOOTH MONITOR',
+  ];
+  for (const [i, answer] of answers.entries()) {
+    await screen.getByRole('radio', { name: answer }).click();
+    await screen.getByRole('button', { name: i === 0 ? 'Certain' : 'Fairly sure' }).click();
+    await expect.element(screen.getByRole('link', { name: /^2\.\d / })).toBeVisible();
+    await screen.getByRole('button', { name: i === answers.length - 1 ? 'See your score' : 'Next question' }).click();
+  }
+  await expect.element(screen.getByText('You got 3 of 4.')).toBeVisible();
+  await expect.element(screen.getByText('You were certain of one wrong answer.')).toBeVisible();
+  await expect.element(screen.getByText('Read these again')).toBeVisible();
+  await expect.element(screen.getByRole('link', { name: /^2\.1 / })).toBeVisible();
 });
 
-test('a guess on "Goes away" gets no surprise line', async () => {
-  const screen = await render(Predict);
-  await screen.getByRole('radio', { name: 'Goes away' }).click();
-  await screen.getByRole('button', { name: 'Guessing' }).click();
-  await expect.element(screen.getByRole('status')).toMatchTextContent(/^Not quite\./);
-  expect(screen.container.textContent).not.toContain('confident wrong guess');
-});
-
-test('a sure right answer gets no surprise line', async () => {
-  const screen = await render(Predict);
-  await screen.getByRole('radio', { name: 'Gets quieter but stays' }).click();
-  await screen.getByRole('button', { name: 'Certain' }).click();
-  await expect.element(screen.getByRole('status')).toMatchTextContent(/^Right\./);
-  expect(screen.container.textContent).not.toContain('confident wrong guess');
-});
-
-test('"Not sure" skips the bet: one lit key reveals the answer, then locks', async () => {
-  const screen = await render(Predict);
-  await screen.getByRole('radio', { name: 'Not sure' }).click();
-  const show = screen.getByRole('button', { name: 'Show me what happens' });
-  await expect.element(show).toHaveClass('primary');
-  await show.click();
-  await expect.element(show).toHaveAttribute('aria-disabled', 'true');
-  await expect.element(screen.getByRole('status')).toMatchTextContent(/^It gets quieter/);
-});
-
-test('the prediction and the meter check are printed cards, with black kept for the gear', async () => {
-  const predict = await render(Predict);
-  expect(predict.container.querySelector('.panel')).toBeNull();
-  await expect.element(predict.getByText('Crunch in the recording')).toBeVisible();
-  expect(predict.container.textContent).not.toContain('Quick question');
+test('the meter check is a printed card, with black kept for the gear', async () => {
   const check = await render(MeterCheck);
   expect(check.container.querySelector('.panel')).toBeNull();
-  // The Howler is gear, so it sits on a scrap of black faceplate on the card.
-  await expect.element(check.getByRole('img', { name: /Howler recorder/ })).toBeVisible();
-  expect(check.container.querySelector('.plate [role="img"]')).not.toBeNull();
+  // The meters are gear, so on the second card they sit on a scrap of black faceplate.
+  await check.getByRole('radio', { name: 'The first or second orange' }).click();
+  await check.getByRole('button', { name: 'Guessing' }).click();
+  await check.getByRole('button', { name: 'Next question' }).click();
+  await expect.element(check.getByRole('meter', { name: 'MASTER level' })).toBeInTheDocument();
+  expect(check.container.querySelector('.plate [role="group"]')).not.toBeNull();
 });
 
 test('a chosen answer says so in words and shapes once it’s in, not by colour alone', async () => {
   const screen = await render(MeterCheck);
-  await screen.getByRole('radio', { name: 'Inside the mixer, before the outputs' }).click();
+  await screen.getByRole('radio', { name: 'The first or second orange' }).click();
   await screen.getByRole('button', { name: 'Guessing' }).click();
   // The right answer's row carries its mark in words, and the radio's name says it too.
-  await expect.element(screen.getByRole('radio', { name: /Inside the mixer.*Right answer/ })).toBeChecked();
+  await expect.element(screen.getByRole('radio', { name: /first or second orange.*Right answer/ })).toBeChecked();
   expect(screen.container.textContent).not.toContain('Your answer');
   await expect.element(screen.getByRole('status')).toMatchTextContent(/^Right\. /);
 });
@@ -101,13 +83,4 @@ test('the meter pictures print the panel’s scale, with a break where the colou
   await expect
     .element(master)
     .toHaveAttribute('aria-valuetext', expect.stringMatching(/^MASTER: peaks at \+12.*in the red$/));
-});
-
-test('the hidden middle meters stay dark, and say so, until the answer is in', async () => {
-  const screen = await render(MeterPicture, { ch1: 6, master: 12, ch2: 6, hideMaster: true });
-  await expect
-    .element(screen.getByRole('meter', { name: 'MASTER level' }))
-    .toHaveAttribute('aria-valuetext', 'MASTER: hidden until you answer');
-  expect(screen.container.querySelectorAll('.ml[data-on="true"]')).toHaveLength(0);
-  expect(screen.container.querySelector('.unknown')?.textContent).toBe('?');
 });

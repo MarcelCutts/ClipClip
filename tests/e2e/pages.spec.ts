@@ -56,6 +56,44 @@ test('the old pages tell search engines where their content went', async ({ requ
   expect(canonical, 'points at the guide, not the old page').not.toContain('/lab/');
 });
 
+test('the guide opens for DJs: one box of three lines, then the way to the crew page', async ({ page }) => {
+  await page.goto('');
+  const box = page.locator('.kbh');
+  await expect(box).toHaveCount(1);
+  await expect(box.locator('.item')).toHaveCount(3);
+  await expect(page.locator('.opening').getByRole('link', { name: 'Crew' })).toHaveAttribute('href', /\/night\/$/);
+  // The index lists the guide's own parts. The drills are on the crew page.
+  await expect(page.locator('[data-toc] a[href*="night"]')).toHaveCount(0);
+});
+
+test('the header names the pages the same way on every page that has it', async ({ page }) => {
+  for (const { path } of PAGES.filter((p) => p.name !== 'print')) {
+    await page.goto(path);
+    await expect(page.getByRole('navigation', { name: 'Site' }).getByRole('link')).toHaveText([
+      'Guide',
+      'Crew',
+      'Setting up',
+      'Print kit',
+    ]);
+  }
+});
+
+test('only the guide’s footer says what the demos are', async ({ page }) => {
+  await page.goto('');
+  await expect(page.locator('.site-footer')).toContainText('synthesised in your browser');
+  for (const path of ['night/', 'setup/', 'no-such-page/']) {
+    await page.goto(path);
+    await expect(page.locator('.site-footer')).not.toContainText('synthesised');
+  }
+});
+
+test('old links into the guide still land on their topic', async ({ page }) => {
+  await page.goto('');
+  // The drills and the clip checker link to #record-level, the old lab page to #model, the old long
+  // version to #hood.
+  for (const id of ['record-level', 'model', 'hood']) await expect(page.locator(`[id="${id}"]`)).toHaveCount(1);
+});
+
 test('unknown pages get the 404 page', async ({ page }) => {
   const response = await page.goto('no-such-page/');
   expect(response?.status()).toBe(404);
@@ -75,7 +113,8 @@ test('glossary terms reveal their meaning on tap', async ({ page }) => {
 test.describe('glossary bubbles on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  for (const path of ['', 'night/', 'setup/'] as const) {
+  // The night page is checklists and drills, with no terms to open.
+  for (const path of ['', 'setup/'] as const) {
     test(`open at full width, on screen, on /${path}`, async ({ page }) => {
       await page.goto(path);
       const terms = page.locator('button.term');

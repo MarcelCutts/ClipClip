@@ -18,32 +18,18 @@
     value?: string | undefined;
     /** After the answer is in: no more changes, and the marks show. */
     locked?: boolean;
-    /** Id of the right choice, marked once locked. Leave out for questions with no right answer. */
+    /** Id of the right choice, marked once locked. */
     correct?: string | undefined;
-    /** Picks that are neither right nor wrong (like "Not sure"): no mark, just the filled ring. */
-    neutral?: readonly string[];
-    /** What to call the reader's wrong pick and the right choice once locked. */
-    yoursText?: string;
-    rightText?: string;
   }
 
-  let {
-    name,
-    choices,
-    value = $bindable(),
-    locked = false,
-    correct,
-    neutral = [],
-    yoursText = 'Your answer',
-    rightText = 'Right answer',
-  }: Props = $props();
+  let { name, choices, value = $bindable(), locked = false, correct }: Props = $props();
 
   type Mark = 'right' | 'wrong' | null;
 
   function markFor(id: string): Mark {
     if (!locked) return null;
     if (id === correct) return 'right';
-    if (id === value && correct !== undefined && !neutral.includes(id)) return 'wrong';
+    if (id === value && correct !== undefined) return 'wrong';
     return null;
   }
 </script>
@@ -65,10 +51,10 @@
         <span class="mark">
           {#if mark === 'right'}
             <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.6l3.1 3.1L13 4.8" /></svg>
-            <span>{rightText}</span>
+            <span>Right answer</span>
           {:else}
             <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" /></svg>
-            <span>{yoursText}</span>
+            <span>Your answer</span>
           {/if}
         </span>
       {/if}

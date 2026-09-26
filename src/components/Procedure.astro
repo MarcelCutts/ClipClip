@@ -3,12 +3,15 @@
  * A normal procedure, set like a quick reference handbook's checklist card: a black title strip
  * with its number and kind, a plain sentence on what could go wrong when there's a real
  * consequence, then each step as a challenge and its response joined by leader dots (a screen
- * reader hears a comma). The response is the action, in the action colour. A note on a step sits
- * under it; anything else (a source, a figure) goes in the slot at the end.
+ * reader hears a comma). The response is the action, in the action colour. A step with a real
+ * consequence says it in a plain sentence before the step; a note sits under it; anything else (a
+ * source, a figure) goes in the slot at the end.
  */
 interface Step {
   challenge: string;
   response: string;
+  /** A consequence to know before doing the step, said first. */
+  before?: string;
   note?: string;
 }
 
@@ -44,6 +47,7 @@ const titleId = id ? `${id}-title` : undefined;
   <ol class="steps">
     {steps.map((s) => (
     <li class="step">
+      {s.before && <p class="before">{s.before}</p>}
       <p class="line">
         <span class="challenge">{s.challenge}</span><span class="visually-hidden">, </span>
         <span class="dots" aria-hidden="true"></span>
@@ -98,7 +102,8 @@ const titleId = id ? `${id}-title` : undefined;
     padding: 0.8rem 0.8rem 0.9rem;
   }
 
-  .caution {
+  .caution,
+  .before {
     font-size: var(--text-sm);
     line-height: 1.5;
   }

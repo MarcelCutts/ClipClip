@@ -44,12 +44,12 @@ const rowOf = (db: number) => rows.find((s) => s.db === db)?.row ?? FIRST_LIGHT_
 const lit = (db: number, level: number) => db <= level;
 
 const aim = `grid-row: ${rowOf(TARGET_PEAK_DB.second)} / ${rowOf(TARGET_PEAK_DB.first) + 1}`;
-const label = `The XDJ-RX2’s meters mid-blend. CH1 peaks at ${scaleLabel(CH1)}, the second orange light. CH2 peaks at ${scaleLabel(CH2)}, the first orange light. The middle meters show the mix at ${scaleLabel(MIX)}, ${zoneFor(MIX)}, with red and CLIP dark. A bracket marks the aim, ${scaleLabel(TARGET_PEAK_DB.first)} and ${scaleLabel(TARGET_PEAK_DB.second)}.`;
+const label = `The XDJ-RX2’s meters mid-blend. CH1 peaks at ${scaleLabel(CH1)}, the second orange light. CH2 peaks at ${scaleLabel(CH2)}, the first orange light. The MASTER meters show the mix at ${scaleLabel(MIX)}, ${zoneFor(MIX)}, with red and CLIP dark. A bracket marks the aim, ${scaleLabel(TARGET_PEAK_DB.first)} and ${scaleLabel(TARGET_PEAK_DB.second)}.`;
 ---
 
 <figure class="anatomy">
   <figcaption class="takeaway">
-    In a well-set blend, each deck peaks on the first or second orange light and the mix stays below the red.
+    In a well-set blend, each deck peaks on the first or second orange light and the mix stays below red.
   </figcaption>
   <div class="layout">
     <div
@@ -86,19 +86,23 @@ const label = `The XDJ-RX2’s meters mid-blend. CH1 peaks at ${scaleLabel(CH1)}
     <ol class="keys">
       <li>
         <span class="call" aria-hidden="true">1</span>
-        <p><strong>Channel meters, CH1 and CH2.</strong> One deck each, before its fader. Set TRIM here, on cue.</p>
+        <p>
+          <strong>Channel meters, CH1 and CH2.</strong> Each shows one deck, before its fader: moving the fader does not
+          move the meter. Set TRIM by these.
+        </p>
       </li>
       <li>
         <span class="call" aria-hidden="true">2</span>
         <p>
-          <strong>Middle meters.</strong> The mix going out to the speakers and the recording. Watch these in a blend.
+          <strong>MASTER meters.</strong> The mix going out to the speakers and the recording. Keep them below red in a
+          blend.
         </p>
       </li>
       <li>
         <span class="call" aria-hidden="true">3</span>
         <p>
           <strong>CLIP.</strong> Blinks slowly when the sound is “about to be distorted” and fast when it “is distorted”
-          (<a href={`${XDJ_MANUAL}#page=27`} rel="external">XDJ-RX2 manual, page 27</a>).
+          (<a href={`${XDJ_MANUAL}#page=27`} rel="external">XDJ-RX2 manual, p.&nbsp;27</a>).
         </p>
       </li>
     </ol>

@@ -40,7 +40,10 @@ export interface DeckSettings {
 export interface BlendSettings {
   deck1: DeckSettings;
   deck2: DeckSettings;
-  /** Kicks lined up (beatmatched), or deck 2 landing a 16th note late. */
+  /**
+   * Kicks lined up (beatmatched), or deck 2 landing a 16th note late. The lab always lines them
+   * up; the tests use the late case to measure how much less misaligned kicks add.
+   */
   aligned: boolean;
 }
 
@@ -273,15 +276,15 @@ export interface Preset {
  * come in two sets: two ways into the red, and three ways out of it, each of which solves the
  * challenge in one press (so the lab keeps them back until the reader has hit the red).
  *
- * Both tracks hot puts both tracks on the top orange light, so the blend lands 3 dB past the red
- * and Listen has something to cut. From the start (both on +6) the kicks only reach the red,
- * where the ceiling shaves too little to hear (see `barelyOver`). The fixes start from +6, where
- * one change is enough.
+ * Top orange puts both tracks on the top orange light, so the blend lands 3 dB past the red and
+ * Listen has something to cut. From the start (both on +6) the kicks only reach the red, where
+ * the ceiling cuts too little to hear (see `barelyOver`). The fixes start from +6, where one
+ * change is enough.
  */
 export const PRESETS: readonly Preset[] = [
   {
     id: 'hot',
-    label: 'Both tracks hot',
+    label: 'Top orange',
     group: 'push',
     settings: { deck1: deck(TARGET_PEAK_DB.top, 0, 10), deck2: deck(TARGET_PEAK_DB.top, 0, 10), aligned: true },
   },
@@ -293,7 +296,7 @@ export const PRESETS: readonly Preset[] = [
   },
   {
     id: 'ease',
-    label: 'Ease a fader',
+    label: 'Pull a fader down',
     group: 'out',
     settings: { deck1: deck(6, 0, 8), deck2: deck(6, 0, 10), aligned: true },
   },
@@ -334,7 +337,7 @@ export function sameSettings(x: BlendSettings, y: BlendSettings): boolean {
 }
 
 /**
- * "Bring deck 2 all the way up without the middle meter going red." It only counts as a blend
+ * "Bring deck 2 all the way up without the MASTER meters going red." It only counts as a blend
  * if the kicks are lined up and deck 1 is still audibly in the mix (fader at 4, about −20 dB, or
  * higher), and CLIP has to stay dark too, since a slow blink means it's about to distort. The
  * channel meters have to stay out of the red as well: a red channel is cut flat before its fader,
@@ -373,7 +376,7 @@ export function challengeStatus(s: BlendSettings, r: BlendAnalysis): ChallengeSt
 export const BARELY_OVER_DB = 0.5;
 
 /**
- * The loudest point, on the middle meters or on a channel before its fader, lights the red but
+ * The loudest point, on the MASTER meters or on a channel before its fader, lights the red but
  * is less than BARELY_OVER_DB past it. The meters say red while Listen still sounds clean, and
  * the lab says why, so the red never passes for fine.
  */

@@ -1,4 +1,7 @@
-/** Where the facts on this site come from. Primary sources first in each group. */
+/**
+ * Where the facts on this site come from: the makers' documents, then what backs the claims about
+ * sound and hearing. Primary sources first in each group. The guide lists them, folded, under Sources.
+ */
 
 export interface Source {
   title: string;
@@ -21,7 +24,7 @@ export const SOURCES: SourceGroup[] = [
         title: 'XDJ-RX2 Operating Instructions',
         publisher: 'Pioneer DJ',
         url: 'https://downloads.support.alphatheta.com/manuals/all-in-one-dj-systems/XDJ-RX2/XDJ-RX2_DRI1479A_manual.pdf',
-        note: 'Setting TRIM and MASTER LEVEL (p. 31), the CLIP light (p. 27), UTILITY attenuators and MY SETTINGS (pp. 31–32), MASTER REC, switching off mid-write.',
+        note: 'Setting TRIM and MASTER LEVEL (p. 31), the CLIP light (p. 27), HEADPHONES LEVEL (p. 28), the UTILITY attenuators and MY SETTINGS (pp. 31–32).',
       },
       {
         title: 'XDJ-RX2 Quick Start Guide and specifications',
@@ -30,16 +33,10 @@ export const SOURCES: SourceGroup[] = [
         note: 'Setting TRIM and MASTER LEVEL, the fix for distorted sound, output levels, noise figures.',
       },
       {
-        title: 'XDJ-RX2 FAQ: recording with MASTER REC',
-        publisher: 'AlphaTheta (Pioneer DJ) Help Center',
-        url: 'https://support.alphatheta.com/en-US/articles/4408616633881',
-        note: 'Records before MASTER LEVEL; files split every three hours.',
-      },
-      {
         title: 'XDJ-RX2 FAQ: setting TRIM and MASTER LEVEL',
         publisher: 'AlphaTheta (Pioneer DJ) Help Center',
         url: 'https://support.alphatheta.com/en-US/articles/4408624717465',
-        note: 'Start TRIM at 12 o’clock; MASTER LEVEL rarely needs changing once set.',
+        note: 'Start TRIM at 12 o’clock; MASTER LEVEL rarely needs changing after it is set.',
       },
       {
         title: 'XDJ-RX2 FAQ: BOOTH output wiring',
@@ -127,34 +124,18 @@ export const SOURCES: SourceGroup[] = [
         title: 'Adding coherent and incoherent sound levels',
         publisher: 'sengpielaudio',
         url: 'https://sengpielaudio.com/calculator-coherentsources.htm',
-        note: 'Why lined-up kicks add 6 dB and unrelated sounds about 3 dB.',
-      },
-      {
-        title: 'Aliasing reduction in clipped signals',
-        publisher: 'Esqueda, Bilbao and Välimäki, IEEE Transactions on Signal Processing, 2016',
-        url: 'https://www.pure.ed.ac.uk/ws/files/26997332/07499828.pdf',
+        note: 'Why lined-up kicks add 6 dB.',
       },
       {
         title: 'RX 11 De-clip',
         publisher: 'iZotope',
         url: 'https://docs.izotope.com/rx11/en/de-clip.html',
-        note: 'What repair tools can and can’t do.',
+        note: 'What repair tools can and cannot do.',
       },
       {
         title: '32-bit float files explained',
         publisher: 'Sound Devices',
         url: 'https://www.sounddevices.com/32-bit-float-files-explained/',
-      },
-      {
-        title: 'F3 Operation Manual',
-        publisher: 'Zoom',
-        url: 'https://zoomcorp.com/manuals/f3-en/',
-        note: 'How a two-converter float recorder works, and its input limits.',
-      },
-      {
-        title: 'What are reference levels in digital audio systems?',
-        publisher: 'Sound on Sound, 2007',
-        url: 'https://www.soundonsound.com/sound-advice/q-what-are-reference-levels-digital-audio-systems',
       },
       {
         title: 'The audibility of distortion at bass frequencies',
@@ -172,26 +153,6 @@ export const SOURCES: SourceGroup[] = [
         publisher: 'SoundCloud Help',
         url: 'https://help.soundcloud.com/hc/en-us/articles/360053660014-Will-SoundCloud-play-my-track-at-the-level-it-s-mastered',
       },
-    ],
-  },
-  {
-    title: 'DJs, crews and teaching',
-    sources: [
-      {
-        title: 'Gain structure for DJs',
-        publisher: 'Serato',
-        url: 'https://support.serato.com/hc/en-us/articles/202538480-Gain-Structure-for-DJs',
-      },
-      {
-        title: 'Setting Rane mixer level controls (RaneNote 171)',
-        publisher: 'Rane',
-        url: 'https://www.ranecommercial.com/legacy/pdf/ranenotes/Setting_Rane_Mixer_Level_Controls.pdf',
-      },
-      {
-        title: 'Gain staging for DJs and staying out of the red',
-        publisher: 'DJ TechTools, 2015',
-        url: 'https://djtechtools.com/2015/10/11/gain-staging-for-djs-staying-out-of-the-red/',
-      },
       {
         title: 'A club designer sounds off',
         publisher: 'DJ Times, 2020',
@@ -202,33 +163,6 @@ export const SOURCES: SourceGroup[] = [
         title: 'Noise induced hearing loss in dance music disc jockeys',
         publisher: 'Bray et al., Journal of Laryngology and Otology, 2004',
         url: 'https://pubmed.ncbi.nlm.nih.gov/14979949/',
-      },
-      {
-        title: 'Classroom demonstrations: learning tools or entertainment?',
-        publisher: 'Crouch, Fagen, Callan and Mazur, 2004',
-        url: 'https://www.otffeo.on.ca/wp-content/uploads/sites/2/2014/11/Mazur_demo-article.pdf',
-        note: 'Why the lab asks you to predict first.',
-      },
-      {
-        title: 'Nine ways to reduce cognitive load in multimedia learning',
-        publisher: 'Mayer and Moreno, 2003',
-        url: 'https://www.uky.edu/~gmswan3/544/9_ways_to_reduce_CL.pdf',
-      },
-      {
-        title: 'Human factors of flight-deck checklists',
-        publisher: 'Degani and Wiener, NASA, 1990',
-        url: 'https://ntrs.nasa.gov/api/citations/19910017830/downloads/19910017830.pdf',
-        note: 'How the crew checklists are written.',
-      },
-      {
-        title: 'Let’s learn about waveforms',
-        publisher: 'Josh W. Comeau, The Pudding, 2018',
-        url: 'https://pudding.cool/2018/02/waveforms/',
-      },
-      {
-        title: 'Sound',
-        publisher: 'Bartosz Ciechanowski, 2022',
-        url: 'https://ciechanow.ski/sound/',
       },
     ],
   },

@@ -8,9 +8,9 @@ It grew out of a one-page "Two ceilings" clipping lab. This version is written f
 
 | Path | What's there |
 |---|---|
-| `/` | The guide. The rules first, then four parts that get deeper as they go: why it matters; playing a set (TRIM, the meters, blends with a two-deck demo, whose knobs are whose, a five-question check, myths); the rig and the recording (the signal path, the two-ceilings lab, a blind listening test, the record level); under the hood (why recordings sound worse, why quiet is free, limiters, 32-bit float, hearing safety, what the demos assume). Then the glossary and sources |
-| `/night/` | For crew on the night: the doors, changeover and after checklists, and what to do when something's wrong |
-| `/setup/` | For whoever sets up the rig: the wiring, a first-time setup checklist, the record level walkthrough, the DriveRack and amps, generator power, the USB backup, and one-off tests |
+| `/` | The guide. What a DJ must know by heart, then four parts that get deeper as they go: why it matters (a blind listening test); playing a set (TRIM, the meters, whose knobs are whose, blends with a two-deck demo, a four-question meter check, what people say about the red); the rig and the recording (the signal path, the two-ceilings lab); how it works (why a recording sounds worse, why clipping cannot be undone, why a quiet recording loses nothing, what the makers publish and what we assume). Then the glossary and sources |
+| `/night/` | For crew on the night: the doors, changeover and end-of-night checklists, what to do when something's wrong, and the next day's work on the files |
+| `/setup/` | For whoever builds the rig at each event: the setup checklist in order (power and earthing included), the wiring table, the recording level, the DriveRack and amps, and the one-off MASTER ATT test and DriveRack wizard |
 | `/print/` | Booth card, tape tags, checklist cards, group-chat messages |
 
 The old addresses `/dj/`, `/crew/`, `/lab/` and `/why/` forward to the same section in its new home, so printed QR codes and old links keep working.
@@ -125,8 +125,7 @@ docs/DESIGN.md  the design system
 
 ## Open questions for the crew
 
-A few answers change the advice, and only the kit can give them. The setup page lists the one-off tests; the big ones are:
+A few answers change the advice, and only the kit can give them:
 
-- Where does the Howler's light turn red, as a reading on the XDJ's middle meters?
-- Does MASTER ATT reach MASTER 2? Pioneer doesn't say. If it doesn't, the recording is turned down with MASTER LEVEL instead, and the middle meters read low.
+- Does MASTER ATT reach MASTER 2? Pioneer doesn't say. The setup page's test T2 checks it. If it doesn't, the recording is turned down with MASTER LEVEL instead, and the MASTER meters read low.
 - Where does the mixer's ceiling land in the Howler's file? Record a test that goes into the red on purpose (setup S3) and run `pnpm clipcheck` on it: the level its flat tops pile up at is the mixer's ceiling as the Howler sees it, which the demos currently assume (`HOWLER_BELOW_RED_DB` in `src/lib/model.ts`).

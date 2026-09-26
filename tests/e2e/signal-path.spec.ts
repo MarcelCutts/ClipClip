@@ -1,22 +1,29 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
-import { captionFor, type NodeId } from '../../src/lib/rig';
+import { COPY, type NodeId, summaryFor } from '../../src/lib/rig';
 
-// The "Which knob touches what" drawing in the guide (#signal), in the full view (the DJ view stays
-// in the component for any page that wants it; /setup/ links here instead of repeating it). The
-// drawing is one radio group, so it takes one Tab stop and the arrow keys move the pick along the
-// signal, announcing each part. On a phone the readout rides along the bottom of the screen while
-// the drawing scrolls under it, so whichever part you tap, its explanation is in sight. Arrowing
-// never lands a part off screen, under the page's tabs or under the readout, even at 400% zoom;
-// every part is a 44px target on a 320px phone; and every part's name is 15px or more and fits.
+// The "Which knob touches what" drawing in the guide (#signal); /setup/ links here instead of
+// repeating it. The drawing is one radio group, so it takes one Tab stop and the arrow keys move
+// the pick along the signal, announcing each part. On a phone the readout rides along the bottom
+// of the screen while the drawing scrolls under it, so whichever part you tap, its explanation is
+// in sight. Arrowing never lands a part off screen, under the page's tabs or under the readout,
+// even at 400% zoom; every part is a 44px target on a 320px phone; and every part's name is 15px
+// or more and fits.
 
 async function openDrawing(page: Page): Promise<Locator> {
   await page.goto('');
-  const drawing = page.locator('.signal-path[data-variant="full"]');
+  const drawing = page.locator('.signal-path');
   await drawing.scrollIntoViewIfNeeded();
   // Islands hydrate as they scroll into view, and Astro drops `ssr` once this one has.
-  await expect(page.locator('astro-island:has(.signal-path[data-variant="full"])')).not.toHaveAttribute('ssr');
+  await expect(page.locator('astro-island:has(.signal-path)')).not.toHaveAttribute('ssr');
   return drawing;
 }
+
+/** What the readout says for a part: its title, its line if it has one, and what it reaches or shows. */
+const readoutFor = (id: NodeId) => ({
+  title: COPY[id].title,
+  said: COPY[id].text ?? null,
+  items: summaryFor(id).items,
+});
 
 /**
  * The focused part: its name, whether it's picked, what the readout says, and whether its focus
@@ -28,7 +35,8 @@ function focusedPart(page: Page) {
     const el = document.activeElement;
     const drawing = el?.closest('.signal-path');
     const readout = drawing?.querySelector('.readout');
-    if (!(el instanceof HTMLInputElement) || !drawing || !readout) return null;
+    const card = readout?.querySelector('.card:not(.sizer)');
+    if (!(el instanceof HTMLInputElement) || !drawing || !readout || !card) return null;
     const ring = 6; // 1px border, 2px offset, 3px outline
     const r = el.getBoundingClientRect();
     const [top, bottom] = [r.top - ring, r.bottom + ring];
@@ -38,7 +46,9 @@ function focusedPart(page: Page) {
     return {
       name: el.getAttribute('aria-label'),
       picked: el.checked,
-      said: drawing.querySelector('[aria-live] .text')?.textContent ?? null,
+      title: card.querySelector('.title')?.textContent ?? null,
+      said: card.querySelector('[aria-live] .text')?.textContent ?? null,
+      items: card.querySelector('[aria-live] dd')?.textContent ?? null,
       offScreen: top < tabs || bottom > innerHeight,
       underReadout: rides && top < sheet.bottom && bottom > sheet.top && r.left < sheet.right && r.right > sheet.left,
     };
@@ -64,7 +74,7 @@ for (const viewport of [
     );
     expect(all.length).toBeGreaterThan(20);
 
-    // Tab lands on the picked part, and the next Tab leaves the drawing.
+    // Tab lands on the picked part, and the next Tab leaves the parts (for the drawing's note link).
     const picked = drawing.locator('input:checked');
     const pickedName = await picked.getAttribute('aria-label');
     await picked.focus();
@@ -72,13 +82,13 @@ for (const viewport of [
     await page.keyboard.press('Tab');
     await expect.poll(() => focusedPart(page)).toMatchObject({ name: pickedName, picked: true });
     await page.keyboard.press('Tab');
-    expect(await drawing.evaluate((el) => el.contains(document.activeElement))).toBe(false);
+    expect(await page.evaluate(() => (document.activeElement as HTMLInputElement | null)?.type)).not.toBe('radio');
 
     // Home, then the arrow keys, pick each part in turn. Each is announced and stays in sight.
     const inSight = (i: number) => ({
       name: all[i]?.name ?? null,
       picked: true,
-      said: captionFor(all[i]?.id as NodeId, 'full').text,
+      ...readoutFor(all[i]?.id as NodeId),
       offScreen: false,
       underReadout: false,
     });
@@ -119,7 +129,9 @@ test('on a phone, a tapped part’s explanation is on screen beside it, with dra
         room: (sheet.top - tabs) / innerHeight,
       };
     });
-    await expect(drawing.locator('[aria-live] .text')).toHaveText(captionFor(id as NodeId, 'full').text);
+    const card = drawing.locator('.readout .card:not(.sizer)');
+    await expect(card.locator('.title')).toHaveText(COPY[id as NodeId].title);
+    await expect(card.locator('[aria-live] dd').first()).toHaveText(summaryFor(id as NodeId).items);
     expect(seen.sticky, id ?? '').toBe(true);
     expect(seen.onScreen, id ?? '').toBe(true);
     expect(seen.room, id ?? '').toBeGreaterThan(0.4);
@@ -196,12 +208,16 @@ for (const viewport of [
 }
 
 test('the guide’s drawing is a named region with its own ids, and a pick rewrites the readout', async ({ page }) => {
-  const full = await openDrawing(page);
-  await expect(page.getByRole('region', { name: 'Which knob touches what' })).toHaveAttribute('data-variant', 'full');
+  const drawing = await openDrawing(page);
+  await expect(page.getByRole('region', { name: 'Which knob touches what' })).toBeVisible();
   const ids = await page.locator('.signal-path [id]').evaluateAll((els) => els.map((el) => el.id));
   expect(ids.length).toBeGreaterThan(20);
   expect(new Set(ids).size, 'every id is unique').toBe(ids.length);
-  await full.getByRole('radio', { name: /^Amps/ }).check();
-  await expect(full.locator('input:checked')).toHaveAttribute('value', 'amps');
-  await expect(full.locator('[aria-live] .text')).toHaveText(captionFor('amps', 'full').text);
+  await drawing.getByRole('radio', { name: /^Amps/ }).check();
+  await expect(drawing.locator('input:checked')).toHaveAttribute('value', 'amps');
+  await expect(drawing.locator('[aria-live] .text')).toHaveText(COPY.amps.text ?? '');
+  // The drawing's caveat points to the one place the guide says what the makers leave out.
+  const note = drawing.locator('.note a');
+  await expect(note).toHaveAttribute('href', /^#[a-z-]+$/);
+  await expect(page.locator((await note.getAttribute('href')) ?? '')).toHaveCount(1);
 });

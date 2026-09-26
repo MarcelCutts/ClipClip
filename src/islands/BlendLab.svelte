@@ -1,11 +1,11 @@
 <script lang="ts">
   /**
    * W3 "Blends add up". Two decks, each trimmed to peak in the orange on its own channel meter.
-   * Bring deck 2 in and the middle meters climb to the red, because kicks that land together add
-   * up to 6 dB. The channel meters never move with a fader: they read before it. Fix the blend by
-   * swapping the bass, easing a fader or trimming lower.
+   * Bring deck 2 in and the MASTER meters climb to the red, because kicks that land together add
+   * 6 dB. The channel meters never move with a fader: they read before it. Fix the blend by
+   * swapping the bass, pulling a fader down or trimming lower.
    *
-   * The middle meters are the centre of the lab: the biggest thing on the panel, with the two
+   * The MASTER meters are the centre of the lab: the biggest thing on the panel, with the two
    * faders either side and the verdict (Mix +12 dB, in the red) by them. Each deck's TRIM and LOW
    * sit straight under its fader, deck 1 on the left and deck 2 on the right, so on a phone the
    * meters and every control that moves them share one screen. Before deck 2 comes up the reader
@@ -31,7 +31,6 @@
   import {
     BARELY_OVER_NOTE,
     blendSentence,
-    CAPTION,
     CHALLENGE_PROMPT,
     challengeMessage,
     explainBlend,
@@ -43,6 +42,7 @@
     HINT,
     LISTEN_NOTE,
     MODEL_NOTES,
+    MODEL_NOTES_TITLE,
     mixReadout,
     NO_SOUND,
     PLAYER_LABEL,
@@ -50,7 +50,6 @@
     presetLine,
     READOUT_LABEL,
     statusLamp,
-    TEACHING_NOTE,
     verdictLine,
     WAVEFORM_TOGGLE,
     WAYS_OUT_SHOW,
@@ -74,7 +73,6 @@
   } from '../lib/blend/model';
   import { showMeters } from '../lib/blend/scroll';
   import ChannelFader from './blend/ChannelFader.svelte';
-  import KicksSwitch from './blend/KicksSwitch.svelte';
   import Knobs from './blend/Knobs.svelte';
   import MeterBridge from './blend/MeterBridge.svelte';
   import Readout from './blend/Readout.svelte';
@@ -197,7 +195,7 @@
   // Challenge and hint --------------------------------------------------------------------------
 
   let solved = $state(false);
-  /** Seen the middle meters go red (or CLIP blink) with deck 2 fully up: "Stuck?" now makes sense. */
+  /** Seen the MASTER meters go red (or CLIP blink) with deck 2 fully up: the hint now makes sense. */
   let tried = $state(untrack(() => status === 'red' || status === 'clip'));
   let hint = $state(false);
   const showHint = $derived(hint && !solved);
@@ -373,14 +371,9 @@
         />
         <p class="listen-note" id="{uid}-listen-note">{soundProblem ?? LISTEN_NOTE}</p>
       </div>
-
-      <p class="note">{TEACHING_NOTE}</p>
     </div>
 
     <div class="side">
-      <!-- Under the teaching note on a phone; at the top of the right-hand column on a wide panel. -->
-      <div class="kicks-row"><KicksSwitch bind:aligned={settings.aligned} name="{uid}-kicks" /></div>
-
       <!-- How the challenge is going. Read out through the live region. -->
       {#if message || showHint || shaved}
         <div class="coach">
@@ -438,9 +431,8 @@
     </div>
 
     <div class="foot">
-      <p class="caption">{CAPTION}</p>
       <details>
-        <summary class="disclose">How this model works</summary>
+        <summary class="disclose">{MODEL_NOTES_TITLE}</summary>
         <ul>
           {#each MODEL_NOTES as note (note)}
             <li>{note}</li>
@@ -478,9 +470,8 @@
   }
 
   /*
-   * Wide: the mixer on the left, the pads and what the mixer does on the right. The Kicks switch
-   * and the pads lead the right-hand column, so words changing under them never move a control
-   * under the pointer.
+   * Wide: the mixer on the left, the pads and what the mixer does on the right. The pads lead the
+   * right-hand column, so words changing under them never move a control under the pointer.
    */
   @container blend (min-width: 50rem) {
     .layout {
@@ -491,10 +482,6 @@
     .challenge,
     .foot {
       grid-column: 1 / -1;
-    }
-
-    .kicks-row {
-      order: -2;
     }
 
     .pads {
@@ -554,7 +541,7 @@
     background: var(--led-off);
   }
 
-  /* Lit red for the red: the same signal state the middle meters show. */
+  /* Lit red for the red: the same signal state the MASTER meters show. */
   .status[data-tone='red'] .lamp {
     border-color: var(--led-r);
     background: var(--led-r);
@@ -677,13 +664,6 @@
     margin: 0;
     font-size: var(--text-sm);
     line-height: 1.45;
-    color: var(--hw-label);
-  }
-
-  .note {
-    margin: 0;
-    font-size: var(--text-sm);
-    line-height: 1.5;
     color: var(--hw-label);
   }
 
@@ -863,14 +843,6 @@
   }
 
   /* The foot runs the panel's full width, so its lines keep a reading measure. */
-  .caption {
-    max-width: 44rem;
-    margin: 0;
-    font-size: var(--text-sm);
-    line-height: 1.5;
-    color: var(--hw-label);
-  }
-
   details {
     max-width: 44rem;
     font-size: var(--text-sm);

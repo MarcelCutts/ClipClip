@@ -131,7 +131,10 @@ export function versionsFor(sampleRate: number): Versions {
   return versions;
 }
 
-/** The buffer behind one button in one round. */
+/**
+ * The buffer behind one button in one round. The test always plays the matched copy; `unmatched`
+ * is the clipped copy as the mixer left it, which the tests use to check the matching.
+ */
 export function bufferFor(
   versions: Versions,
   roundIndex: number,
@@ -220,7 +223,8 @@ function windowOf(signal: Float32Array, start: number, count: number, gain = 1):
 
 /**
  * Both waveforms of a round as the listener heard them: the clean loop, and the clipped copy
- * either turned down to match (the test) or at its natural level (the "don't match" toggle).
+ * turned down to match. With `unmatched`, the clipped copy at the mixer's level instead, which
+ * the tests use to check the drawing against the ceiling line.
  */
 export function revealView(
   versions: Versions,

@@ -1,30 +1,25 @@
 <script lang="ts">
   /**
-   * The pre-training strip: the four parts of the chain, named before the lab asks anything,
-   * left to right in the order the sound travels, joined by arrows that stretch to fill the
-   * panel. Each ceiling also says, live, whether it is cutting peaks, with a tiny wave that goes
-   * flat-topped when it is. It is an ordered list of four items; each arrow is decoration inside
-   * the item it leaves, hidden from screen readers, and stretches to take up the slack.
-   *
-   * A ceiling whose state would give away the answer (before the reader has guessed) waits in
-   * words instead, with a flat, empty mark: `null` and the `waiting` text.
+   * The chain the lab follows: its four parts, left to right in the order the sound travels,
+   * joined by arrows that stretch to fill the panel. Each ceiling also says, live, whether it is
+   * cutting peaks, with a tiny wave that goes flat-topped when it is. It is an ordered list of
+   * four items; each arrow is decoration inside the item it leaves, hidden from screen readers,
+   * and stretches to take up the slack.
    *
    * A phone can't fit four parts and real arrows on one row, so a narrow panel reads it in two
-   * rows, like lines of text: Mixer → Recorder knob, then Howler → File. That puts the two
+   * rows, like lines of text: Mixer → Recording level, then Howler → File. That puts the two
    * ceilings one above the other.
    */
   import type { Stage } from '../../lib/lab/ceilings';
   import { CHAIN, STAGE_WORDS } from '../../lib/lab/copy';
 
   interface Props {
-    /** Each ceiling's state, or null while it waits for the reader's guess. */
-    mixer: Stage | null;
-    recorder: Stage | null;
-    /** What a waiting ceiling says. */
-    waiting?: string;
+    /** Each ceiling's state. */
+    mixer: Stage;
+    recorder: Stage;
   }
 
-  let { mixer, recorder, waiting = '' }: Props = $props();
+  let { mixer, recorder }: Props = $props();
 
   const WAVES: Record<Stage, string> = {
     clear: 'M0 11C1.5 11 3 6.5 4.5 6.5S7.5 11 9 11S12 6.5 13.5 6.5S16.5 11 18 11',
@@ -33,18 +28,14 @@
   };
 </script>
 
-{#snippet ceiling(state: Stage | null)}
-  <span class="status" data-state={state ?? 'waiting'}>
+{#snippet ceiling(state: Stage)}
+  <span class="status" data-state={state}>
     <svg class="mark" viewBox="0 0 18 12" width="18" height="12" aria-hidden="true">
       <line class="lid" x1="0" x2="18" y1="3" y2="3" />
-      {#if state}
-        <path class="wave" d={WAVES[state]} />
-        {#if state === 'over'}<path class="flat" d="M2.4 3H6.6M11.4 3H15.6" />{/if}
-      {:else}
-        <line class="idle" x1="0" x2="18" y1="11" y2="11" />
-      {/if}
+      <path class="wave" d={WAVES[state]} />
+      {#if state === 'over'}<path class="flat" d="M2.4 3H6.6M11.4 3H15.6" />{/if}
     </svg>
-    {state ? STAGE_WORDS[state] : waiting}
+    {STAGE_WORDS[state]}
   </span>
 {/snippet}
 
@@ -64,7 +55,6 @@
   <li class="link">
     <div class="stage">
       <span class="name">{CHAIN.knob.name}</span>
-      <span class="sub hw-label">{CHAIN.knob.sub}</span>
     </div>
     {@render arrow()}
   </li>
@@ -79,7 +69,6 @@
   <li class="link">
     <div class="stage">
       <span class="name">{CHAIN.file.name}</span>
-      <span class="sub">{CHAIN.file.sub}</span>
     </div>
   </li>
 </ol>
@@ -149,13 +138,6 @@
     color: var(--hw-label-2);
   }
 
-  /* MASTER LEVEL as printed on the mixer: it names a control, so 14px like the fader names. */
-  .sub.hw-label {
-    font-size: 0.875rem;
-    line-height: 1.2;
-    color: var(--hw-label);
-  }
-
   .status {
     display: flex;
     align-items: center;
@@ -169,11 +151,6 @@
 
   .status[data-state='over'] {
     color: var(--hw-bright);
-  }
-
-  /* Waiting for a guess: the words someone acts on stay readable, at the size of the others. */
-  .status[data-state='waiting'] {
-    font-weight: 400;
   }
 
   .mark {
@@ -202,12 +179,6 @@
     stroke-linecap: round;
   }
 
-  .idle {
-    stroke: var(--hw-label-2);
-    stroke-width: 1.25;
-    stroke-dasharray: 1.5 2;
-  }
-
   /* Two rows of two. Each row's arrow runs the full width of its column to the next part; the
      arrow leaving the end of the first row would point off the panel, so it goes. */
   @container two-ceilings (max-width: 26rem) {
@@ -227,8 +198,7 @@
   }
 
   @media (forced-colors: active) {
-    .wave,
-    .idle {
+    .wave {
       stroke: CanvasText;
     }
 

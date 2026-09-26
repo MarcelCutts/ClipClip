@@ -2,24 +2,22 @@
  * The model behind the two-ceilings lab (W2).
  *
  *   track ─► Channel (TRIM, EQ) ─► CEILING 1: inside the mixer, the red LED (+12)
- *         ─► Record level (MASTER LEVEL, 0 dB at most) ─► CEILING 2: the Howler's input ─► file
+ *         ─► Recording level (0 dB at most) ─► CEILING 2: the Howler's input ─► file
  *
- * Levels are on the XDJ-RX2 meter's own dB scale. The Channels control is the track's loudest
+ * Levels are on the XDJ-RX2 meter's own dB scale. The Channel control is the track's loudest
  * peak as the channel meter would show it. Ceiling 1 is a hard clip at the red LED (sample 1.0,
- * see xdj.ts). Ceiling 2 is a hard clip at meter +6 with the knob fully up (model.ts: Howler
- * publishes no input limit, so this is an assumption the interface labels). The file's 0 dBFS is
- * ceiling 2, so a recording peak in dBFS is simply how far below ceiling 2 the feed peaks.
+ * see xdj.ts). Ceiling 2 is a hard clip at meter +6 with the recording level fully up (model.ts:
+ * Howler publishes no input limit, so this is an assumption the interface labels). The file's
+ * 0 dBFS is ceiling 2, so a recording peak in dBFS is how far below ceiling 2 the feed peaks.
  *
- * The Howler records from MASTER 2, so the knob between the ceilings is MASTER LEVEL, which sets
- * the speakers too. On the night it stays fully up and MASTER ATT in UTILITY turns the recording
- * down further; the lab folds both into one knob, from off to fully up.
+ * The recording level stands for whatever sets the level into the Howler. On this rig that is
+ * MASTER LEVEL, taped fully up, and MASTER ATT in UTILITY; the lab folds them into one knob.
  */
 
 import { clip, peak, peakIndex, scaled } from '../dsp/analysis';
 import { dbToGain } from '../dsp/db';
 import { loudnessMatchGain } from '../dsp/loudness';
 import { mixStems, renderLoop } from '../dsp/synth';
-import { TEST_SIGNAL, testSignalAt } from '../dsp/twoCeilings';
 import { HOWLER_CEILING_AT_FULL_KNOB_DB, MIXER_CEILING_DB } from '../model';
 import type { ScopeGeometry } from '../viz/scope';
 import { meterDbToSample, RANGES } from '../xdj';
@@ -28,12 +26,12 @@ import { meterDbToSample, RANGES } from '../xdj';
 /* Controls                                                                                     */
 
 /**
- * The Channels slider: the track's loudest peak in dB on the channel meter's scale. The meter's
+ * The Channel slider: the track's loudest peak in dB on the channel meter's scale. The meter's
  * lights stop at +12, so past that it only shows red.
  */
 export const CHANNELS = { min: -6, max: 18, step: 1 } as const;
 
-/** The record level (MASTER LEVEL): fully up is 0 dB, and like every output knob it only turns down. */
+/** The recording level: fully up is 0 dB, MASTER LEVEL's top, and it only turns down. */
 export const KNOB = { min: -24, max: RANGES.masterLevel.max, step: 1 } as const;
 
 /** Ceiling 1 in mixer units: the red LED, sample value 1. */
@@ -48,10 +46,7 @@ const TOUCH_DB = 1e-6;
 /* ------------------------------------------------------------------------------------------ */
 /* Signals                                                                                      */
 
-export type SignalKind = 'track' | 'tones';
-
 export interface LabSignal {
-  kind: SignalKind;
   sampleRate: number;
   /** One loop, scaled so its loudest peak is exactly 1. That peak is what the channel meter shows. */
   samples: Float32Array;
@@ -63,43 +58,26 @@ export interface LabSignal {
 export const ZOOM_MS = 30;
 export const ZOOM_LEAD_MS = 4;
 
-const signals = new Map<string, LabSignal>();
+const signals = new Map<number, LabSignal>();
 
 function unitPeak(samples: ArrayLike<number>): Float32Array {
   const top = peak(samples);
   return scaled(samples, top > 0 ? 1 / top : 1);
 }
 
-/** A loop of the two test tones that closes cleanly at any sample rate. */
-function toneLoop(sampleRate: number): Float32Array {
-  const base = (TEST_SIGNAL.length * sampleRate) / TEST_SIGNAL.sampleRate;
-  let length = Math.round(base * 8);
-  for (let k = 1; k <= 64; k++) {
-    const l = base * k;
-    if (Math.abs(l - Math.round(l)) < 1e-6) {
-      length = Math.round(l);
-      break;
-    }
-  }
-  return Float32Array.from({ length }, (_, i) => testSignalAt(i / sampleRate));
-}
-
 /**
- * The lab's music (synth track A) or, in the engineer view, the two test tones, scaled so the
- * loudest peak is 1: the Channels control then sets where that peak lands on the meter.
- * Rendered once per sample rate and kept.
+ * The lab's music (synth track A), scaled so the loudest peak is 1: the Channel control then sets
+ * where that peak lands on the meter. Rendered once per sample rate and kept.
  */
-export function labSignal(kind: SignalKind = 'track', sampleRate = 48_000): LabSignal {
-  const key = `${kind}@${sampleRate}`;
-  const hit = signals.get(key);
+export function labSignal(sampleRate = 48_000): LabSignal {
+  const hit = signals.get(sampleRate);
   if (hit) return hit;
 
-  const raw = kind === 'track' ? mixStems(renderLoop({ sampleRate, track: 'a' })) : toneLoop(sampleRate);
-  const samples = unitPeak(raw);
+  const samples = unitPeak(mixStems(renderLoop({ sampleRate, track: 'a' })));
   const count = Math.round((ZOOM_MS / 1000) * sampleRate);
   const start = peakIndex(samples) - Math.round((ZOOM_LEAD_MS / 1000) * sampleRate);
-  const signal: LabSignal = { kind, sampleRate, samples, window: { start, count } };
-  signals.set(key, signal);
+  const signal: LabSignal = { sampleRate, samples, window: { start, count } };
+  signals.set(sampleRate, signal);
   return signal;
 }
 
@@ -332,43 +310,42 @@ export function drawScope(
 /* ------------------------------------------------------------------------------------------ */
 /* Guided flow                                                                                  */
 
-export type Step = 1 | 2 | 3 | 4 | 5;
-export const STEP_COUNT = 5;
-export const SANDBOX: Step = 5;
+/**
+ * Three steps, each with one live control: the recording level with the channel in the red (it
+ * cannot remove the crunch), the channel (it can), then the recording level again, with the
+ * channel clean and the Howler's input overloaded (it can).
+ */
+export type Step = 1 | 2 | 3;
+export const STEP_COUNT = 3;
+
+/** The two controls: the channel before ceiling 1, the recording level between the ceilings. */
+export type Control = 'channels' | 'knob';
 
 export interface StepSetup {
-  /** Where the controls start when the step opens. Null keeps whatever the reader left. */
-  start: { channels: number; knob: number } | null;
-  lockChannels: boolean;
-  lockKnob: boolean;
+  /** Where the controls start when the step opens. */
+  start: { channels: number; knob: number };
+  /** The one control the step lets you move. The other is locked. */
+  live: Control;
 }
 
-/**
- * Steps 2 to 4 each have one live control, so the task is plain: the knob, then the channels,
- * then the knob again. The sandbox unlocks both.
- */
 export const STEP_SETUP: Record<Step, StepSetup> = {
-  1: { start: { channels: 18, knob: -12 }, lockChannels: true, lockKnob: true },
-  2: { start: { channels: 18, knob: -12 }, lockChannels: true, lockKnob: false },
-  3: { start: { channels: 18, knob: -12 }, lockChannels: false, lockKnob: true },
-  4: { start: { channels: 9, knob: 0 }, lockChannels: true, lockKnob: false },
-  5: { start: null, lockChannels: false, lockKnob: false },
+  1: { start: { channels: 18, knob: -12 }, live: 'knob' },
+  2: { start: { channels: 18, knob: -12 }, live: 'channels' },
+  3: { start: { channels: 9, knob: 0 }, live: 'knob' },
 };
 
-/** The screen each step is about: where its control moves the wave. The sandbox shows both. */
-export type ScopeFocus = 'mixer' | 'recording' | 'both';
+/** The screen each step is about: where its control moves the wave. The other screen follows. */
+export type ScopeFocus = 'mixer' | 'recording';
 
 export const STEP_SCOPE: Record<Step, ScopeFocus> = {
-  1: 'mixer',
-  2: 'recording',
-  3: 'mixer',
-  4: 'recording',
-  5: 'both',
+  1: 'recording',
+  2: 'mixer',
+  3: 'recording',
 };
 
 /**
- * Challenge 1 (productive failure) reveals itself after this many knob moves, or this long after
- * the first one. The clock waits for a move, so a slow reader never has the answer sprung on them.
+ * Step 1 has no solution. It reveals itself after this many knob moves, or this long after the
+ * first one. The clock waits for a move, so a slow reader never has the answer sprung on them.
  */
 export const REVEAL_AFTER_MOVES = 3;
 export const REVEAL_AFTER_MS = 20_000;
@@ -378,77 +355,14 @@ export const REVEAL_AFTER_MS = 20_000;
  */
 export const MOVE_SETTLE_MS = 600;
 
-export const isStep = (n: number): n is Step => Number.isInteger(n) && n >= 1 && n <= STEP_COUNT;
-
 /**
- * Has the reader done what the step asks? Step 3 also wants the channel meter out of the red:
- * touching +12 cuts nothing yet, but leaves no room at all.
+ * Has the reader done what the step asks? Step 2 also wants the channel meter out of the red:
+ * touching +12 cuts nothing yet, but a blend on top would clip.
  */
 export function goalMet(step: Step, r: Reading): boolean {
-  if (step === 3) return r.crunch === 'clean' && r.howler === 'green' && r.mixer === 'clear';
-  if (step === 4) return r.crunch === 'clean' && r.howler === 'green';
+  if (step === 2) return r.crunch === 'clean' && r.howler === 'green' && r.mixer === 'clear';
+  if (step === 3) return r.crunch === 'clean' && r.howler === 'green';
   return false;
-}
-
-/* ------------------------------------------------------------------------------------------ */
-/* Which knob can fix which crunch                                                              */
-
-/** The two controls, and the two places crunch is made. */
-export type Fixer = 'channels' | 'knob';
-export type Ceiling = 'mixer' | 'recorder';
-
-/** The chain in the order the sound meets it: a control can only fix a ceiling that comes after it. */
-const CHAIN_ORDER: ReadonlyArray<Fixer | Ceiling> = ['channels', 'mixer', 'knob', 'recorder'];
-
-/** Can this control take the crunch out, by turning the level down before the ceiling that makes it? */
-export const canFix = (fixer: Fixer, ceiling: Ceiling): boolean =>
-  CHAIN_ORDER.indexOf(fixer) < CHAIN_ORDER.indexOf(ceiling);
-
-export type Prediction = 'goes-away' | 'quieter-stays' | 'not-sure';
-export type Confidence = 'guessing' | 'fairly-sure' | 'certain';
-
-/* ------------------------------------------------------------------------------------------ */
-/* Presets and deep links                                                                       */
-
-export type PresetId = 'channels-red' | 'knob-high' | 'clean';
-
-export interface Preset {
-  id: PresetId;
-  label: string;
-  channels: number;
-  knob: number;
-  /** LED colour on the pad. */
-  tone: 'red' | 'green';
-}
-
-export const PRESETS: readonly Preset[] = [
-  { id: 'channels-red', label: 'Channels in the red', channels: 18, knob: -12, tone: 'red' },
-  { id: 'knob-high', label: 'Record level too high', channels: 9, knob: 0, tone: 'red' },
-  { id: 'clean', label: 'Channels tidy, level set', channels: 3, knob: -9, tone: 'green' },
-];
-
-export const presetById = (id: PresetId): Preset => PRESETS.find((p) => p.id === id)!;
-
-export function matchingPreset(channels: number, knob: number): PresetId | null {
-  return PRESETS.find((p) => p.channels === channels && p.knob === knob)?.id ?? null;
-}
-
-const isPresetId = (v: string | null): v is PresetId => PRESETS.some((p) => p.id === v);
-
-/**
- * Read `?lab=sandbox&preset=channels-red`. A preset on its own also opens the sandbox, since
- * presets live there. Anything unknown is ignored.
- */
-export function parseDeepLink(search: string): { sandbox: boolean; preset: PresetId | null } {
-  let params: URLSearchParams;
-  try {
-    params = new URLSearchParams(search);
-  } catch {
-    return { sandbox: false, preset: null };
-  }
-  const preset = params.get('preset');
-  const known = isPresetId(preset) ? preset : null;
-  return { sandbox: params.get('lab') === 'sandbox' || known !== null, preset: known };
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -469,7 +383,7 @@ export function playbackLoop(signal: LabSignal, channels: number, knob: number, 
   const file = new Float32Array(samples.length);
   for (let i = 0; i < file.length; i++) file[i] = clip(clip(samples[i]! * g.mixer) * g.toFile);
 
-  const key = `${signal.kind}@${sampleRate}:${channels}:${knob}`;
+  const key = `${sampleRate}:${channels}:${knob}`;
   let match = matchCache.get(key);
   if (match === undefined) {
     match = loudnessMatchGain(samples, file, sampleRate);

@@ -2,17 +2,20 @@
  * Messages for the group chat, with copy buttons on /print/. Written for WhatsApp, which turns
  * *stars* into bold, _underscores_ into italics and lines starting "- " into a bulleted list.
  *
- * House style for every message: 60 words or fewer, a bold first line, the link last, and plain
- * statements, with "If …" for a condition rather than a question and its answer. The DJ briefing is
- * built from the DJ rules as the "Know by heart" boxes set them, and the crew's check from the doors
- * checklist, so neither can drift from the pages or the printed cards.
+ * House style for every message: short enough to read on one phone screen (80 words or fewer), a
+ * bold first line, the link last, and plain statements, with "If …" for a condition rather than a
+ * question and its answer. The DJ briefing carries the three DJ lines word for word as the "Know by
+ * heart" boxes set them, notes and all, and the crew's check the doors checklist, so neither can
+ * drift from the pages or the printed cards. Nothing here promises a DJ their recording: every set
+ * is recorded, and that is all it says.
  */
 
 import { CHECKLISTS } from './checklists';
+import { CARDS } from './quiz/cards';
 import { DJ_RULES, type Rule } from './rules';
-import { MONITOR_TAG } from './tags';
+import { section } from './sections';
 
-export type MessageId = 'dj-briefing' | 'crew-setup' | 'changeover' | 'review';
+export type MessageId = 'dj-briefing' | 'crew-setup' | 'review';
 
 export interface ChatMessage {
   id: MessageId;
@@ -27,36 +30,38 @@ export interface ChatMessage {
 /** Turns a site path like "/night/" into the full address people can tap. */
 export type LinkTo = (path: string) => string;
 
-/** Where the guide starts on playing a set: setting TRIM. The booth card's QR code goes here too. */
-export const GUIDE_PATH = '/#trim';
+/** The most words a message may have: about one phone screen in the chat, rules and link included. */
+export const MAX_WORDS = 80;
 
-/** Where the five-question meter check lives in the guide. */
-export const REVIEW_PATH = '/#check';
+/** Where the guide starts on playing a set: setting TRIM. The booth card's QR code goes here too. */
+export const GUIDE_PATH = `/#${section('trim').id}`;
+
+/** The meter check's heading in the guide, so the link lands on its title, not its first question. */
+export const REVIEW_PATH = `/#${section('check').id}`;
 
 /** The doors checklist on the night page. */
 export const DOORS_PATH = `/night/#${CHECKLISTS.doors.anchor}`;
 
-/**
- * What crew say to the next DJ at a changeover, in about a dozen words: where the meters should
- * sit, and who to ask for more. Also on /night/.
- */
-export const CHANGEOVER_LINE = 'Channel meters on first or second orange. For a louder room, ask us.';
-
-/** The first sentence of a note: what to do if the rule isn't met. */
-export const firstSentence = (text: string): string => text.split(/(?<=[.?!])\s+/)[0] ?? '';
+/** Where the sender writes the crew member's name before sending the briefing. */
+export const NAME_BLANK = '[name]';
 
 /**
  * A DJ rule as a chat bullet, the way the "Know by heart" boxes set it: what to look at, what it
- * should be, and the first sentence of what to do if it isn't. The rest is on the page.
+ * should be, and what to do if it is not so. The MASTER LEVEL line's note is the one place the
+ * briefing says BOOTH MONITOR is the DJ's.
  */
 export function ruleLine({ challenge, response, note }: Rule): string {
-  return `- ${challenge}: ${response}.${note ? ` ${firstSentence(note)}` : ''}`;
+  return `- ${challenge}: ${response}. ${note}`;
 }
 
 /** The doors checklist as chat bullets: the control, then the state it should be in. */
 function doorsLines(): string[] {
   return CHECKLISTS.doors.items.map(({ check, target }) => `- ${check}: ${target}`);
 }
+
+/** A small count in words, as a sentence would say it: "four questions". */
+const COUNT_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+const inWords = (n: number): string => COUNT_WORDS[n] ?? String(n);
 
 export function chatMessages(link: LinkTo): ChatMessage[] {
   const doors = CHECKLISTS.doors;
@@ -66,11 +71,9 @@ export function chatMessages(link: LinkTo): ChatMessage[] {
       title: 'DJ briefing',
       when: 'To the DJs, before the night.',
       text: [
-        // What the DJ gets comes first (dj-culture §0.3), then the rules, then the link.
-        '*Every set here is recorded.* Here’s how to keep yours clean.',
+        // What a DJ needs first: the recording, then who to ask. Then the rules, then the link.
+        `*Every set here is recorded.* ${NAME_BLANK} is on crew tonight.`,
         ...DJ_RULES.map(ruleLine),
-        // The one knob that's theirs, as its tape says: MASTER LEVEL is the crew's, BOOTH MONITOR the DJ's.
-        `- BOOTH MONITOR is ${MONITOR_TAG.owner}.`,
         `How and why: ${link(GUIDE_PATH)}`,
       ].join('\n'),
     },
@@ -87,17 +90,11 @@ export function chatMessages(link: LinkTo): ChatMessage[] {
       ].join('\n'),
     },
     {
-      id: 'changeover',
-      title: 'Changeover line',
-      when: 'To the next DJ at the changeover. Say it, or send it.',
-      text: [`*You’re on next.* ${CHANGEOVER_LINE}`, `How and why: ${link(GUIDE_PATH)}`].join('\n'),
-    },
-    {
       id: 'review',
       title: 'Meter check reminder',
       when: 'To the DJs, a day or two before the next night.',
       text: [
-        '*If you’re playing at the next night*, try the meter check first. It’s five questions about the meters and takes about a minute.',
+        `*If you’re playing at the next night*, try the meter check first. It’s ${inWords(CARDS.length)} questions.`,
         `Meter check: ${link(REVIEW_PATH)}`,
       ].join('\n'),
     },

@@ -1,11 +1,13 @@
 <script lang="ts">
   /**
    * A crew checklist, set as a quick reference handbook's checklist card: a black title strip with the
-   * list's code, title and time budget, then each line as a challenge and its response joined by leader
-   * dots, the response in the action colour, and the call to say at the end. Native checkboxes, a live
-   * "3 of 7 done" count and a Clear ticks key you can undo until the next tick. A line whose drill
-   * covers what's wrong says so: "If it blinks red, see F1." It's a printed card, not a piece of the
-   * rig, so it wears the page's colours: white by day, the cockpit display by night.
+   * list's code and title, when to run it, then each line as a challenge and its response joined by
+   * leader dots, the response in the action colour. Every list is read-and-do, for one person: no
+   * completion call and no time budget. Native checkboxes, a live "3 of 7 done" count and a Clear ticks
+   * key you can undo until the next tick. Under a line, what to do if it isn't so, and the drill that
+   * covers it: "If they are below red, go to F1." A consequence to know first is a plain sentence
+   * above its line. It's a printed card, not a piece of the rig, so it wears the page's colours: white
+   * by day, the cockpit display by night.
    *
    * Ticks are kept on this device for as long as one run of the list lasts (checklistTimes.ts), so a
    * reload or a locked phone doesn't lose them, and an old run never passes for this one. A finished
@@ -14,18 +16,10 @@
    *
    * The boxes work before the island wakes up. Whatever is ticked by then is kept: bind:checked takes
    * each box's state as it hydrates, load() reads the boxes and adds the saved run, and the styles read
-   * the boxes too, so neither the count nor the lit call can disagree with them.
+   * the boxes too, so the count and the ticked lines can't disagree with them.
    */
   import { onMount, tick } from 'svelte';
-  import {
-    budgetLabel,
-    CHECKLISTS,
-    type ChecklistId,
-    howToRun,
-    progressText,
-    serialiseTicks,
-    storageKey,
-  } from '../lib/checklists';
+  import { CHECKLISTS, type ChecklistId, progressText, serialiseTicks, storageKey } from '../lib/checklists';
   import {
     clockTime,
     lifetimeText,
@@ -39,7 +33,7 @@
   import { href } from '../lib/url';
 
   interface Props {
-    /** Which list: 'setup', 'doors', 'changeover' or 'after'. */
+    /** Which list: 'setup', 'doors', 'changeover', 'after' or 'files'. */
     list: ChecklistId;
     /** Heading level for the list's title, to fit the page's outline. */
     headingLevel?: 2 | 3 | 4;
@@ -59,8 +53,6 @@
   let at = $state<number | null>(null);
   /** A repeating list's finished run, found when you arrive: when it finished. */
   let lastRun = $state<number | null>(null);
-  /** Finished by the reader just now, so the status prompts the call. */
-  let calling = $state(false);
   /** What was cleared, while Undo is on offer: until the next tick, or until those ticks would have gone. */
   let undo = $state.raw<{ done: string[]; at: number | null; lastRun: number | null } | null>(null);
   /** Whether this device keeps ticks. The line that says so waits for the island. */
@@ -90,7 +82,6 @@
     show(ids);
     at = when;
     lastRun = finished;
-    calling = false;
   }
 
   /** The run saved on this device: null if there's none, undefined if storage can't be read. */
@@ -167,7 +158,6 @@
     ticked[id] = value;
     undo = null;
     lastRun = null;
-    calling = complete;
     at = count ? Date.now() : null;
     write(done, at);
   }
@@ -231,22 +221,18 @@
   }}
 />
 
-<!-- Unnamed on purpose, so it isn't a landmark: the page's sections already are, and one of them has
-     the same title as a list ("After the night"). The heading and the labelled list name the checklist.
-     The id is where links from the group chat land, such as /night/#changeover. -->
+<!-- Unnamed on purpose, so it isn't a landmark: the page's sections already are. The heading and the
+     labelled list name the checklist. The id is where links from the group chat land, such as
+     /night/#changeover. -->
 <section class="checklist" class:awake id={list.anchor} data-list={listId} bind:this={card}>
   <header class="strip">
     <svelte:element this={`h${headingLevel}`} class="title" id="{uid}-title"
       ><span class="code">{list.code}</span> {list.title}</svelte:element
     >
-    {#if list.seconds}
-      <!-- The time budget at a glance. The line under the strip says it in words, for everyone. -->
-      <p class="budget" aria-hidden="true">{budgetLabel(list.seconds)}</p>
-    {/if}
   </header>
 
   <div class="body">
-    <p class="how"><strong>{list.when}</strong> {howToRun(list)}</p>
+    <p class="when">{list.when}</p>
 
     {#if nextRun && lastRun !== null && complete}
       <div class="last-run">
@@ -259,6 +245,10 @@
       {#each list.items as item (item.id)}
         {@const inputId = `${uid}-${item.id}`}
         <li class="item">
+          {#if item.before}
+            <!-- What doing the line costs, said before it at full strength, outside the row's label. -->
+            <p class="before">{item.before}</p>
+          {/if}
           <label class="row" for={inputId}>
             <input
               class="box"
@@ -283,24 +273,17 @@
             <!-- What to do if the line isn't so: the note, then the drill that covers it. The link
                  sits outside the row's label, so following it never ticks the box. -->
             <p class="item-note" id="{inputId}-note">
-              {#if item.note}{item.note}{/if}
-              {#if item.drill}
-                {item.drill.if}, <a class="ref" href={href(`/night/#${drillAnchor(item.drill.id)}`)}
-                  >see {item.drill.code}</a
-                >.
-              {/if}
+              <!-- Each drill starts a sentence of its own, so it's set apart from what comes before it. -->
+              {#if item.note}{item.note}{/if}{#each [item.drill ?? []].flat() as ref (ref.id)}{' '}{ref.if},
+                <a class="ref" href={href(`/night/#${drillAnchor(ref.id)}`)}>go to {ref.code}</a>.{/each}
             </p>
           {/if}
         </li>
       {/each}
     </ul>
 
-    <p class="call">Say: “{list.call}”</p>
-
     <footer class="foot">
-      <p class="count" role="status">
-        {progressText(count, total)}{#if calling}<span class="visually-hidden">. Say: “{list.call}”</span>{/if}
-      </p>
+      <p class="count" role="status">{progressText(count, total)}</p>
       <div class="keys">
         <!-- In the page from the start, so screen readers announce it when it fills. -->
         <p class="cleared" role="status">{#if undo}Ticks cleared.{/if}</p>
@@ -356,30 +339,29 @@
     margin-inline-end: 0.3em;
   }
 
-  .budget {
-    flex: none;
-    margin: 0;
-    font-size: var(--text-sm);
-    font-variant-numeric: tabular-nums;
-  }
-
   .body {
     display: grid;
     gap: 0.8rem;
     padding: 0.75rem 0.8rem 0.9rem;
   }
 
-  /* When and how to run it: read before starting, so as strong as any instruction. */
-  .how {
+  /* When to run it: read before starting, so as strong as any instruction. */
+  .when {
     margin: 0;
     font-size: var(--text-sm);
+    font-weight: 700;
     line-height: 1.5;
-    color: var(--ink-2);
+    color: var(--ink);
   }
 
-  .how strong {
+  /* What doing the next line costs: a plain sentence at full strength, before the box, never in a note. */
+  .before {
+    margin: 0.55rem 0 0 2.25rem;
+    font-size: var(--text-sm);
     font-weight: 700;
+    line-height: 1.5;
     color: var(--ink);
+    text-wrap: pretty;
   }
 
   /* A finished run you came back to: when it ran, and the way on. */
@@ -518,7 +500,7 @@
     text-wrap: pretty;
   }
 
-  /* "See F1": a link to the drill, underlined like any link on the page. */
+  /* "go to F1": a link to the drill, underlined like any link on the page. */
   .ref {
     font-weight: 700;
     white-space: nowrap;
@@ -530,20 +512,6 @@
   .item:has(.box:checked) .target,
   .item:has(.box:checked) .item-note {
     color: var(--ink-3);
-  }
-
-  /* The call, said out loud when every line is true. It waits in grey until then. */
-  .call {
-    margin: 0;
-    font-size: var(--text-rule);
-    font-weight: 700;
-    line-height: 1.25;
-    color: var(--ink-3);
-  }
-
-  /* Every box ticked: the call is live, in the action colour, since saying it is the last thing to do. */
-  .checklist:not(:has(.box:not(:checked))) .call {
-    color: var(--action);
   }
 
   .foot {
@@ -641,15 +609,6 @@
       color: HighlightText;
     }
 
-    /* System colours flatten grey and the action colour into one, so the waiting call is greyed. */
-    .call {
-      color: GrayText;
-    }
-
-    .checklist:not(:has(.box:not(:checked))) .call {
-      color: CanvasText;
-    }
-
     /* System colours flatten both keys to one look, so the way on keeps a heavier edge. */
     .key.primary {
       border-width: 3px;
@@ -678,11 +637,6 @@
     .last-run,
     .foot {
       display: none;
-    }
-
-    /* On paper, the call is always there to say. */
-    .call {
-      color: CanvasText;
     }
   }
 </style>

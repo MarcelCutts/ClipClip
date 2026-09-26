@@ -2,10 +2,12 @@
 /**
  * A "Know by heart" box: the few things to know without looking, set like a quick reference
  * handbook's boxed items, numbered from 1 in every box. Each line is a challenge and its response,
- * joined by leader dots (a screen reader hears a comma), with a note on what to do if it isn't so.
- * A long response drops to its own line, right-aligned, as on a printed checklist. Pale yellow by
- * day, dim yellow edged in yellow on the dark display.
+ * joined by leader dots (a screen reader hears a comma), with a note on what to do if it isn't so,
+ * then a link: the drill for it on the crew page ("See F1"), or where the guide explains it
+ * ("See 2.1"). A long response drops to its own line, right-aligned, as on a printed checklist.
+ * Pale yellow by day, dim yellow edged in yellow on the dark display.
  */
+import { drillAnchor, FIXES } from '../lib/fixes';
 import type { Rule } from '../lib/rules';
 import { section } from '../lib/sections';
 import { href } from '../lib/url';
@@ -13,36 +15,51 @@ import { href } from '../lib/url';
 interface Props {
   title: string;
   rules: Rule[];
-  /** Link each item to where the guide explains it. */
+  /** Link each item to its drill, or to where the guide explains it. */
   refs?: boolean;
 }
 
 const { title, rules, refs = true } = Astro.props;
 const id = `kbh-${title.toLowerCase().replace(/[^a-z]+/g, '-')}`;
+
+/** Where a line points: its drill if it has one, otherwise its guide section. */
+function refFor(rule: Rule): { code: string; title: string; path: string } | undefined {
+  if (rule.drill) {
+    const fix = FIXES.find((f) => f.id === rule.drill);
+    if (!fix) throw new Error(`No drill with the id "${rule.drill}"`);
+    return { code: fix.code, title: fix.title, path: `/night/#${drillAnchor(fix.id)}` };
+  }
+  if (rule.why) {
+    const { number, title } = section(rule.why);
+    return { code: number, title, path: `/${rule.why}` };
+  }
+  return undefined;
+}
 ---
 
 <section class="kbh">
   <h2 id={id} class="kbh-title">{title}</h2>
   <ol class="items">
-    {rules.map((r) => (
+    {rules.map((r) => {
+  const ref = refs ? refFor(r) : undefined;
+  return (
   <li class="item">
     <p class="line">
       <span class="challenge">{r.challenge}</span><span class="visually-hidden">, </span>
       <span class="dots" aria-hidden="true"></span>
       <span class="response">{r.response}</span>
     </p>
-    {(r.note || (refs && r.why)) && (
     <p class="note">
       {r.note}
-      {refs && r.why && (
+      {ref && (
       <Fragment>
-        {' '}<a class="ref" href={href(`/${r.why}`)}>See {section(r.why).number}<span class="visually-hidden">, {section(r.why).title}</span></a>
+        {' '}<a class="ref" href={href(ref.path)}>See {ref.code}<span class="visually-hidden">, {ref.title}</span></a>
       </Fragment>
     )}
     </p>
-  )}
   </li>
-))}
+  );
+})}
   </ol>
 </section>
 

@@ -50,10 +50,10 @@ test.describe('the night page', () => {
     const tabs = page.getByRole('navigation', { name: 'Checklists and drills' }).getByRole('link');
     // Each named as it reads, code first: "C1: Doors".
     const names = [
-      named('C1', 'Doors'),
+      named('C1', 'Doors open'),
       named('C2', 'Changeover'),
       named('F', 'Something’s wrong'),
-      named('C3', 'After'),
+      named('C3', 'End of the night'),
     ];
     await expect(tabs).toHaveCount(names.length);
     for (const [i, name] of names.entries()) await expect(tabs.nth(i)).toHaveAccessibleName(name);
@@ -74,9 +74,9 @@ test.describe('the night page', () => {
     for (const jump of await drill.getByRole('link', { name: /^Go to / }).all()) {
       expect((await jump.boundingBox())?.height).toBeGreaterThanOrEqual(44);
     }
-    await drill.getByRole('link', { name: 'Go to step 3' }).first().click();
-    await expect(page).toHaveURL(/#fix-howler-red-step-3$/);
-    const step = page.locator('#fix-howler-red-step-3');
+    await drill.getByRole('link', { name: 'Go to step 2' }).first().click();
+    await expect(page).toHaveURL(/#fix-howler-red-step-2$/);
+    const step = page.locator('#fix-howler-red-step-2');
     // Settled just under the sticky tabs, not behind them.
     await expect
       .poll(async () => {
@@ -89,8 +89,11 @@ test.describe('the night page', () => {
     // The step it landed on is outlined, so the eye finds it in either theme.
     await expect(step).toHaveCSS('outline-style', 'solid');
     await expect(step).toHaveCSS('outline-width', '3px');
-    // Before the step: what it also does, in a plain sentence.
-    await expect(step).toContainText('This turns the room down too, so tell the DJ first.');
+    // Before MASTER ATT turns the room down with the recording, the DJ is told, in these words.
+    await expect(step).toContainText(
+      'Say to the DJ: “The room goes quieter for a few seconds. Keep your levels as they are.”',
+    );
+    await expect(page.locator('#fix-howler-red-step-3')).toContainText('Look at MASTER ATT in UTILITY.');
     await expect(nav.getByRole('link', { name: named('F', 'Something’s wrong') })).toHaveAttribute(
       'aria-current',
       'location',
@@ -98,18 +101,19 @@ test.describe('the night page', () => {
     await expect(page.getByRole('heading', { level: 2, name: 'F: Something’s wrong' })).toBeAttached();
   });
 
-  test('the changeover’s Howler line leads to its drill when the light blinks red', async ({ page }) => {
+  test('the changeover’s Howler line gives the first action, then leads to its drill', async ({ page }) => {
     await page.goto('night/#changeover');
     const line = page.locator('.checklist[data-list="changeover"] li').first();
-    await expect(line).toContainText('If it blinks red, see F1.');
-    await line.getByRole('link', { name: 'see F1' }).click();
+    await expect(line).toContainText('If it blinks red, look at the MASTER meters, the pair in the middle, first.');
+    await expect(line).toContainText('If they are below red, go to F1.');
+    await line.getByRole('link', { name: 'go to F1' }).click();
     await expect(page).toHaveURL(/#fix-howler-red$/);
-    await expect(page.getByRole('heading', { name: 'F1: LEVEL light on the Howler: red' })).toBeInViewport();
+    await expect(page.getByRole('heading', { name: 'F1: Howler LEVEL light: red' })).toBeInViewport();
     // Following the link never ticks the box.
     await expect(line.getByRole('checkbox')).not.toBeChecked();
   });
 
-  test('on a wide screen, an index rail lists the night, with every drill under F', async ({ page }) => {
+  test('on a wide screen, an index rail lists the night, each drill under the part it’s in', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('night/#fix-power-cut');
     const rail = page.getByRole('navigation', { name: 'Index' });
@@ -119,15 +123,17 @@ test.describe('the night page', () => {
       /C1\s*Doors open/,
       /C2\s*Changeover/,
       /F\s*Something’s wrong/,
-      /C3\s*After the night/,
+      /C3\s*End of the night/,
+      /C4\s*Next day/,
     ]);
-    // In the drills, F opens on all eleven, each by its code.
-    const drills = rail.locator('.subs a');
-    await expect(drills).toHaveCount(11);
+    // In the booth's drills, F opens on its eight, each by its code; the next day holds the other three.
+    const drills = rail.locator('.part[data-open] .subs a');
+    await expect(drills).toHaveCount(8);
     // The built page keeps a space either side of a link's words.
     await expect(drills.first()).toHaveText(/^\s*F1 /);
-    await expect(drills.last()).toHaveText(/^\s*F11 /);
+    await expect(drills.last()).toHaveText(/^\s*F8 /);
     await expect(rail.getByRole('link', { name: /^F8 / })).toHaveAttribute('aria-current', 'location');
+    await expect(rail.locator('.subs a')).toHaveCount(11);
     // It stays in view under the tabs.
     const [box, tabs] = await Promise.all([
       rail.boundingBox(),

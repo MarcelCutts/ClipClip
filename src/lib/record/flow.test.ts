@@ -1,306 +1,59 @@
 import { describe, expect, it } from 'vitest';
-import { LEVEL_FALLBACK } from '../checklists';
-import { prng } from '../dsp/synth';
-import {
-  type Action,
-  doneAnnouncement,
-  type Flow,
-  offMark,
-  practiceStart,
-  ROOM_NOTE,
-  reduce,
-  STEPS,
-  settingsSummary,
-  step,
-  stepAction,
-  stepResponse,
-  stepState,
-  WORKED_FOUND,
-  workedStart,
-} from './flow';
-import { HOWLER_LIMIT, LEVEL } from './model';
+import { IN_UTILITY, LEVEL_FALLBACK } from '../checklists';
+import { KICKS_TOGETHER_DB, TARGET, TARGET_PEAK_DB } from '../model';
+import { CEILING_DB } from '../xdj';
+import { ATT_SETTINGS, BLEND_MAX_DBFS, CONSEQUENCE, SAVE_NOTE, STEPS, TEST_DECK_DB } from './flow';
 
-/** Numbers keep their units with a no-break space (see the last test); compare the words. */
-const expectText = (s: string | null | undefined, message?: string) =>
-  expect(typeof s === 'string' ? s.replaceAll('\u00a0', ' ') : s, message);
-const run = (flow: Flow, ...actions: Action[]) => actions.reduce(reduce, flow);
-const commit: Action = { type: 'commit' };
-const level = (db: number): Action => ({ type: 'level', db });
-const att = (db: -12 | -6 | 0): Action => ({ type: 'att', db });
-const blend: Action = { type: 'play', material: 'blend' };
-const hearAll: Action[] = [
-  { type: 'heard', check: 'level', value: true },
-  { type: 'heard', check: 'hum', value: true },
-  { type: 'heard', check: 'sides', value: true },
-];
-/** A Howler with 9 dB less room than the site assumes, so step 4 has work to do. */
-const TIGHT = HOWLER_LIMIT - 9;
+/** Every word on the card: the steps, their notes, and the sentences around them. */
+const words = [
+  CONSEQUENCE,
+  SAVE_NOTE,
+  ...STEPS.flatMap((s) => [s.before ?? '', s.challenge, s.response, s.note ?? '']),
+].join('\n');
+const step = (challenge: string) => STEPS.find((s) => s.challenge === challenge);
 
-/** The worked example, done right up to the start of a step. */
-function upTo(id: 'play' | 'att' | 'level' | 'test', start = workedStart()): Flow {
-  let f = run(start, level(0), commit);
-  if (id === 'play') return f;
-  f = run(f, blend, commit);
-  if (id === 'att') return f;
-  f = run(f, att(-6), commit, att(-12), commit);
-  if (id === 'level') return f;
-  return run(f, commit);
-}
-
-describe('the worked example', () => {
-  it('starts as the booth is often found: MASTER LEVEL turned down, MASTER ATT at 0 dB, nothing playing', () => {
-    const f = workedStart();
-    expect(f.rig).toEqual({ material: null, level: -9, att: 0 });
-    expect(f.found).toEqual(WORKED_FOUND);
-    expect(f.limit).toBe(HOWLER_LIMIT);
-    expect(f.step).toBe('up');
-    expect(stepState(f, 'up')).toBe('current');
-    expect(stepState(f, 'test')).toBe('todo');
+describe('S3, the recording level', () => {
+  it('tests with a blend that reaches the red light, louder than a DJ should play', () => {
+    expect(TEST_DECK_DB + KICKS_TOGETHER_DB).toBe(CEILING_DB);
+    expect(TEST_DECK_DB).toBeGreaterThan(TARGET_PEAK_DB.second);
+    expect(step('Loudest blend')?.response).toBe('both channel meters at +6, kicks lined up');
+    // Red on purpose is a consequence, said before the steps.
+    expect(CONSEQUENCE).toMatch(/^Step 3 puts the MASTER meters/);
+    expect(STEPS[2]?.challenge).toBe('Loudest blend');
   });
 
-  it('runs clean from start to finish', () => {
-    let f = run(workedStart(), level(0), commit);
-    expect(f.step).toBe('play');
-    expect(f.kept.tape).toBe(0);
-    expect(f.last).toMatchObject({ tone: 'good', step: 'up', text: expect.stringContaining('Taped fully up') });
-    f = run(f, blend, commit);
-    expect(f.step).toBe('att');
-    expectText(f.last?.text).toBe('The light blinks red on the loudest blend, so the feed is too loud for the Howler.');
-    f = run(f, att(-6), commit);
-    expect(f.step).toBe('att');
-    expect(f.note).toMatchObject({ tone: 'fix', text: 'The light is still red, so set MASTER ATT down another step.' });
-    // The step just finished keeps its words while you work on the next.
-    expect(f.last?.step).toBe('play');
-    f = run(f, att(-12), commit);
-    expect(f.step).toBe('level');
-    expect(f.note).toBeNull();
-    expectText(f.last?.text).toContain('Bring the room back up at the amps');
-    f = run(f, commit);
-    expect(f.step).toBe('test');
-    expectText(f.last?.text).toBe(
-      'The light is green with MASTER LEVEL fully up, so MASTER LEVEL stays there, on its REC tape.',
-    );
-    f = run(f, commit);
-    expect(f.recorded).toBe(true);
-    expectText(f.note?.text).toContain('loudest blend peaks at −6 dBFS');
-    expect(f.complete).toBe(false);
-    f = run(f, ...hearAll);
-    expect(f.complete).toBe(true);
-    for (const s of STEPS) expect(stepState(f, s.id)).toBe('done');
-    // Responses are in lower case, like every response on the site's cards.
-    expectText(stepResponse(f, 'up')).toBe('taped REC, fully up');
-    expectText(stepResponse(f, 'play')).toBe('light blinking red');
-    expectText(stepResponse(f, 'att')).toBe('at −12 dB');
-    expectText(stepResponse(f, 'level')).toBe('stays fully up');
-    expectText(stepResponse(f, 'test')).toBe('heard on headphones');
-    expectText(settingsSummary(f)).toBe(
-      'MASTER LEVEL fully up, MASTER ATT at −12 dB. Write MASTER ATT and BOOTH ATT on the REC tape.',
-    );
+  it('steps MASTER ATT down through its settings as values, with true minus signs', () => {
+    expect(ATT_SETTINGS).toEqual([0, -6, -12]);
+    expect(step('MASTER ATT, if red')?.response).toBe('−6 dB');
+    expect(step('MASTER ATT, if still red')?.response).toBe('−12 dB');
+    expect(words).not.toMatch(/\+12/);
   });
 
-  it('won’t tape MASTER LEVEL until it’s fully up', () => {
-    let f = run(workedStart(), commit);
-    expect(f.step).toBe('up');
-    expect(f.note?.tone).toBe('fix');
-    expectText(f.note?.text).toBe('Turn MASTER LEVEL fully up first. It’s at −9 dB.');
-    // The words remember the rig they were about, so the island can tell when they're out of date.
-    expect(f.note?.rig).toBe(f.rig);
-    f = run(f, level(-3));
-    expect(f.note?.rig).not.toBe(f.rig);
-    f = run(f, level(0), commit);
-    expect(f.step).toBe('play');
+  it('says how to open UTILITY at the first step that needs it', () => {
+    const first = STEPS.findIndex((s) => /UTILITY/.test(s.note ?? ''));
+    expect(STEPS[first]?.note).toBe(IN_UTILITY);
+    expect(STEPS.findIndex((s) => /ATT/.test(s.challenge))).toBe(first);
   });
 
-  it('keeps you on step 2 until the loudest blend is playing', () => {
-    let f = run(upTo('play'), commit);
-    expectText(f.note?.text).toBe('Pick something to play first.');
-    // A quiet track lights green with MASTER ATT at 0 dB, so it's tempting to stop here.
-    f = run(f, { type: 'play', material: 'quiet' }, commit);
-    expect(f.step).toBe('play');
-    expectText(f.note?.text).toContain('quiet track');
-    f = run(f, blend, commit);
-    expect(f.step).toBe('att');
+  it('ends on the rule the night’s drill uses, in its words', () => {
+    const fallback = STEPS.find((s) => s.challenge.startsWith(`${LEVEL_FALLBACK.challenge},`));
+    expect(fallback?.response).toBe(`down ${LEVEL_FALLBACK.how}`);
+    // Its consequence comes before the step, where it's read before it's done.
+    expect(fallback?.before).toBe(LEVEL_FALLBACK.consequence);
+    // It comes after both MASTER ATT settings.
+    expect(STEPS.indexOf(fallback!)).toBeGreaterThan(STEPS.indexOf(step('MASTER ATT, if still red')!));
   });
 
-  it('won’t let MASTER LEVEL do MASTER ATT’s job', () => {
-    let f = run(upTo('att'), level(-9));
-    // The light goes green, but the tape shows the slip.
-    expect(offMark(f)).toBe('level');
-    f = run(f, commit);
-    expect(f.step).toBe('att');
-    expectText(f.note?.text).toContain('turn the recording down with MASTER ATT');
-    f = run(f, level(0), att(-12), commit);
-    expect(offMark(f)).toBeNull();
-    expect(f.step).toBe('level');
+  it('checks the file against the model’s target for the loudest blend', () => {
+    expect(BLEND_MAX_DBFS).toBe(`−${Math.abs(TARGET.blendMax)} dBFS`);
+    expect(STEPS.at(-1)?.response).toContain(BLEND_MAX_DBFS);
   });
 
-  it('leaves MASTER LEVEL fully up at step 4 on the site’s Howler, and says why if you move it', () => {
-    // The light is green with MASTER ATT set, so the key says there's nothing to do.
-    expect(stepAction(upTo('level'))).toBe('Leave it fully up');
-    let f = run(upTo('level'), level(-6), commit);
-    expect(f.step).toBe('level');
-    expectText(f.note?.text).toContain('put it back there, on its tape');
-    f = run(f, level(0), commit);
-    expect(f.step).toBe('test');
-    expect(f.kept.tape).toBe(LEVEL.max);
-  });
-
-  it('refuses to record a setting that has moved', () => {
-    let f = run(upTo('test'), level(-3));
-    expect(offMark(f)).toBe('level');
-    f = run(f, commit);
-    expect(f.recorded).toBe(false);
-    expectText(f.note?.text).toBe('MASTER LEVEL is off its REC tape. Put it back fully up, then record.');
-    f = run(f, level(0), att(-6));
-    expect(offMark(f)).toBe('att');
-    f = run(f, commit);
-    expectText(f.note?.text).toBe('MASTER ATT has changed. Set it back to −12 dB, then record.');
-    f = run(f, att(-12), commit);
-    expect(f.recorded).toBe(true);
-  });
-
-  it('forgets a test recording, and a finished job, once MASTER LEVEL or MASTER ATT moves', () => {
-    let f = run(upTo('test'), commit);
-    expect(f.recorded).toBe(true);
-    // Nudging a control to where it already is changes nothing.
-    expect(run(f, level(0), att(-12))).toBe(f);
-    f = run(f, level(-18));
-    expect(f.recorded).toBe(false);
-    expect(f.note).toBeNull();
-    expect(offMark(f)).toBe('level');
-    f = run(f, level(0), commit, ...hearAll);
-    expect(f.complete).toBe(true);
-    f = run(f, att(-6));
-    expect(f.complete).toBe(false);
-    expect(f.recorded).toBe(false);
-    expect(Object.values(f.heard).some(Boolean)).toBe(false);
-    expect(stepState(f, 'test')).toBe('current');
-    // Changing what's playing doesn't change the setting, so a recording stands.
-    const g = run(upTo('test'), commit, { type: 'play', material: 'quiet' });
-    expect(g.recorded).toBe(true);
-  });
-
-  it('only completes when every headphone check is ticked after recording', () => {
-    let f = run(workedStart(), ...hearAll);
-    expect(f.complete).toBe(false);
-    f = run(upTo('test'), commit, ...hearAll.slice(0, 2));
-    expect(f.complete).toBe(false);
-    f = run(f, hearAll[2]!);
-    expect(f.complete).toBe(true);
-    expect(f.note).toBeNull();
-    // Un-ticking a check takes you back to listening.
-    f = run(f, { type: 'heard', check: 'sides', value: false });
-    expect(f.complete).toBe(false);
-    expectText(f.note?.text).toContain('Recorded 2 minutes');
-  });
-
-  it('snaps MASTER LEVEL to its notches, from off to fully up', () => {
-    expect(run(workedStart(), level(9)).rig.level).toBe(0);
-    expect(run(workedStart(), level(-4)).rig.level).toBe(-3);
-    expect(run(workedStart(), level(-60)).rig.level).toBe(Number.NEGATIVE_INFINITY);
-  });
-
-  it('says what the finished step did, then which step is next', () => {
-    expect(doneAnnouncement(upTo('level'))).toMatch(/Step 4 of 5: MASTER LEVEL, if still red\.$/);
-    const f = upTo('play');
-    expectText(doneAnnouncement(f)).toBe(
-      'Taped fully up and marked REC. The middle meters now show the mix itself. Step 2 of 5: Loudest blend.',
-    );
-  });
-});
-
-describe('a Howler that MASTER ATT alone can’t tame', () => {
-  it('hands over to MASTER LEVEL, and moves the REC tape to the new spot', () => {
-    let f = run(workedStart(TIGHT), level(0), commit, blend, commit, att(-6), commit, att(-12), commit);
-    expect(f.step).toBe('level');
-    expectText(f.last?.text).toBe('Still red with MASTER ATT at −12 dB, its lowest step. MASTER LEVEL is next.');
-    expect(stepAction(f)).toBe('Mark it here');
-    // Moving MASTER LEVEL is this step's job, so it isn't flagged as a slip.
-    f = run(f, level(-3));
-    expect(offMark(f)).toBeNull();
-    f = run(f, commit);
-    expectText(f.note?.text).toBe(`Still red. Keep turning it down ${LEVEL_FALLBACK.how}.`);
-    f = run(f, level(-9), commit);
-    expectText(f.note?.text).toContain('Lower than it needs to be');
-    // A notch at a time until green: the first notch that stays green.
-    f = run(f, level(-6), commit);
-    expect(f.step).toBe('test');
-    expect(f.kept.tape).toBe(-6);
-    expectText(stepResponse(f, 'level')).toBe('marked REC at −6 dB');
-    expectText(f.last?.text).toContain('The middle meters now read 6 dB low');
-    // The test holds MASTER LEVEL to its new tape.
-    f = run(f, level(0), commit);
-    expectText(f.note?.text).toContain('Put it back on −6 dB');
-    f = run(f, level(-6), commit);
-    expect(f.recorded).toBe(true);
-    expectText(f.note?.text).toContain('loudest blend peaks at −3 dBFS');
-    f = run(f, ...hearAll);
-    expectText(settingsSummary(f)).toMatch(/^MASTER LEVEL at −6 dB, MASTER ATT at −12 dB\./);
-  });
-});
-
-describe('the steps’ words', () => {
-  it('works in what the booth shows, and says why the test blend is so loud', () => {
-    for (const s of STEPS) expect(`${s.target} ${s.instruction}`, s.id).not.toMatch(/dBFS/);
-    expect(step('play').instruction).toContain('louder than any DJ should play');
-    expect(step('play').instruction).toContain('on purpose');
-    // Red on purpose goes against the rules, so it's only for the test, and the file goes.
-    expect(step('play').instruction).toContain('only for the test, with no set playing');
-    expect(step('play').instruction).toContain('delete any recording of it');
-    // Both ATTs go on the tape, so the night's "both ATTs as on the tape" can be checked.
-    expect(step('att').instruction).toContain('write MASTER ATT and BOOTH ATT on the REC tape');
-    // "Hot" is sound-engineer talk.
-    for (const s of STEPS) expect(`${s.target} ${s.instruction}`, s.id).not.toMatch(/\bhot/);
-    // Responses are in lower case, like every response on the site's cards.
-    for (const s of STEPS) expect(s.target.charAt(0), s.id).toBe(s.target.charAt(0).toLowerCase());
-    expect(step('att').instruction).toContain('down a step, to −6 dB');
-    expect(step('att').instruction).toContain('If it’s still red, set it to −12 dB');
-    // Conditions are written out, as a quick reference handbook writes them: no "Still red?" lead-ins.
-    for (const s of STEPS) expect(`${s.label} ${s.instruction}`, s.id).not.toMatch(/\?/);
-  });
-
-  it('words MASTER LEVEL’s fallback as the setup checklist and the Howler drill do', () => {
-    // One rule for S1, S3, T2 and F1 (checklists.ts).
-    expect(step('level').label).toBe('MASTER LEVEL, if still red');
-    expect(step('level').target).toBe(LEVEL_FALLBACK.response);
-    expect(step('level').instruction.startsWith(LEVEL_FALLBACK.text)).toBe(true);
-    expect(step('level').instruction).toContain('turn MASTER LEVEL down a notch at a time until green');
-    expect(step('level').instruction).toContain('re-mark the REC tape.');
-    expect(step('level').instruction).toContain('The middle meters then read low');
-  });
-
-  it('says how to open UTILITY where the steps first send you there', () => {
-    expect(step('att').instruction).toContain('To open UTILITY, hold MENU (UTILITY) for over a second.');
-  });
-
-  it('gives every step a key, and says where the room’s volume comes from', () => {
-    expect(STEPS.map((s) => s.action)).toEqual([
-      'Tape it',
-      'Check the light',
-      'Set it here',
-      'Mark it here',
-      'Record 2 minutes',
-    ]);
-    expect(ROOM_NOTE).toContain('bring the room back up at the amps');
-  });
-});
-
-describe('your turn', () => {
-  it('starts somewhere random, shuffled, with nothing playing', () => {
-    const f = practiceStart(prng(3));
-    expect(f.mode).toBe('practice');
-    expect(f.rig.material).toBeNull();
-    expect(f.rig.level).toBeLessThan(LEVEL.max);
-    expect(f.rig).toMatchObject(f.found);
-    expect(f.order).not.toEqual(['quiet', 'loud', 'blend']);
-  });
-
-  it('runs the same steps and keeps the error recovery', () => {
-    let f = practiceStart(prng(5));
-    f = run(f, { type: 'play', material: 'quiet' }, level(0), commit, commit);
-    expect(f.note?.tone).toBe('fix');
-    expect(f.step).toBe('play');
-    f = run(f, blend, commit, att(-12), commit, commit);
-    expect(f.step).toBe('test');
+  it('writes each line as a state, in the handbook’s words', () => {
+    for (const s of STEPS) expect(s.response, s.challenge).not.toMatch(/^(check|set|as required|watch)\b/i);
+    expect(words).not.toMatch(/n’t\b|n't\b/);
+    expect(words).not.toMatch(/, so\b/);
+    expect(words).not.toMatch(/record level|middle meters/i);
+    expect(words).not.toMatch(/\d (?:dB|dBFS|seconds?|minutes?)\b/);
   });
 });

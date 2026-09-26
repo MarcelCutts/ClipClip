@@ -3,7 +3,8 @@
  * a night. Used by the <Checklist> island.
  *
  * Ticks are kept so a reload or a locked phone doesn't lose them, but only for as long as one run of the
- * list lasts. Setup, Doors and After run once, so their ticks last 12 hours. Changeover runs at every DJ
+ * list lasts. Setting up, Doors and End of the night run once, so their ticks last 12 hours. Next day's
+ * work on the recordings can spread over two days, so its ticks last 48. Changeover runs at every DJ
  * change, so its ticks go 30 minutes after the last one: the next changeover starts empty, and one that
  * comes round sooner opens on when the last one ran and a key to start afresh.
  *
@@ -24,6 +25,7 @@ export const TICK_LIFETIMES: Readonly<Record<ChecklistId, number>> = {
   doors: 12 * HOUR,
   changeover: 30 * MINUTE,
   after: 12 * HOUR,
+  files: 48 * HOUR,
 };
 
 /**

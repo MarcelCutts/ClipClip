@@ -19,9 +19,6 @@
    * row (arrow keys move it), and the tap lands anywhere across the well, not just on the LEDs.
    * The reader's pick keeps a dashed white frame round MASTER's LEDs and the numbers either side,
    * which stays beside the real peak after guessing ends.
-   *
-   * With `hideMaster`, MASTER stays dark behind a question mark (the meter check asks where it
-   * will go); CLIP stays dark too.
    */
   import type { ClipState } from '../../lib/blend/model';
   import { formatDb } from '../../lib/dsp/db';
@@ -34,8 +31,6 @@
     clip: ClipState;
     /** 'lab' sizes itself from the blend lab's mixer; 'card' is the meter check's small picture. */
     size?: 'lab' | 'card';
-    /** Keep MASTER dark behind a question mark until the reader has answered. */
-    hideMaster?: boolean;
     /** The reader's guess at MASTER's peak, as one LED's dB mark, or null. */
     guess?: number | null;
     /** The guess is open: every row of the well is a radio for MASTER's LED on it. */
@@ -55,7 +50,6 @@
     ch2,
     clip,
     size = 'lab',
-    hideMaster = false,
     guess = null,
     guessing = false,
     guessName = 'guess',
@@ -71,8 +65,7 @@
   /** Grid row of each LED: the names and CLIP come first. */
   const gridRow = (i: number) => i + 3;
 
-  const lit = $derived({ ch1: litCount(ch1), master: hideMaster ? 0 : litCount(master), ch2: litCount(ch2) });
-  const clipShown = $derived(hideMaster ? 'off' : clip);
+  const lit = $derived({ ch1: litCount(ch1), master: litCount(master), ch2: litCount(ch2) });
 
   /** What each meter says, for screen readers. */
   const spoken = (name: string, level: number) =>
@@ -80,11 +73,7 @@
   const valueNow = (level: number) => (Number.isFinite(level) ? Math.max(-30, Math.min(15, level)) : -30);
   const meters = $derived([
     { name: 'CH1', level: ch1, text: spoken('CH1', ch1) },
-    {
-      name: 'MASTER',
-      level: hideMaster ? Number.NEGATIVE_INFINITY : master,
-      text: hideMaster ? 'MASTER: hidden until you answer' : spoken('MASTER', master),
-    },
+    { name: 'MASTER', level: master, text: spoken('MASTER', master) },
     { name: 'CH2', level: ch2, text: spoken('CH2', ch2) },
   ]);
 </script>
@@ -107,7 +96,7 @@
   <span class="name ch1 hw-label" aria-hidden="true">CH1</span>
   <span class="name master hw-label" aria-hidden="true">Master</span>
   <span class="name ch2 hw-label" aria-hidden="true">CH2</span>
-  <span class="clip hw-label" data-state={clipShown} aria-hidden="true">Clip</span>
+  <span class="clip hw-label" data-state={clip} aria-hidden="true">Clip</span>
 
   {#each rows as seg, i (seg.db)}
     {@const index = METER_SEGMENTS.length - 1 - i}
@@ -119,10 +108,6 @@
     <span class="tick s2" class:zero={seg.db === 0} class:cut style:grid-row={gridRow(i)} aria-hidden="true">{scaleLabel(seg.db)}</span>
     <span class="led c2" data-zone={seg.zone} data-on={index < lit.ch2} class:cut style:grid-row={gridRow(i)} aria-hidden="true"></span>
   {/each}
-
-  {#if hideMaster}
-    <span class="unknown" aria-hidden="true">?</span>
-  {/if}
 
   {#if guessing}
     <!-- Not a fieldset: the rows share the well's grid (a subgrid), which a fieldset's rendering
@@ -389,19 +374,6 @@
     grid-column: s2;
     justify-self: end;
     padding-inline-start: 0.15rem;
-  }
-
-  /* Hidden until answered: a question mark over MASTER's two columns. */
-  .unknown {
-    grid-row: leds / leds-end;
-    grid-column: ml / s2;
-    display: grid;
-    place-items: center;
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 2.4rem;
-    line-height: 1;
-    color: var(--hw-label);
   }
 
   /*

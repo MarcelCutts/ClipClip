@@ -1,10 +1,13 @@
 /**
- * The knob tags crew stick on the gear, in one place, so the printed tags, the quiz picture and any
- * page that mentions them always say the same thing.
+ * The knob tags crew stick on the gear, in one place, so the printed tags and the setup page's
+ * wiring table say the same thing.
  *
  * One wiring: MASTER LEVEL sets MASTER 1 (the PA) and MASTER 2 (the Howler) together, so it stays
  * fully up and carries REC. BOOTH MONITOR sets only the booth monitors, so it's the DJ's: MONITOR.
  * The room's volume comes from the amps' gain knobs, taped RIG.
+ *
+ * A short tag is a word and whose it is, in one form for all three: "crew" or "yours". The long tag
+ * under MASTER LEVEL leads with what to do, as a label a hand already on the knob reads first.
  */
 import { DJ_RULES } from './rules';
 
@@ -12,7 +15,7 @@ export interface ShortTag {
   /** The big word on the tape. */
   name: string;
   /** Whose knob it is, printed small after the word. */
-  owner: string;
+  owner: 'crew' | 'yours';
   /** Where the tag goes. */
   where: string;
   /** Settings the crew write on the tape by hand, printed as labelled blanks. */
@@ -20,14 +23,13 @@ export interface ShortTag {
 }
 
 /**
- * On MASTER LEVEL: the recording (and the PA) are set by the crew. The night's checklists check
- * both attenuators against this tape ("both ATTs as on the REC tape"), so it has a blank for each.
+ * On MASTER LEVEL: the recording (and the PA) are the crew's. The night's checklists compare both
+ * attenuators with this tape, so it has a blank for each.
  */
 export const REC_TAG: ShortTag = {
   name: 'REC',
-  owner: 'set by crew',
-  where:
-    'Next to MASTER LEVEL, which stays fully up. It sets the speakers and the recording. Once the record level is set, write MASTER ATT and BOOTH ATT in the blanks.',
+  owner: 'crew',
+  where: 'Next to MASTER LEVEL. Write the MASTER ATT and BOOTH ATT settings in its blanks.',
   blanks: ['MASTER ATT', 'BOOTH ATT'],
 };
 
@@ -42,18 +44,19 @@ export const MONITOR_TAG: ShortTag = {
 export const RIG_TAG: ShortTag = {
   name: 'RIG',
   owner: 'crew',
-  where: 'On both amps, next to the gain knobs, once they’re set for the room.',
+  where: 'On both amps, next to the gain knobs, after they are set for the room.',
 };
 
 export const SHORT_TAGS: readonly ShortTag[] = [REC_TAG, MONITOR_TAG, RIG_TAG];
 
 /** The DJ rule for a louder room, word for word, so the tape under the knob says what the guide says. */
-const ASK_THE_CREW = DJ_RULES.find((r) => r.label === 'RIG')!.text;
+const ASK_THE_CREW = DJ_RULES.find((r) => r.label === 'RIG')?.text;
+if (!ASK_THE_CREW) throw new Error('The DJ rule for a louder room (RIG) needs its one sentence for the tag');
 
-/** The long tag under MASTER LEVEL: what the knob does, and who to ask for more. */
+/** The long tag under MASTER LEVEL: what to do with the knob, what it sets, and who to ask for more. */
 export const MASTER_TAG = {
-  name: 'SPEAKERS + RECORDING',
-  lines: ['Turning it changes both, so leave it.', ASK_THE_CREW],
+  name: 'LEAVE FULLY UP',
+  lines: ['It sets the speakers and the recording.', ASK_THE_CREW],
   /** Printed width in millimetres. */
   width: 90,
   where: 'Under MASTER LEVEL, where a DJ reads it before turning the knob.',

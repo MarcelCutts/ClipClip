@@ -1,15 +1,16 @@
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { describe, expect, it } from 'vitest';
+import { GUIDE_PATH } from '../../lib/messages';
 import { DJ_RULES } from '../../lib/rules';
-import { MONITOR_TAG } from '../../lib/tags';
 
 // Loaded through Vite rather than a plain import, because svelte-check can't resolve .astro files.
 type Component = Parameters<AstroContainer['renderToString']>[0];
 const [BoothCard] = Object.values(import.meta.glob<Component>('./BoothCard.astro', { eager: true, import: 'default' }));
 if (!BoothCard) throw new Error('BoothCard.astro not found');
 
+const REVISED = '26 September 2026';
 const container = await AstroContainer.create();
-const html = await container.renderToString(BoothCard);
+const html = await container.renderToString(BoothCard, { props: { revised: REVISED } });
 /** The card's words, tags stripped, with the entities a renderer might escape put back. */
 const text = html
   .replace(/<[^>]*>/g, ' ')
@@ -19,31 +20,39 @@ const meterLabel = /aria-label="(The meters[^"]*)"/.exec(html)?.[1] ?? '';
 const qrLabel = /aria-label="(QR code: [^"]*)"/.exec(html)?.[1] ?? '';
 
 describe('booth card', () => {
-  it('sets every DJ rule as the “Know by heart” boxes do: what to look at, what it should be, what if not', () => {
+  it('sets the three DJ lines as the “Know by heart” box does: what to look at, what it should be, what if not', () => {
     expect(text).toMatch(/Know by heart when you’re playing/);
+    expect(DJ_RULES).toHaveLength(3);
     for (const rule of DJ_RULES) {
       expect(text, rule.challenge).toContain(rule.challenge);
       expect(text, rule.challenge).toContain(rule.response);
-      if (rule.note) expect(text, rule.challenge).toContain(rule.note);
+      expect(text, rule.challenge).toContain(rule.note);
     }
-    // In the rules’ order, numbered by the list.
+    // In the rules' order, numbered by the list.
     const at = DJ_RULES.map((r) => text.indexOf(r.challenge));
     expect([...at].sort((a, b) => a - b)).toEqual(at);
   });
 
-  it('tells DJs the one knob that’s theirs, as its tag does, and only once', () => {
-    expect(MONITOR_TAG.owner).toBe('yours');
-    expect(text).toMatch(/If the booth monitors are too quiet, turn up BOOTH MONITOR\. It’s yours\./);
+  it('names the DJ’s own knob once, in the MASTER LEVEL line’s note', () => {
     expect(text.match(/BOOTH MONITOR/g)).toHaveLength(1);
     // The Howler records from MASTER 2, so no knob on the card is "your recording level".
     expect(text).not.toMatch(/knob marked REC|recording level|BOOTH = /i);
   });
 
-  it('says why in a plain statement, not a slogan', () => {
-    expect(text).toMatch(/We record every set, and crunch from the red stays in the recording for good\./);
-    expect(text).not.toMatch(/Why:/);
+  it('says every set is recorded, and promises nothing more', () => {
+    expect(text).toMatch(/Every set here is recorded\./);
+    expect(text).not.toMatch(/for good|for ever|stays in the recording|sent your set/i);
     // No question-and-answer lead-ins on the card.
     expect(text).not.toMatch(/\?\s+\p{Lu}/u);
+  });
+
+  it('has a line to write in who is on crew tonight', () => {
+    expect(text).toMatch(/Crew tonight:/);
+    expect(html).toMatch(/class="blank"/);
+  });
+
+  it('carries the date its words last changed', () => {
+    expect(text).toContain(`Revised ${REVISED}`);
   });
 
   it('marks the target on the meter drawing by position, not just colour, in the guide’s words', () => {
@@ -61,8 +70,8 @@ describe('booth card', () => {
     expect(html).toMatch(/class="tick zero"/);
   });
 
-  it('sends the QR code to the guide, where playing a set starts', () => {
-    expect(qrLabel).toMatch(/\/#trim$/);
+  it('sends the QR code to the guide, where playing a set starts, as the DJ briefing does', () => {
+    expect(qrLabel.endsWith(GUIDE_PATH)).toBe(true);
     expect(text).toMatch(/Scan for the guide/);
     expect(html).not.toMatch(/\/dj\//);
   });

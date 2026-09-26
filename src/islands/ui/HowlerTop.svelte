@@ -7,7 +7,7 @@
    * lights side by side above it, the name printed beside it, and RCA sockets on both ends (IN on
    * the left, the thru OUT on the right). The lights are drawn larger than life so they read.
    *
-   * Only LEVEL is ever lit: it's the one light that says anything about the record level, and the
+   * Only LEVEL is ever lit: it's the one light that says anything about the recording level, and the
    * site's lit colours only mean a signal state. RECORD stays unlit too: here it's part of the
    * drawing, not a key to press. Decorative, so hidden from screen readers: whoever uses it says
    * the light's state in words beside it.

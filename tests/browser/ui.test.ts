@@ -240,11 +240,11 @@ test('a neutral fader zone is printed in the panel’s grey, not a chart colour'
 test('a pressed pad lights: a white one lights all over, a level preset only lights its LED', async () => {
   const white = await render(Pad, { pressed: true, children: words('Normalise') });
   const red = await render(Pad, { pressed: true, tone: 'red', children: words('Channels in the red') });
-  const off = await render(Pad, { pressed: false, tone: 'red', children: words('Record level too high') });
+  const off = await render(Pad, { pressed: false, tone: 'red', children: words('Recording level too high') });
   const face = (l: Locator) => getComputedStyle(l.element()).backgroundColor;
   const whiteKey = white.getByRole('button', { name: 'Normalise' });
   const redKey = red.getByRole('button', { name: 'Channels in the red' });
-  const offKey = off.getByRole('button', { name: 'Record level too high' });
+  const offKey = off.getByRole('button', { name: 'Recording level too high' });
   await expect.element(redKey).toHaveAttribute('aria-pressed', 'true');
   // No LED on a plain pad: the pad is the light.
   expect(white.container.querySelector('.led')).toBeNull();

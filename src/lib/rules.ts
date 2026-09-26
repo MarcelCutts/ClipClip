@@ -1,117 +1,84 @@
 /**
- * The rules, in one place, so every page, card and chat message says exactly the same thing.
- * They're written for our wiring: the Howler recording from MASTER 2, so MASTER LEVEL sets both
- * the speakers and the recording, and BOOTH MONITOR feeds the booth monitors.
+ * The lines to know by heart, in one place, so the guide, the night page, the booth card and the
+ * chat messages say exactly the same thing. Written for our wiring: the Howler records from
+ * MASTER 2, so MASTER LEVEL sets both the speakers and the recording, and BOOTH MONITOR sets only
+ * the booth monitors.
  *
- * Each rule reads two ways. As a checklist line, for the "Know by heart" boxes: a challenge (what
- * to look at) and a response (what it should be), with a note on what to do if it isn't. And as one
- * sentence, `text`, short enough for a strip of tape.
+ * Each line is set like a quick reference handbook's: the name printed on the gear, leader dots,
+ * then the state you can see. Its note says what to do if it isn't so, in one sentence that starts
+ * with the condition. A box holds three lines: UK CAA CAP 676 prefers fewer than four (Ch. 7 §2.6).
  */
 
-/** The piece of gear a rule's drawing shows on the print kit: a channel meter, the mix, a knob. */
-export type RuleGlyph = 'meter' | 'stereo' | 'knob';
-
 export interface Rule {
-  /** The rule as one sentence. */
-  text: string;
-  /** What to look at, as named on the gear or in the booth. */
+  /** What to look at, named as it's printed on the gear. */
   challenge: string;
-  /** What it should be. */
+  /** The state you should see. */
   response: string;
-  /** What to do when it isn't. */
-  note?: string;
-  /** The part of the rig the rule is about, lettered like the gear: TRIM, MIX, REC. */
-  label?: string;
-  glyph?: RuleGlyph;
-  /** Where the guide explains it: an anchor on the guide, like '#trim'. */
+  /** What to do if it isn't so, as one "If …, …" sentence. The chat and the booth card carry it whole. */
+  note: string;
+  /** Where the guide explains it: a section's anchor, like '#trim'. */
   why?: string;
+  /** The drill for when it isn't so, by its id in fixes.ts: 'howler-red' lands on /night/#fix-howler-red. */
+  drill?: string;
+  /** The rule as one sentence, for the tape tag that prints it. */
+  text?: string;
+  /** The tape tag the print kit finds it by: TRIM, MIX, RIG. */
+  label?: string;
 }
 
-const trim: Rule = {
+const channelMeters: Rule = {
   // Position, not just colour: orange runs from 0 to +9, and a blend adds up to two lights.
-  // "Channel meters" names the meter: at a changeover the middle ones show the other DJ's track.
-  text: 'Keep the channel meters on the first or second orange.',
   challenge: 'Channel meters',
   response: 'first or second orange',
-  note: 'If red, ease TRIM back. Set it on cue, before the fader goes up.',
+  note: 'If red, turn TRIM (the gain knob) down a little.',
   label: 'TRIM',
-  glyph: 'meter',
   why: '#trim',
 };
 
-const mix: Rule = {
-  text: 'In a blend, watch the middle meters.',
-  challenge: 'In a blend',
-  response: 'watch the middle meters',
-  note: 'If red, ease a fader down a notch.',
+const masterMeters: Rule = {
+  // Pioneer prints MASTER over the pair; its manual calls them the master level indicator.
+  challenge: 'MASTER meters (the pair in the middle)',
+  response: 'below red in a blend',
+  note: 'If red, pull a channel fader down a little.',
   label: 'MIX',
-  glyph: 'stereo',
   why: '#blends',
 };
 
-/** The deal, as a DJ hears it. */
-const rigDj: Rule = {
-  text: 'If you want it louder, ask the crew.',
-  challenge: 'Louder room',
-  response: 'ask the crew',
-  note: 'MASTER LEVEL is the crew’s. They turn the amps up.',
-  label: 'RIG',
-  glyph: 'knob',
-  why: '#knobs',
-};
-
-/**
- * The one knob that's the DJ's, in the booth card's words ("If the booth monitors are too quiet,
- * turn up BOOTH MONITOR. It’s yours."). BOOTH feeds only the booth monitors on this rig.
- */
-const booth: Rule = {
-  text: 'For louder monitors, turn up BOOTH MONITOR.',
-  challenge: 'Louder monitors',
-  response: 'turn up BOOTH MONITOR',
-  note: 'It’s yours. It changes the booth monitors, not the room or the recording.',
-  label: 'MONITOR',
-  glyph: 'knob',
-  why: '#knobs',
-};
-
-/** The same deal, as the crew keep it. */
-const rigCrew: Rule = {
-  text: 'More volume comes from the amps.',
-  challenge: 'More volume',
-  response: 'at the amps',
-  // The amps' own CH1 and CH2 knobs are the ones to turn, so "channels" here are the DJ's.
-  note: 'When a DJ wants more, turn up the gain on both amps. Leave MASTER LEVEL and the DJ’s channels alone.',
+/** The deal, as a DJ hears it: MASTER LEVEL is the crew's, and so is the room's volume. */
+const masterLevel: Rule = {
+  challenge: 'MASTER LEVEL',
+  response: 'fully up, the crew’s',
+  note: 'For a louder room, ask the crew. For a louder booth, turn up BOOTH MONITOR.',
+  text: 'For a louder room, ask the crew.',
   label: 'RIG',
   why: '#knobs',
 };
 
-const rec: Rule = {
-  // MASTER LEVEL stays fully up so the middle meters show the mix itself (they read after it).
-  text: 'Set the record level once, then tape it.',
-  challenge: 'Record level',
-  response: 'set once, taped',
-  note: 'MASTER LEVEL fully up and marked REC. If the Howler’s LEVEL light still blinks red, use MASTER ATT.',
-  label: 'REC',
-  why: '#record-level',
+/** The same deal, as the crew keep it: the room's volume comes from the amps (F4). */
+const crewMasterLevel: Rule = {
+  challenge: 'MASTER LEVEL',
+  response: 'fully up, on the REC mark',
+  note: 'If a DJ wants a louder room, turn up the amps.',
+  drill: 'not-loud',
 };
 
-const howler: Rule = {
-  text: 'Check the Howler’s LEVEL light at every changeover.',
+const howlerLight: Rule = {
   challenge: 'Howler LEVEL light',
-  response: 'every changeover',
-  note: 'Blinking green is right. If it blinks red, check the middle meters first.',
-  label: 'HOWLER',
-  why: '#two-ceilings',
+  response: 'blinking green',
+  note: 'If it blinks red, look at the MASTER meters, the pair in the middle, first.',
+  drill: 'howler-red',
 };
 
-/** For the booth card and the DJ briefing: the three a DJ needs. Both add BOOTH MONITOR in a line of their own. */
-export const DJ_RULES: Rule[] = [trim, mix, rigDj];
+/** A DJ's MY SETTINGS can bring back their own UTILITY settings, the ATTs among them (Pioneer manual p. 31). */
+const atts: Rule = {
+  challenge: 'MASTER ATT and BOOTH ATT',
+  response: 'as on the REC tape',
+  note: 'If a DJ loads MY SETTINGS, compare both with the tape.',
+  drill: 'my-settings',
+};
 
-/**
- * The guide's box for DJs: the three, then the one knob that's theirs. Four items, the most a
- * box to know by heart should hold (UK CAA CAP 676).
- */
-export const DJ_BOX_RULES: Rule[] = [...DJ_RULES, booth];
+/** For the guide's box, the booth card and the DJ briefing. */
+export const DJ_RULES: Rule[] = [channelMeters, masterMeters, masterLevel];
 
-/** For the guide and the night page, and the crew cards: the same three everywhere. */
-export const CREW_RULES: Rule[] = [rec, howler, rigCrew];
+/** For the crew's box on the night page. */
+export const CREW_RULES: Rule[] = [crewMasterLevel, howlerLight, atts];

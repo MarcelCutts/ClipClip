@@ -7,7 +7,7 @@ const NBSP = ' ';
 describe('copy', () => {
   it('writes the reveal the way the brief asks', () => {
     expect(copy.revealLine({ pushDb: 6, clipped: 'b' })).toBe(
-      `B was pushed 6${NBSP}dB past the ceiling, then turned down to match.`,
+      `B was pushed 6${NBSP}dB past the red, then turned down to match.`,
     );
   });
 
@@ -16,28 +16,26 @@ describe('copy', () => {
     expect(copy.dbText(2.91)).toBe(`3${NBSP}dB`);
   });
 
-  it('names the louder side when the loudness is not matched', () => {
-    expect(copy.unmatchedNote({ pushDb: 12, clipped: 'a' }, -8.26)).toMatch(
-      /^A now plays .* about 8 dB louder than B\./,
-    );
-  });
-
-  it('says how much louder the unmatched one plays before you press for it', () => {
-    expect(copy.unmatchedHint(-8.26)).toBe(
-      `This plays the clipped one as loud as the mixer left it, about 8${NBSP}dB louder. On headphones, turn your volume down first.`,
-    );
-    // The same number as the note that replaces it once pressed.
-    for (const db of [-8.26, -5.3, -2.9]) {
-      expect(copy.unmatchedHint(db)).toContain(`about ${copy.dbText(db)} louder`);
-      expect(copy.unmatchedNote({ pushDb: 6, clipped: 'b' }, db)).toContain(`about ${copy.dbText(db)} louder`);
-    }
+  it('offers no way to hear the clipped one unmatched: every comparison is loudness-matched', () => {
+    for (const name of [
+      'UNMATCHED_LABEL',
+      'unmatchedHint',
+      'unmatchedNote',
+      'scopeCaption',
+      'MODEL_NOTE',
+      'FINAL_LINE',
+    ])
+      expect(copy, name).not.toHaveProperty(name);
+    expect(copy.ROUND_INTROS[0]).toMatch(/Both play at the same loudness\.$/);
+    expect(copy.scopeTitle(true)).toBe('Clipped, turned down to match');
+    expect(copy.scopeTitle(false)).toBe('Clean');
   });
 
   it('says how far each round pushes the clipped one, and never which one it is', () => {
     expect(copy.ROUND_INTROS).toEqual([
-      `Play A and B. One was pushed 12${NBSP}dB past the mixer’s ceiling, so it clipped. Both play equally loud.`,
-      `This time the clipped one was pushed 6${NBSP}dB past the ceiling.`,
-      `In the last round, the clipped one was pushed only 3${NBSP}dB past the ceiling.`,
+      `Play A and B. One was pushed 12${NBSP}dB past the red and clipped. Both play at the same loudness.`,
+      `The clipped one was pushed 6${NBSP}dB past the red.`,
+      `The clipped one was pushed 3${NBSP}dB past the red.`,
     ]);
     for (const intro of copy.ROUND_INTROS) expect(intro).not.toMatch(/\b(A|B) (was|is)\b/);
   });
@@ -46,49 +44,48 @@ describe('copy', () => {
     expect(copy.scoreLine({ spotted: 2, total: 3, confidentMisses: [] })).toBe('You spotted 2 of 3.');
   });
 
-  it('only calls out confident mistakes', () => {
+  it('only calls out confident mistakes, then says what to do in the booth', () => {
     const base: Summary = { spotted: 3, total: 3, confidentMisses: [] };
     expect(copy.hypercorrectionLine(base)).toBeNull();
-    expect(copy.hypercorrectionLine({ ...base, spotted: 2, confidentMisses: [2] })).toMatch(
-      /^You were certain about round 3, and it was the other one\./,
+    expect(copy.hypercorrectionLine({ ...base, spotted: 2, confidentMisses: [2] })).toBe(
+      'You were certain in round 3 and chose the clean one. In the booth, trust the meters over your ears.',
     );
     expect(copy.hypercorrectionLine({ ...base, spotted: 1, confidentMisses: [0, 2] })).toMatch(
-      /^You were certain about rounds 1 and 3, and both times/,
+      /^You were certain in rounds 1 and 3 and chose the clean one both times\. /,
     );
     expect(copy.hypercorrectionLine({ ...base, spotted: 0, confidentMisses: [0, 1, 2] })).toMatch(
-      /^You were certain every time/,
+      /^You chose the clean one in every round, and you were certain each time\. /,
     );
   });
 
   it('counts confident mistakes right however many rounds there are', () => {
     const four: Summary = { spotted: 1, total: 4, confidentMisses: [0, 1, 2] };
     expect(copy.hypercorrectionLine(four)).toMatch(
-      /^You were certain about rounds 1, 2 and 3, and each time it was the other one\./,
+      /^You were certain in rounds 1, 2 and 3 and chose the clean one each time\./,
     );
     expect(copy.hypercorrectionLine({ ...four, spotted: 2, confidentMisses: [1, 3] })).toMatch(
-      /^You were certain about rounds 2 and 4, and both times it was the other one\./,
+      /^You were certain in rounds 2 and 4 and chose the clean one both times\./,
     );
     expect(copy.hypercorrectionLine({ ...four, spotted: 0, confidentMisses: [0, 1, 2, 3] })).toMatch(
-      /^You were certain every time/,
+      /^You chose the clean one in every round/,
     );
   });
 
-  it('describes each waveform the way it is drawn, matched or not', () => {
+  it('describes each waveform the way it is drawn', () => {
     expect(copy.scopeLabel('a', false)).toMatch(/^Waveform of A, the clean one\./);
     expect(copy.scopeLabel('b', true)).toMatch(/turned down to match\. Smaller than the clean kick/);
-    expect(copy.scopeLabel('b', true, true)).toMatch(/at the mixer’s level\. Fatter than the clean kick/);
   });
 
-  it('places each waveform against the ceiling line, as the screens draw it', () => {
-    expect(copy.scopeLabel('a', false)).toMatch(/just under the mixer’s ceiling\.$/);
-    expect(copy.scopeLabel('b', true)).toMatch(/cut flat and now under the mixer’s ceiling\.$/);
-    expect(copy.scopeLabel('b', true, true)).toMatch(/cut flat at the mixer’s ceiling\.$/);
-    expect(copy.CEILING_KEY).toMatch(/mixer’s ceiling/);
+  it('places each waveform against the line where the mixer clips, as the screens draw it', () => {
+    expect(copy.scopeLabel('a', false)).toMatch(/just under the line where the mixer clips\.$/);
+    expect(copy.scopeLabel('b', true)).toMatch(/cut flat, now under the line where the mixer clips\.$/);
+    expect(copy.CEILING_KEY).toBe('Where the mixer clips');
+    expect(copy.FLAT_KEY).toBe('Flat tops, heard as crunch');
   });
 
   it('says the sound is missing in the words every lab uses', () => {
     expect(copy.NO_AUDIO).toBe(
-      'This browser can’t play the sound. Everything else works; try another browser to hear it.',
+      'This browser cannot play the sound. Everything else works. To hear it, try another browser.',
     );
   });
 
@@ -96,8 +93,8 @@ describe('copy', () => {
     expect(copy.PLAYER_LABEL).not.toMatch(/\b[AB]\b/);
   });
 
-  it('tells you what to listen for on every device', () => {
-    for (const d of DEVICES) expect(copy.DEVICE_TIPS[d]).toMatch(/Listen/);
+  it('tells you what to listen for on every device, the action first', () => {
+    for (const d of DEVICES) expect(copy.DEVICE_TIPS[d]).toMatch(/^Listen for crunch/);
   });
 
   it('has a tip and an explanation for every device', () => {
@@ -108,7 +105,7 @@ describe('copy', () => {
     }
   });
 
-  it('follows the house style: short sentences, no shouting, no dashes, no please', () => {
+  it('follows the house style: short sentences, facts first, no shouting, no dashes, no please', () => {
     const summary: Summary = { spotted: 1, total: 3, confidentMisses: [0, 1] };
     const texts = [
       ...Object.values(copy.LEGENDS),
@@ -117,7 +114,6 @@ describe('copy', () => {
       ...Object.values(copy.DEVICE_EXPLANATIONS),
       copy.HEADPHONE_WARNING,
       copy.TRANSPORT_NOTE,
-      copy.MODEL_NOTE,
       copy.NO_AUDIO,
       copy.SCOPE_WAITING,
       copy.MISSING_PICK,
@@ -125,19 +121,17 @@ describe('copy', () => {
       copy.CHECK,
       copy.PLAYER_LABEL,
       copy.revealLine({ pushDb: 12, clipped: 'a' }),
-      copy.scopeCaption(false),
-      copy.scopeCaption(true),
+      copy.scopeTitle(true),
       copy.scopeLabel('a', true),
-      copy.scopeLabel('a', true, true),
       copy.scopeLabel('b', false),
       copy.FLAT_KEY,
       copy.CEILING_KEY,
-      copy.UNMATCHED_LABEL,
-      copy.unmatchedHint(-8.26),
-      copy.unmatchedNote({ pushDb: 3, clipped: 'b' }, -2.9),
+      copy.verdictLine(true),
+      copy.verdictLine(false),
+      copy.nextLabel(2, 3),
       copy.hypercorrectionLine(summary)!,
+      copy.hypercorrectionLine({ spotted: 0, total: 3, confidentMisses: [0, 1, 2] })!,
       copy.hypercorrectionLine({ spotted: 1, total: 4, confidentMisses: [0, 1, 2] })!,
-      copy.FINAL_LINE,
     ];
     for (const text of texts) {
       expect(text).not.toMatch(/[!—]|please/i);
@@ -148,9 +142,13 @@ describe('copy', () => {
       expect(text, text).not.toMatch(/(^|\. )[^.?]{1,40}\? [A-Z]/);
       expect(text, text).not.toMatch(/\. Not [a-z]/);
       expect(text, text).not.toMatch(/^[^:.]{1,16}: [a-z]/);
+      // The reference register: no negative contractions, no ", so" chains, no idioms.
+      expect(text, text).not.toMatch(/n’t\b|n't\b/);
+      expect(text, text).not.toMatch(/, so\b/);
+      expect(text, text).not.toMatch(/\b(go by|go over|keep an eye)\b/i);
       // Curly apostrophes, and numbers kept with their units.
       expect(text, text).not.toMatch(/['"]/);
-      expect(text, text).not.toMatch(/\d[ \u2009\u202f]dB/);
+      expect(text, text).not.toMatch(/\d[   ]dB/);
     }
   });
 });

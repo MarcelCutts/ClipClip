@@ -8,27 +8,22 @@ import {
   CEILING_1,
   CEILING_2,
   CHANNELS,
-  canFix,
   crunchFor,
   drawScope,
   goalMet,
   KNOB,
   LAB_SCOPE,
   labSignal,
-  matchingPreset,
-  PRESETS,
-  parseDeepLink,
   playbackLoop,
-  presetById,
   REVEAL_AFTER_MOVES,
   readLab,
+  STEP_COUNT,
   STEP_SCOPE,
   STEP_SETUP,
   scopeTraces,
 } from './ceilings';
 
-const track = labSignal('track');
-const tones = labSignal('tones');
+const track = labSignal();
 
 describe('the two ceilings', () => {
   it('puts ceiling 1 at the red LED and ceiling 2 six dB below it', () => {
@@ -37,7 +32,7 @@ describe('the two ceilings', () => {
   });
 
   it('keeps the controls to what the hardware allows', () => {
-    // The record level is MASTER LEVEL (the Howler records from MASTER 2): fully up is 0.
+    // The recording level tops out where MASTER LEVEL does: fully up is 0.
     expect(KNOB.max).toBe(0);
     expect(CHANNELS).toEqual({ min: -6, max: 18, step: 1 });
   });
@@ -47,7 +42,7 @@ describe('lab signals', () => {
   it('scales the track so its loudest peak is exactly what the channel meter shows', () => {
     expect(peak(track.samples)).toBeCloseTo(1, 6);
     expect(track.samples.length).toBe(Math.round((60 / 124) * 48_000 * 8));
-    expect(labSignal('track')).toBe(track);
+    expect(labSignal()).toBe(track);
   });
 
   it('zooms the scopes in on 30 ms that contain the loudest peak', () => {
@@ -57,18 +52,10 @@ describe('lab signals', () => {
     for (let i = start; i < start + count; i++) top = Math.max(top, Math.abs(track.samples[i]!));
     expect(top).toBeCloseTo(1, 6);
   });
-
-  it('builds a tone loop that closes cleanly at other sample rates', () => {
-    const at44 = labSignal('tones', 44_100);
-    expect(peak(tones.samples)).toBeCloseTo(1, 6);
-    expect(peak(at44.samples)).toBeCloseTo(1, 6);
-    // 4096 samples at 48 kHz is 3763.2 at 44.1 kHz: five of those make a whole number.
-    expect(at44.samples.length).toBe(18_816);
-  });
 });
 
 describe('reading the lab', () => {
-  it('shows "Channels in the red" as heavy crunch with a green Howler light', () => {
+  it('shows the channel in the red as heavy crunch with a green Howler light', () => {
     const r = readLab(track, 18, -12);
     expect(r.mixer).toBe('over');
     expect(r.recorder).toBe('clear');
@@ -77,7 +64,7 @@ describe('reading the lab', () => {
     expect(r.crunch).toBe('heavy');
   });
 
-  it('shows "Recorder knob too high" as a clean mix clipped at the Howler', () => {
+  it('shows a recording level too high as a clean mix clipped at the Howler', () => {
     const r = readLab(track, 9, 0);
     expect(r.mixer).toBe('clear');
     expect(r.recorder).toBe('over');
@@ -86,7 +73,7 @@ describe('reading the lab', () => {
     expect(r.crunch).toBe('some');
   });
 
-  it('shows the clean preset as clean, green and comfortably low', () => {
+  it('shows a tidy channel and a lower recording level as clean, green and comfortably low', () => {
     const r = readLab(track, 3, -9);
     expect(r.crunch).toBe('clean');
     expect(r.distortion).toBeLessThan(1e-9);
@@ -94,7 +81,7 @@ describe('reading the lab', () => {
     expect(r.recordingPeakDbfs).toBeCloseTo(-12, 9);
   });
 
-  it('keeps mixer crunch when the recorder knob comes down: quieter, same damage', () => {
+  it('keeps mixer crunch when the recording level comes down: quieter, same damage', () => {
     const base = readLab(track, 18, -6);
     for (const knob of [-9, -12, -18, -24]) {
       const r = readLab(track, 18, knob);
@@ -105,7 +92,7 @@ describe('reading the lab', () => {
     }
   });
 
-  it('removes Howler-only clipping completely when the knob comes down', () => {
+  it('removes Howler-only clipping completely when the recording level comes down', () => {
     expect(readLab(track, 9, 0).crunch).toBe('some');
     const fixed = readLab(track, 9, -4);
     expect(fixed.crunch).toBe('clean');
@@ -145,11 +132,6 @@ describe('reading the lab', () => {
     expect(overBy(4)).toBe('heavy');
     expect(overBy(6)).toBe('heavy');
   });
-
-  it('works on the engineer view’s test tones too', () => {
-    expect(readLab(tones, 18, -12).crunch).toBe('heavy');
-    expect(readLab(tones, 3, -9).crunch).toBe('clean');
-  });
 });
 
 describe('scopes', () => {
@@ -164,7 +146,7 @@ describe('scopes', () => {
     expect(peak(recording.wanted)).toBeCloseTo(CEILING_2, 5);
   });
 
-  it('draws the recorder knob fully up at the mixer’s size, cut at ceiling 2', () => {
+  it('draws the recording level fully up at the mixer’s size, cut at ceiling 2', () => {
     const { mixer, recording } = scopeTraces(track, 9, 0);
     expect(recording.wanted).toEqual(mixer.wanted);
     expect(peak(recording.actual)).toBeCloseTo(CEILING_2, 6);
@@ -212,92 +194,64 @@ describe('scopes', () => {
 });
 
 describe('the guided flow', () => {
-  it('locks the channels in the red for the knob challenge', () => {
-    expect(STEP_SETUP[2]).toEqual({ start: { channels: 18, knob: -12 }, lockChannels: true, lockKnob: false });
-    const r = readLab(track, STEP_SETUP[4].start!.channels, STEP_SETUP[4].start!.knob);
-    expect(r.howler).toBe('red');
-    expect(r.mixer).toBe('clear');
+  it('has three steps, each with one live control: the recording level, the channel, the recording level', () => {
+    expect(STEP_COUNT).toBe(3);
+    expect([STEP_SETUP[1].live, STEP_SETUP[2].live, STEP_SETUP[3].live]).toEqual(['knob', 'channels', 'knob']);
   });
 
-  it('gives each guided step one live control, and the sandbox both', () => {
-    const live = (s: 1 | 2 | 3 | 4 | 5) =>
-      [!STEP_SETUP[s].lockChannels && 'channels', !STEP_SETUP[s].lockKnob && 'knob'].filter(Boolean);
-    expect(live(1)).toEqual([]);
-    expect(live(2)).toEqual(['knob']);
-    expect(live(3)).toEqual(['channels']);
-    expect(live(4)).toEqual(['knob']);
-    expect(live(5)).toEqual(['channels', 'knob']);
+  it('opens step 1 with the channel in the red and the Howler green, and step 3 with the Howler red', () => {
+    const one = readLab(track, STEP_SETUP[1].start.channels, STEP_SETUP[1].start.knob);
+    expect(one).toMatchObject({ mixer: 'over', howler: 'green', crunch: 'heavy' });
+    const three = readLab(track, STEP_SETUP[3].start.channels, STEP_SETUP[3].start.knob);
+    expect(three).toMatchObject({ mixer: 'clear', howler: 'red' });
   });
 
   it('points each step at the screen its control moves', () => {
-    expect(STEP_SCOPE).toEqual({ 1: 'mixer', 2: 'recording', 3: 'mixer', 4: 'recording', 5: 'both' });
+    expect(STEP_SCOPE).toEqual({ 1: 'recording', 2: 'mixer', 3: 'recording' });
   });
 
-  it('opens step 3 somewhere its one control can fix', () => {
-    const { channels, knob } = STEP_SETUP[3].start!;
-    expect(goalMet(3, readLab(track, channels, knob))).toBe(false);
-    expect(goalMet(3, readLab(track, 3, knob))).toBe(true);
+  it('gives step 1 no way to win, and opens step 2 somewhere its one control can fix', () => {
+    const { channels, knob } = STEP_SETUP[2].start;
+    for (let k = KNOB.min; k <= KNOB.max; k++) expect(goalMet(1, readLab(track, 18, k))).toBe(false);
+    expect(goalMet(2, readLab(track, channels, knob))).toBe(false);
+    expect(goalMet(2, readLab(track, 3, knob))).toBe(true);
     expect(REVEAL_AFTER_MOVES).toBeGreaterThan(1);
   });
 
-  it('only calls step 3 fixed when the crunch is gone, the light is green and the red is dark', () => {
-    expect(goalMet(3, readLab(track, 3, -9))).toBe(true);
-    expect(goalMet(3, readLab(track, 12, -12))).toBe(false);
-    expect(goalMet(3, readLab(track, 18, -24))).toBe(false);
-    expect(goalMet(3, readLab(track, 11, 0))).toBe(false);
+  it('only calls step 2 fixed when the crunch is gone, the light is green and the red is dark', () => {
+    expect(goalMet(2, readLab(track, 3, -9))).toBe(true);
+    expect(goalMet(2, readLab(track, 12, -12))).toBe(false);
+    expect(goalMet(2, readLab(track, 18, -24))).toBe(false);
+    expect(goalMet(2, readLab(track, 11, 0))).toBe(false);
   });
 
-  it('calls step 4 fixed once the knob brings the Howler back to green', () => {
-    expect(goalMet(4, readLab(track, 9, -3))).toBe(false);
-    expect(goalMet(4, readLab(track, 9, -4))).toBe(true);
+  it('calls step 3 fixed once the recording level brings the Howler back to green', () => {
+    expect(goalMet(3, readLab(track, 9, -3))).toBe(false);
+    expect(goalMet(3, readLab(track, 9, -4))).toBe(true);
   });
 });
 
 describe('which control can fix which crunch', () => {
-  it('lets a control fix only a ceiling that comes after it', () => {
-    expect(canFix('channels', 'mixer')).toBe(true);
-    expect(canFix('channels', 'recorder')).toBe(true);
-    expect(canFix('knob', 'mixer')).toBe(false);
-    expect(canFix('knob', 'recorder')).toBe(true);
-  });
-
-  it('agrees with the simulation', () => {
-    // Made in the mixer: the channel cleans it, no knob setting does.
+  it('fixes crunch made in the mixer only at the channel, before ceiling 1', () => {
     expect(readLab(track, 3, -12).crunch).toBe('clean');
     for (let knob = KNOB.min; knob <= KNOB.max; knob++) expect(readLab(track, 18, knob).crunch).not.toBe('clean');
-    // Made at the recorder: either control cleans it.
+  });
+
+  it('fixes crunch made at the Howler with either control, both before ceiling 2', () => {
     expect(readLab(track, 9, 0).crunch).not.toBe('clean');
     expect(readLab(track, 5, 0)).toMatchObject({ crunch: 'clean', howler: 'green' });
     expect(readLab(track, 9, -4)).toMatchObject({ crunch: 'clean', howler: 'green' });
   });
 });
 
-describe('presets and deep links', () => {
-  it('lights a preset only when both controls match it', () => {
-    for (const p of PRESETS) expect(matchingPreset(p.channels, p.knob)).toBe(p.id);
-    expect(matchingPreset(17, -12)).toBeNull();
-    expect(presetById('knob-high').knob).toBe(0);
-  });
-
-  it('reads ?lab=sandbox&preset=… and ignores anything else', () => {
-    expect(parseDeepLink('?lab=sandbox&preset=channels-red')).toEqual({ sandbox: true, preset: 'channels-red' });
-    expect(parseDeepLink('?lab=sandbox')).toEqual({ sandbox: true, preset: null });
-    expect(parseDeepLink('?preset=clean')).toEqual({ sandbox: true, preset: 'clean' });
-    expect(parseDeepLink('?preset=loud&lab=nope')).toEqual({ sandbox: false, preset: null });
-    expect(parseDeepLink('')).toEqual({ sandbox: false, preset: null });
-  });
-});
-
 describe('sound', () => {
   it('never hands the engine anything outside ±1', () => {
-    for (const signal of [track, tones]) {
-      for (let channels = CHANNELS.min; channels <= CHANNELS.max; channels += 4) {
-        for (let knob = KNOB.min; knob <= KNOB.max; knob += 4) {
-          expect(peak(playbackLoop(signal, channels, knob, false))).toBeLessThanOrEqual(1 + 1e-6);
-        }
+    for (let channels = CHANNELS.min; channels <= CHANNELS.max; channels += 4) {
+      for (let knob = KNOB.min; knob <= KNOB.max; knob += 4) {
+        expect(peak(playbackLoop(track, channels, knob, false))).toBeLessThanOrEqual(1 + 1e-6);
       }
-      expect(peak(playbackLoop(signal, 18, 0, true))).toBeLessThanOrEqual(1 + 1e-6);
     }
+    expect(peak(playbackLoop(track, 18, 0, true))).toBeLessThanOrEqual(1 + 1e-6);
   });
 
   it('matches the loudness of the clipped file and the clean version', () => {
@@ -312,7 +266,7 @@ describe('sound', () => {
     }
   });
 
-  it('sounds the same after the knob comes down, once turned back up: the crunch stays', () => {
+  it('sounds the same after the recording level comes down, once turned back up: the crunch stays', () => {
     const a = playbackLoop(track, 18, -12, false);
     const b = playbackLoop(track, 18, -24, false);
     let diff = 0;
@@ -321,7 +275,7 @@ describe('sound', () => {
   });
 
   it('renders at the device’s own sample rate', () => {
-    const at44 = labSignal('track', 44_100);
+    const at44 = labSignal(44_100);
     expect(playbackLoop(at44, 18, -12, false)).toHaveLength(at44.samples.length);
   });
 });

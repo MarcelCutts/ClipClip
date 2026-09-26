@@ -26,7 +26,7 @@ test('if the clipboard is off limits, it says so, says how to copy by hand, and 
     const status = container.querySelector('[role="status"]');
     await expect
       .poll(() => status?.textContent?.trim())
-      .toBe('Couldn’t copy. Select the message and press Ctrl+C (⌘C on a Mac), or long-press it.');
+      .toBe('Could not copy. Select the message and press Ctrl+C (⌘C on a Mac), or long-press it.');
     const box = container.querySelector('textarea');
     expect(box?.value).toBe(text);
     await expect.poll(() => document.activeElement).toBe(box);

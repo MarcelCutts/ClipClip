@@ -1,11 +1,10 @@
 /**
- * Things DJs say about the red, with the part that's true and what actually happens.
- * The heading is always the correction, never the myth on its own, so a reader who only
- * skims the headings takes away the right idea.
+ * What DJs say about the red, each with what's true and the one thing to do about it. The heading
+ * is always the correction, never the belief on its own, so a reader who only skims the headings
+ * takes away the right idea.
  *
- * Where a myth leans on what a maker says, `actually` quotes or reports it with the page, and
- * `source` points at the document (it's in sources.ts too). The guide sets `fair`, `actually` and
- * `instead` as one paragraph, so each reads on from the one before.
+ * Where an answer leans on what a maker says, it quotes or reports it with the page, and `source`
+ * points at the document (it's in sources.ts too).
  */
 
 /** SoundCloud's help page on loudness: it "applies Loudness Normalization to your tracks as they're played". */
@@ -22,107 +21,80 @@ const XDJ_MANUAL = {
 
 export interface Myth {
   id: string;
-  /** The correction, used as the heading. */
-  truth: string;
-  /** What people say. */
+  /** What people say, in their words. */
   claim: string;
-  /** The part of the claim that's right. Admitting it keeps the rest credible. */
-  fair: string;
-  /** What actually happens. */
-  actually: string;
-  /** What to do instead, as the paragraph's last sentence. */
-  instead: string;
+  /** What's true, as one statement: the row's heading. */
+  truth: string;
+  /** Why, in a sentence or two, with the maker's page where one backs it. */
+  answer: string;
+  /** The one thing to do about this belief: the row's last sentence. */
+  action: string;
   /**
-   * The maker's document behind `actually`, with the page quoted there. A publisher is named
-   * first when the title doesn't say whose it is.
+   * The maker's document behind `answer`, with the page quoted there. A publisher is named first
+   * when the title doesn't say whose it is.
    */
   source?: { title: string; url: string; page?: number; publisher?: string };
 }
 
 export const MYTHS: Myth[] = [
   {
-    id: 'room',
-    truth: 'Crunch the room covers up is still in the recording.',
-    claim: 'It sounded fine in the room, so it’s fine.',
-    fair: 'On the night a lot gets covered up. The speakers add their own grit, the room is loud, and nobody is listening closely.',
-    actually:
-      'By midnight your ears are tired too, so the booth is the worst place to judge. The recording gets played on headphones in a quiet room, again and again, with nothing covering it.',
-    instead: 'Late in the night, trust the meters over your ears.',
-  },
-  {
     id: 'headroom',
-    truth: 'You can’t see how much room is left above the red.',
-    claim: 'Pioneer red isn’t really red. There’s loads of headroom up there.',
-    fair: 'Some mixers do have a margin above the first red light.',
+    claim: 'A flash of red is fine. There is loads of headroom up there.',
+    truth: 'Even a flash of red may be crunch.',
     // Pioneer manual p.31: "Make sure that the red indicator does not lights up, or the sound may be distorted."
-    // p.27: CLIP "Blinking fast: indicates that the sound is distorted." Neither page gives a margin.
-    actually:
-      'Pioneer publishes no margin for the XDJ-RX2. Its manual says to keep the red light dark, “or the sound may be distorted” (page 31). When CLIP blinks fast, it “indicates that the sound is distorted” (page 27). A blend or an EQ boost can use up any margin in one bar, and the recorder has its own limit on top.',
-    instead: 'Keep the loudest parts on the first or second orange light, with red dark.',
+    // No page gives a margin above red, or a time in the red that's safe.
+    answer:
+      'Pioneer publishes no headroom figure for the XDJ-RX2. Its manual says to keep the red light dark, “or the sound may be distorted” (p. 31).',
+    action: 'At the first flash on a channel meter, turn its TRIM down a little.',
     source: { ...XDJ_MANUAL, page: 31 },
   },
   {
     id: 'louder',
-    truth: 'A louder room comes from the amps, and a clean kick hits harder than a clipped one.',
-    claim: 'Louder is more energy. It doesn’t smack unless it’s loud.',
-    fair: 'Louder does sound better when you compare the same thing at two volumes.',
-    actually:
-      'Past the mixer’s ceiling the peaks get flattened, and a kick needs its peak to hit. The loudness you want comes from the amps, not from the mixer’s red lights.',
-    instead: 'Keep it clean and ask the crew to turn the amps up.',
+    claim: 'Louder is more energy. It has to be loud to hit.',
+    truth: 'A louder room comes from the amps.',
+    answer: 'At the same peak level, clipping does sound louder. It also flattens the peaks that make a kick hit.',
+    action: 'Ask the crew to turn up the amps.',
   },
   {
     id: 'limiter',
-    truth: 'The DriveRack’s limiter protects the speakers, and the recording doesn’t pass through it.',
-    claim: 'The limiter will catch it.',
-    fair: 'There is a limiter, in the DriveRack between the mixer and the amps.',
+    claim: 'The limiter will catch it. Red just means it is working.',
+    truth: 'The DriveRack’s limiter protects only the speakers.',
     // The DriveRack's wizard only sets its limiters for an amp on its list; our QSC GX7s are (dbx manual p.43,
     // PA2 tuning list). The limiters sit on its outputs, on the PA's branch; the Howler is on MASTER 2.
     // Pioneer's UTILITY settings (manual p.32) have MASTER and BOOTH attenuators and no limiter, and no
-    // firmware up to 1.43 adds one.
-    actually:
-      'Once it’s set up for our amps, it holds the speakers back when you push too hard, so the room stops getting louder. It can’t undo clipping that arrives from the mixer, and the recorder doesn’t go through it. Pioneer lists no limiter on the XDJ-RX2 either. Its settings have attenuators for MASTER and BOOTH and no limiter (page 32), so only your meters protect the recording.',
-    instead:
-      'If pushing harder stops making the room louder, the limiter is working. Ease back to orange and ask the crew.',
+    // firmware up to 1.43 adds one. Pioneer never says there is none, so neither do we.
+    answer:
+      'It stops the speakers getting louder when the mix is too loud. The Howler records from MASTER 2, which does not go through the DriveRack. Pioneer lists no limiter in the XDJ-RX2 (p. 32).',
+    action: 'If pushing harder stops making the room louder, turn the mix back down to orange.',
     source: { ...XDJ_MANUAL, page: 32 },
   },
   {
-    id: 'post',
-    truth: 'A quiet file can be turned up afterwards, but no tool can put back the tops clipping cut off.',
-    claim: 'I’ll fix it afterwards.',
-    fair: 'A recording that’s too quiet takes a minute to fix, by turning the whole file up.',
-    actually:
-      'A clipped recording has lost the tops of its waves. Repair tools redraw them with a guess, which works for a few clicks but not for a whole set, and nobody can record the night again.',
-    instead: 'Keep the mixer clean and turn the file up afterwards.',
-  },
-  {
     id: 'videos',
-    truth: 'Big stages have an engineer you can’t see.',
     claim: 'The big names play in the red.',
-    fair: 'You’ll see red lights in some festival videos.',
-    actually:
-      'Many big names stay out of the red. Where you do see red, at festivals and big clubs, there’s an engineer and a rack of processing between the DJ and the speakers, often cleaning up after them.',
-    instead: 'Our rig has no engineer after the mixer, so keep your meters out of the red.',
+    truth: 'Big stages have an engineer after the mixer.',
+    answer:
+      'At festivals and big clubs, an engineer and a rack of processing sit between the DJ and the speakers. Our rig has neither between the mixer and the Howler.',
+    action: 'Set your levels by the meters in front of you.',
   },
   {
     id: 'quiet-file',
+    claim: 'My recordings sound quieter than sets online. I should play louder.',
     truth: 'Recordings get their loudness afterwards.',
-    claim: 'My recordings sound quieter than sets online, so I should play hotter.',
-    fair: 'A clean recording does sound quieter than a finished upload before anyone turns it up.',
     // SoundCloud Help (updated September 2026): "SoundCloud applies Loudness Normalization to your
-    // tracks as they're played to listeners", aiming at −14 LUFS. Other services aren't on the
+    // tracks as they're played to listeners", aiming at −14 LUFS. Other services aren't on the
     // sources list, so they aren't named.
-    actually:
-      'Published mixes are turned up after the set. SoundCloud turns loud tracks down as it plays them, so a clipped mix ends up no louder than a clean one that’s been turned up, and it sounds worse.',
-    instead: 'Record clean, then turn the file up.',
+    answer:
+      'Published mixes are turned up after the set. SoundCloud turns loud tracks down as it plays them. A clipped mix ends up no louder than a clean one that was turned up, and it sounds worse.',
+    action: 'Before a mix goes online, normalise the clean file.',
     source: SOUNDCLOUD_LOUDNESS,
   },
   {
     id: 'digital',
+    claim: 'It is digital, so it cannot clip.',
     truth: 'Digital gear has a ceiling too.',
-    claim: 'It’s digital, so it can’t clip.',
-    fair: 'Some digital mixers can carry levels above their meters inside.',
-    actually:
-      'Somewhere the sound leaves the mixer as a real electrical signal, and the mixer’s output and the recorder’s input each have a top.',
-    instead: 'Keep red dark on every mixer.',
+    // Sound Devices on 32-bit float: the file's range is too high to overload, but it records what it's sent.
+    answer:
+      'The sound leaves the mixer as an electrical signal. The mixer’s output and the Howler’s input each have a ceiling. A 32-bit float file has no ceiling you can reach, but it keeps flat tops that came from the mixer.',
+    action: 'Treat red as the top on digital gear too.',
   },
 ];

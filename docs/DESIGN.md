@@ -15,8 +15,8 @@ One guide that gets deeper as it goes, and three tools for doing the job.
 | Page | Reading mode | What's on it |
 |---|---|---|
 | `/` The guide | Learning | What to know by heart, then four parts: 1 Why it matters, 2 Playing a set, 3 The rig and the recording, 4 Under the hood, then words and sources. Sections are numbered (2.1, 3.4) from one list, `src/lib/sections.ts` |
-| `/night/` On the night | Doing, in a hurry | Tabs in night order (C1 Doors, C2 Changeover, F Something's wrong, C3 After), the crew's know-by-heart box, the checklists and the drills |
-| `/setup/` Setting up | Doing, once | The wiring table, the first-time checklist, the record level procedure with its practice rig, and the one-off procedures and tests |
+| `/night/` Crew on the night | Doing, in a hurry | Tabs in night order (C1 Doors, C2 Changeover, F Something's wrong, C3 End), the crew's know-by-heart box, the checklists and the drills, then C4 Next day: the work on the files and the faults you find in a recording |
+| `/setup/` Setting up | Doing, at every event | S1, the whole setup in the order the rig is built; the wiring table; the recording level; the DriveRack and amps; the one-off test and wizard, marked Once |
 | `/print/` | Making | The booth card, tape tags, checklist cards and chat messages |
 
 Why one guide: DJs and crew are often the same people, and splitting pages by audience fails when roles overlap (NN/g). Doing a job and learning why are different reading modes (Diátaxis, GOV.UK step by step), so the checklists and drills live on their own short pages, linkable from the group chat. The old addresses (`/dj/`, `/crew/`, `/lab/`, `/why/`) forward to the same section in its new home (`layouts/Moved.astro`).
@@ -75,17 +75,17 @@ A tab strip that sticks to the top of the screen (the guide's below 80rem, the n
 
 - **Part** (`Part.astro`): a black bar with the part's number and title (a `--strip-edge` top edge by night), then what a reader can do by the end, as one plain sentence. No time, audience or "Objective." label: reading times are in the index.
 - **Know by heart** (`KnowByHeart.astro`): the tinted box of challenge/response lines built from `rules.ts`, numbered from 1 in every box, each with what to do if it isn't so and a "See 2.1" reference. A screen reader hears a comma between challenge and response.
-- **Procedure** (`Procedure.astro`): a checklist card with a black title strip, a plain sentence before the steps when one has a real consequence (no CAUTION label; WARNING is kept for hearing), challenge/response steps with notes, and a `.source` line for the manufacturer's page.
-- **Tabs** (`Tabs.astro`): one design wherever tabs appear. Equal-width tabs, at least 3rem tall, hang from a 2px ink rule: the code in bold (1, C1, F) over a short label in `--ink-2` that may wrap to two lines. The one you're in is filled with `--ink`, lettered in `--paper`, in both themes; every tab shows the focus ring. The drills' tab carries a small `--warning` lamp before F and is otherwise like the rest. Each tab is named code first ("1: Why it matters"). The guide's strip (parts 1 to 4: Why, Playing, Rig, Hood) gives way to the index rail on wide screens; the night page's (C1 Doors, C2 Changeover, F Something's wrong, C3 After) stays at every width.
+- **Procedure** (`Procedure.astro`): a checklist card with a black title strip, then challenge/response steps with notes, and a `.source` line for the manufacturer's page. A real consequence is said in a plain sentence before the steps (`caution`) or before its own step (`before`), with no label. "Warning." is only for injury: the mains earth and hearing.
+- **Tabs** (`Tabs.astro`): one design wherever tabs appear. Equal-width tabs, at least 3rem tall, hang from a 2px ink rule: the code in bold (1, C1, F) over a short label in `--ink-2` that may wrap to two lines. The one you're in is filled with `--ink`, lettered in `--paper`, in both themes; every tab shows the focus ring. The drills' tab carries a small `--warning` lamp before F and is otherwise like the rest. Each tab is named code first ("1: Why it matters"). The guide's strip (parts 1 to 4: Why, Playing, Rig, How) gives way to the index rail on wide screens; the night page's (C1 Doors, C2 Changeover, F Something's wrong, C3 End) stays at every width.
 - **Index** (`Contents.astro`): a row per part with its thumb tab, drawn as the notch it cuts in a handbook's edge (open on the page's side, filled for the part you're in, never a closed box), its number, title and reading time, which drops under the title when there's no room. The guide's last row, F Something's wrong, goes to the night page and has the drills' lamp. The rail on wide screens, below anything that sticks above it.
 - **Hero** (`Hero.astro`): the title, the lede and the meter in its bezel, lit to the second orange. An "Aim" bracket spans 0 and +3, and the zones are named under the scale in plain words (green, room to spare; orange, the loudest parts; red, may distort). It's the page's one animation.
-- **What people say** (`Myths.astro`): a static two-column table. The belief in regular italic `--ink-2`, what's true at regular weight, then a paragraph that ends with what to do instead, and the manufacturer's page. No "So:" labels.
+- **What people say** (`Myths.astro`): short pairs. The belief, quoted in regular italic `--ink-2`; what's true, in one or two sentences at regular weight, ending on what to do instead; and the maker's page where there is one. No labels.
 - **Panel**: the hardware box, only ever for real gear: meters, faders, scopes, the Howler. Flat, `--radius-panel` (6px), a 1px outline, no shadow. One surface per panel; inner boxes only for a real screen or meter well. Controls use `--radius-control` (4px). No pills.
-- **Quiz card** (`Predict.svelte`, `MeterCheck.svelte`, `quiz/*`): Part 1's question, the meter check and "How sure are you?" are printed cards, not panels. A 2px ink frame, a `--strip` title, answers as ruled rows with a real radio, the chosen answer in `--action`, and right or wrong marked with a tick or a cross and words, never colour alone. "How sure are you?" is a three-step printed scale, so it can't pass for a fourth answer. Keys are printed (`quiz/Key.svelte`). Any gear in the question (a meter, the Howler, the BOOTH MONITOR knob) sits on a small black plate.
+- **Quiz card** (`MeterCheck.svelte`, `quiz/*`): the meter check's questions and "How sure are you?" are printed cards, not panels. A 2px ink frame, a `--strip` title, answers as ruled rows with a real radio, the chosen answer in `--action`, and right or wrong marked with a tick or a cross and words, never colour alone. "How sure are you?" is a three-step printed scale, so it can't pass for a fourth answer. Keys are printed (`quiz/Key.svelte`). Any gear in the question (a meter, the Howler, the BOOTH MONITOR knob) sits on a small black plate.
 - **Paper in both themes**: the print kit's previews carry `data-paper`, which keeps the day's page colours by night (`tokens.css`), as a printout would.
 - **Wiring table** (`/setup/` S2): the rig as a table built from `rig.ts` and `tags.ts` (what, fed from, set to, its tape), a labelled list on phones, linking to the interactive signal path in 3.1.
-- **Checklist card** (`Checklist.svelte`): a printed card, not a panel. A `--strip` title with its code (C1, C2, C3, S1) and time budget, a checkbox per challenge/response line, the call line at the end.
-- **Drill** (`DrillCard.astro`): a `--strip` title with the light drawn lit and the drill's code (F1–F11), condition and objective, numbered steps, "Choose one" branches with ◆, "Go to step" links and the ■ ■ ■ ■ end mark.
+- **Checklist card** (`Checklist.svelte`): a printed card, not a panel. A `--strip` title with its code (C1, C2, C3, S1) and when it's done, then a checkbox per line: the printed name, leader dots and the state you can see. Read-and-do, for one person, with no time budget and no call line.
+- **Drill** (`DrillCard.astro`): a `--strip` title with the light drawn lit and the drill's code (F1–F11), then an Objective, with a Condition only when it adds to the title. "Now" holds numbered steps: one instruction each, the exact words to say to the DJ, "Choose one" branches with ◆ that are outcomes you can see, "Go to step" links and the ■ ■ ■ ■ end mark. "At the changeover" holds what can wait, and "Why" explains in a sentence or two. One phone screen each where it fits.
 - **Faders** (`ui/Fader.svelte`): a stretch of the track can be tinted `sig` or `dmg` for a chart's meaning, or `neutral` for a band that's only a range (the target band). On a touch screen every fader moves only when you drag its cap (`ui/thumbDrag.ts`), so a scroll that starts on one never changes it. In the blend lab each deck's TRIM and LOW sit right under its fader.
 - **Keys and pads** (`ui/*`): square, flat, 4px. A selected pad lights all over. A preset that stands for a clean or clipped level keeps a dark face and lights a small bar LED in green or red. The primary key is cyan lettering in a 2px frame, so it can't be mistaken for a lit pad. Settings with named positions are slide switches (`hear-it/Choice.svelte`).
 - **Status lamp**: a lab's challenge state as a square lamp with a printed legend, never a pill.
@@ -98,8 +98,44 @@ A tab strip that sticks to the top of the screen (the guide's below 80rem, the n
 
 ## Voice
 
-UK English, second person, plain statements. Conditions are written as "If …, …". Say the mechanism, and a number where it helps. No two-beat slogans, no colon slogans, no "Question? Answer." lead-ins outside a drill's branches. Crew are allies, not police. Hardware names are written as printed (TRIM, MASTER LEVEL, BOOTH MONITOR). The makers' own words are quoted with the page, and "Not published" or "We assume" says where they're silent.
+The register is a reference guide's: an equipment manual, a quick reference handbook, GOV.UK. It isn't a tutor's or an assistant's. Readers are often in a dark, loud booth, on a phone, in a hurry, and not all read English as a first language. The rules come from the research behind the second copy pass: aviation checklist guidance (CAP 676, FAA AC 120-71B), Simplified Technical English (ASD-STE100), GOV.UK and a count of the tells of LLM prose.
+
+**Purpose.** Every section and every line serves a named reader and does one job for them: a decision, an action, a fact, or the reason behind a rule. Each thing is said once, where that reader needs it. The core message has one wording: "If you turn the recording down, the crunch gets quieter. It does not go away." Gaps in what the makers publish are stated once, in the guide's makers-and-assumptions section, and inline only where they change what someone does.
+
+**Doing text** (know-by-heart boxes, checklists, drills, procedures, cards and tags):
+- A line is the printed name, leader dots, and the state you can see: "MASTER LEVEL …… fully up, on the REC mark". Never "check", "set" or "as required". The action goes in the note, as one sentence: "If …, …".
+- A know-by-heart box has three lines at most.
+- One instruction per step, as a command, with the condition first. Say a consequence or an irreversible action in a plain sentence before its step. Notes carry information, never instructions.
+- Drill branches ("Choose one") are the outcomes you can see at that step, and each ends in the end mark or a Go to. Give values, not "down a step", and the exact words to say to the DJ.
+- Cards are read-and-do, written for one person working alone.
+- "Warning." is only for injury (mains earth, hearing). There's no "Caution".
+
+**Words:**
+- One word per meaning. Hardware names are as printed: TRIM, MASTER LEVEL, BOOTH MONITOR, the MASTER meters (at first mention on a page, "the pair in the middle").
+- "Recording level", not "record level": to a DJ a record is a track.
+- "The room's volume" is only the PA's loudness. "Headroom" is only level. Say "SD card" and "checklist card", "top speakers", and "ATT setting".
+- UK English, and "orange" for the LEDs. "Crunch" is introduced once as distortion.
+- No idioms ("on cue", "a quiet word", "for good", "ease back"), and no negative contractions: write do not, cannot, is not.
+- Numbers: "6 dB" for an amount, "+6" for a meter reading, "−1 dB true peak", "p. 27". Every number has its basis, and there's no time budget a list can't meet.
+
+**Sentences:**
+- The condition or command comes first, and the reason after it. No ", so" chains.
+- One claim per sentence and per heading. Headings are statements, never questions or slogans.
+- A paragraph ends on a fact or a specific action, never on a moral or a summary. Each myth ends on its own action.
+- No third item just for rhythm. Source any claim about other people, or cut it.
+- Lab feedback states what happened, not the teaching method.
+- The makers' own words are quoted with the page.
+- No em dashes, emoji, exclamation marks or title case, no "not X but Y", no "Let's", and none of the vocabulary that measurably marks LLM prose. Some things look like tells but are right for a reference, so keep them: short sentences, parallel checklist lines, a rule repeated word for word, and bold labels.
 
 ## Motion and sound
 
 One orchestrated moment: on load, the hero meter's lights climb to the second orange and stop, short of the red. Everything else moves only in response to the reader, and `prefers-reduced-motion` turns motion off. Nothing plays until the reader presses a button; sound starts quietly, stops when the tab is hidden, and clean and clipped versions are loudness-matched before any comparison.
+
+## Background reading
+
+Sources behind how the site teaches and how its lists are written, but not behind any claim on its pages (those are in `src/lib/sources.ts`).
+
+- **Teaching with demos:** Crouch, Fagen, Callan and Mazur, [Classroom demonstrations: learning tools or entertainment?](https://www.otffeo.on.ca/wp-content/uploads/sites/2/2014/11/Mazur_demo-article.pdf) (2004), on predicting before a demo. Mayer and Moreno, [Nine ways to reduce cognitive load in multimedia learning](https://www.uky.edu/~gmswan3/544/9_ways_to_reduce_CL.pdf) (2003). Josh W. Comeau, [Let's learn about waveforms](https://pudding.cool/2018/02/waveforms/) (The Pudding, 2018). Bartosz Ciechanowski, [Sound](https://ciechanow.ski/sound/) (2022).
+- **Checklists:** Degani and Wiener, [Human factors of flight-deck checklists](https://ntrs.nasa.gov/api/citations/19910017830/downloads/19910017830.pdf) (NASA, 1990). The Voice section above summarises the rest: CAP 676, FAA AC 120-71B, ASD-STE100 and GOV.UK.
+- **Levels and clipping:** Esqueda, Bilbao and Välimäki, [Aliasing reduction in clipped signals](https://www.pure.ed.ac.uk/ws/files/26997332/07499828.pdf) (IEEE Transactions on Signal Processing, 2016). Sound on Sound, [What are reference levels in digital audio systems?](https://www.soundonsound.com/sound-advice/q-what-are-reference-levels-digital-audio-systems) (2007). Zoom, [F3 operation manual](https://zoomcorp.com/manuals/f3-en/), on how a two-converter float recorder works.
+- **How DJ educators teach gain:** Serato, [Gain structure for DJs](https://support.serato.com/hc/en-us/articles/202538480-Gain-Structure-for-DJs). Rane, [Setting Rane mixer level controls](https://www.ranecommercial.com/legacy/pdf/ranenotes/Setting_Rane_Mixer_Level_Controls.pdf) (RaneNote 171). DJ TechTools, [Gain staging for DJs and staying out of the red](https://djtechtools.com/2015/10/11/gain-staging-for-djs-staying-out-of-the-red/) (2015).

@@ -2,23 +2,23 @@
  * The rig as a signal graph: every knob, meter, socket and box between the decks and the three
  * places the music ends up. MASTER 1 feeds the PA through the DriveRack PA2 and the amps, MASTER 2
  * feeds the Howler, and BOOTH feeds the booth monitors. The SignalPath island draws this; every
- * highlight and sentence it shows comes from here, so the tests beside it are the fact check.
+ * highlight and sentence it shows comes from here, so the tests beside it are the fact check. The
+ * setup page's wiring table reads the same nodes and edges.
  *
  * Facts, from the manuals in sources.ts:
  * - Signal order: TRIM, then EQ, then the channel fader, then the mix.
- * - Channel meters read before the fader; the middle (MASTER) meters read after MASTER LEVEL.
- *   Pioneer doesn't say whether the channel meters read after the EQ. The drawing assumes they do,
- *   and modelNote() says so.
+ * - Channel meters read before the fader; the MASTER meters read after MASTER LEVEL.
+ *   Pioneer does not say whether the channel meters read after the EQ. The drawing assumes they
+ *   do, and the guide's section on what the makers publish says so.
  * - MASTER LEVEL sets MASTER 1 and MASTER 2 together. BOOTH MONITOR sets BOOTH alone. The
  *   attenuators in UTILITY (ATT) turn those outputs down further. Pioneer says MASTER ATT "sets the
- *   master output attenuator" without naming the sockets, so the drawing doesn't show it, and the
- *   MASTER 2 caption says it isn't published whether it reaches MASTER 2.
+ *   master output attenuator" without naming the sockets, so the drawing does not show it, and the
+ *   MASTER 2 caption says it may reach it (test T2).
  * - The DriveRack's limiters sit on its outputs, and the amps after it: both on the PA branch only.
- * - Pioneer doesn't publish where the XDJ clips inside, so the whole mixer counts as ceiling 1.
- *   The Howler's limit isn't published either; its input is ceiling 2.
+ * - Pioneer does not publish where the XDJ clips inside, so the whole mixer counts as ceiling 1.
+ *   The Howler's limit is not published either; its input is ceiling 2.
  */
-
-export type Variant = 'full' | 'dj';
+import { section } from './sections';
 
 export type NodeKind = 'source' | 'control' | 'meter' | 'bus' | 'output' | 'processor' | 'device';
 
@@ -78,33 +78,20 @@ export interface RigNode {
   /** Read after the label by screen readers: context that the drawing gives sighted readers. */
   context?: string;
   glyph: Glyph;
-  /** Knobs and faders only: whose they are to turn. */
-  owner?: 'yours' | 'crew';
-  /** Taped on the real gear, so the DJ view tapes it too, saying whose it is. */
+  /** Taped on the real gear. The setup page's wiring table prints the tape. */
   taped?: boolean;
   /** A place where the sound can clip: 1 inside the mixer, 2 at the Howler's input. */
   ceiling?: 1 | 2;
-  /** Drawn only in the full (crew) view. */
-  fullOnly?: boolean;
-  /** Meters only: the controls people expect this meter to show, which it can't see. */
+  /** Meters only: the controls people expect this meter to show, which it cannot see. */
   blindSpots?: readonly NodeId[];
   /** Knobs only: where the pointer sits in the drawing, in degrees from 12 o'clock. */
   angle?: number;
 }
 
 export const NODES: Readonly<Record<NodeId, RigNode>> = {
-  deck1: { id: 'deck1', kind: 'source', label: 'DECK 1', printed: true, glyph: 'deck' },
-  trim1: {
-    id: 'trim1',
-    kind: 'control',
-    label: 'TRIM',
-    printed: true,
-    context: 'channel 1',
-    glyph: 'knob',
-    owner: 'yours',
-    angle: 0,
-  },
-  eq1: { id: 'eq1', kind: 'control', label: 'EQ', printed: true, context: 'channel 1', glyph: 'eq', owner: 'yours' },
+  deck1: { id: 'deck1', kind: 'source', label: 'DECK 1', printed: true, glyph: 'deck' },
+  trim1: { id: 'trim1', kind: 'control', label: 'TRIM', printed: true, context: 'channel 1', glyph: 'knob', angle: 0 },
+  eq1: { id: 'eq1', kind: 'control', label: 'EQ', printed: true, context: 'channel 1', glyph: 'eq' },
   meter1: {
     id: 'meter1',
     kind: 'meter',
@@ -114,27 +101,10 @@ export const NODES: Readonly<Record<NodeId, RigNode>> = {
     glyph: 'meter',
     blindSpots: ['fader1'],
   },
-  fader1: {
-    id: 'fader1',
-    kind: 'control',
-    label: 'Fader',
-    printed: false,
-    context: 'channel 1',
-    glyph: 'fader',
-    owner: 'yours',
-  },
-  deck2: { id: 'deck2', kind: 'source', label: 'DECK 2', printed: true, glyph: 'deck' },
-  trim2: {
-    id: 'trim2',
-    kind: 'control',
-    label: 'TRIM',
-    printed: true,
-    context: 'channel 2',
-    glyph: 'knob',
-    owner: 'yours',
-    angle: 0,
-  },
-  eq2: { id: 'eq2', kind: 'control', label: 'EQ', printed: true, context: 'channel 2', glyph: 'eq', owner: 'yours' },
+  fader1: { id: 'fader1', kind: 'control', label: 'Fader', printed: false, context: 'channel 1', glyph: 'fader' },
+  deck2: { id: 'deck2', kind: 'source', label: 'DECK 2', printed: true, glyph: 'deck' },
+  trim2: { id: 'trim2', kind: 'control', label: 'TRIM', printed: true, context: 'channel 2', glyph: 'knob', angle: 0 },
+  eq2: { id: 'eq2', kind: 'control', label: 'EQ', printed: true, context: 'channel 2', glyph: 'eq' },
   meter2: {
     id: 'meter2',
     kind: 'meter',
@@ -144,15 +114,7 @@ export const NODES: Readonly<Record<NodeId, RigNode>> = {
     glyph: 'meter',
     blindSpots: ['fader2'],
   },
-  fader2: {
-    id: 'fader2',
-    kind: 'control',
-    label: 'Fader',
-    printed: false,
-    context: 'channel 2',
-    glyph: 'fader',
-    owner: 'yours',
-  },
+  fader2: { id: 'fader2', kind: 'control', label: 'Fader', printed: false, context: 'channel 2', glyph: 'fader' },
   mix: {
     id: 'mix',
     kind: 'bus',
@@ -169,7 +131,6 @@ export const NODES: Readonly<Record<NodeId, RigNode>> = {
     label: 'MASTER LEVEL',
     printed: true,
     glyph: 'knob',
-    owner: 'crew',
     taped: true,
     angle: 135,
   },
@@ -188,12 +149,11 @@ export const NODES: Readonly<Record<NodeId, RigNode>> = {
     label: 'BOOTH MONITOR',
     printed: true,
     glyph: 'knob',
-    owner: 'yours',
     taped: true,
     angle: 45,
   },
-  master1: { id: 'master1', kind: 'output', label: 'MASTER 1', printed: true, sub: 'XLR', glyph: 'xlr' },
-  master2: { id: 'master2', kind: 'output', label: 'MASTER 2', printed: true, sub: 'RCA', glyph: 'rca' },
+  master1: { id: 'master1', kind: 'output', label: 'MASTER 1', printed: true, sub: 'XLR', glyph: 'xlr' },
+  master2: { id: 'master2', kind: 'output', label: 'MASTER 2', printed: true, sub: 'RCA', glyph: 'rca' },
   boothOut: { id: 'boothOut', kind: 'output', label: 'BOOTH', printed: true, sub: 'TRS', glyph: 'trs' },
   driverack: { id: 'driverack', kind: 'processor', label: 'DriveRack PA2', printed: false, glyph: 'rack' },
   limiter: {
@@ -203,19 +163,9 @@ export const NODES: Readonly<Record<NodeId, RigNode>> = {
     printed: false,
     context: 'inside the DriveRack',
     glyph: 'limiter',
-    fullOnly: true,
   },
   // A box, but what matters is its gain knobs: they set the room's volume.
-  amps: {
-    id: 'amps',
-    kind: 'control',
-    label: 'Amps',
-    printed: false,
-    sub: 'QSC GX7',
-    glyph: 'amp',
-    owner: 'crew',
-    taped: true,
-  },
+  amps: { id: 'amps', kind: 'control', label: 'Amps', printed: false, sub: 'QSC GX7', glyph: 'amp', taped: true },
   pa: { id: 'pa', kind: 'device', label: 'PA speakers', printed: false, glyph: 'pa' },
   monitor: { id: 'monitor', kind: 'device', label: 'Booth monitors', printed: false, glyph: 'monitor' },
   howler: {
@@ -243,7 +193,7 @@ const LISTENER_NAME: Readonly<Record<Listener, string>> = {
 // The graph
 // ---------------------------------------------------------------------------------------------
 
-/** signal: inside the mixer. tap: a meter reading the signal. cable: a lead between boxes. */
+/** signal: inside a box. tap: a meter reading the signal. cable: a lead between boxes. */
 export type EdgeKind = 'signal' | 'tap' | 'cable';
 
 export interface Edge {
@@ -273,67 +223,38 @@ const EDGES: readonly Edge[] = [
   edge('masterLevel', 'master2', 'signal'),
   edge('booth', 'boothOut', 'signal'),
   edge('master1', 'driverack', 'cable'),
+  edge('driverack', 'limiter', 'signal'),
+  edge('limiter', 'amps', 'cable'),
   edge('amps', 'pa', 'cable'),
   edge('master2', 'howler', 'cable'),
   edge('boothOut', 'monitor', 'cable'),
 ];
 
-/** Every connection in a view. The DJ view hides the DriveRack's limiter. */
-export function edgesFor(variant: Variant = 'full'): Edge[] {
-  const toAmps =
-    variant === 'full'
-      ? [edge('driverack', 'limiter', 'signal'), edge('limiter', 'amps', 'cable')]
-      : [edge('driverack', 'amps', 'cable')];
-  return [...EDGES, ...toAmps];
-}
-
-/** The tape the DJ view puts on a part, as crew tape the real knobs: whose it is to turn. */
-export function tapeFor(id: NodeId, variant: Variant): 'Crew' | 'Yours' | undefined {
-  const { taped, owner } = NODES[id];
-  if (variant !== 'dj' || !taped) return undefined;
-  return owner === 'crew' ? 'Crew' : 'Yours';
+/** Every connection in the drawing. The setup page's wiring table reads what feeds each box. */
+export function edgesFor(): Edge[] {
+  return [...EDGES];
 }
 
 /**
  * A node's name for screen readers: the text on it, then the context the drawing gives sighted
- * readers ("TRIM, channel 1", "BOOTH MONITOR, yours"). It starts with the visible words, so voice
- * control can use them.
+ * readers ("TRIM, channel 1"). It starts with the visible words, so voice control can use them.
  */
-export function accessibleName(id: NodeId, variant: Variant = 'full'): string {
+export function accessibleName(id: NodeId): string {
   const node = NODES[id];
   const second = node.ceiling ? `Ceiling ${node.ceiling}` : node.sub;
   const visible = node.glyph === 'eq' ? 'EQ HI MID LOW' : [node.label, second].filter(Boolean).join(' ');
-  const tape = tapeFor(id, variant);
-  const context = [
-    node.ceiling ? node.sub : undefined,
-    node.context,
-    tape === 'Crew' ? 'crew’s' : tape === 'Yours' ? 'yours' : undefined,
-  ].filter(Boolean);
+  const context = [node.ceiling ? node.sub : undefined, node.context].filter(Boolean);
   return [visible, ...context].join(', ').replace(/ /g, ' ');
 }
 
-/** The nodes drawn in a view. */
-export function visibleNodes(variant: Variant): NodeId[] {
-  return (Object.keys(NODES) as NodeId[]).filter((id) => variant === 'full' || !NODES[id].fullOnly);
-}
-
-/**
- * What starts picked. Crew start at the recorder, to see what reaches the file. DJs start at
- * MASTER LEVEL, the crew's knob that sets the speakers and the recording at once.
- */
-export const DEFAULT_SELECTION: Readonly<Record<Variant, NodeId>> = { full: 'howler', dj: 'masterLevel' };
-
-/** A node the view can show, or the view's default if it can't (the limiter in the DJ view). */
-export function resolveSelection(id: NodeId | null | undefined, variant: Variant): NodeId | null {
-  if (id === null) return null;
-  return id !== undefined && visibleNodes(variant).includes(id) ? id : DEFAULT_SELECTION[variant];
-}
+/** What starts picked: the recorder, to see what reaches the file. */
+export const DEFAULT_SELECTION: NodeId = 'howler';
 
 /**
  * Nodes in reading order: each channel top to bottom, then the mix, then each branch from its
  * knob to the box at the end of it. This is the DOM order, and so the order the arrow keys take.
  */
-const FLOW: readonly NodeId[] = [
+export const FLOW: readonly NodeId[] = [
   'deck1',
   'trim1',
   'eq1',
@@ -359,11 +280,6 @@ const FLOW: readonly NodeId[] = [
   'monitor',
 ];
 
-export function flowOrder(variant: Variant = 'full'): NodeId[] {
-  const shown = visibleNodes(variant);
-  return FLOW.filter((id) => shown.includes(id));
-}
-
 function walk(start: NodeId, next: (id: NodeId) => NodeId[]): Set<NodeId> {
   const seen = new Set<NodeId>();
   const queue = [...next(start)];
@@ -377,26 +293,24 @@ function walk(start: NodeId, next: (id: NodeId) => NodeId[]): Set<NodeId> {
 }
 
 /** Everything a node's signal reaches: what turning it changes. Meters reach nothing. */
-export function downstreamOf(id: NodeId, variant: Variant = 'full'): Set<NodeId> {
-  const edges = edgesFor(variant);
-  return walk(id, (n) => edges.filter((e) => e.from === n).map((e) => e.to));
+export function downstreamOf(id: NodeId): Set<NodeId> {
+  return walk(id, (n) => EDGES.filter((e) => e.from === n).map((e) => e.to));
 }
 
 /** Everything that feeds a node. */
-export function upstreamOf(id: NodeId, variant: Variant = 'full'): Set<NodeId> {
-  const edges = edgesFor(variant);
-  return walk(id, (n) => edges.filter((e) => e.to === n).map((e) => e.from));
+export function upstreamOf(id: NodeId): Set<NodeId> {
+  return walk(id, (n) => EDGES.filter((e) => e.to === n).map((e) => e.from));
 }
 
 /** The knobs and faders whose turn changes what `target` gets, in signal order. */
-export function controlsFor(target: NodeId, variant: Variant = 'full'): NodeId[] {
-  const up = upstreamOf(target, variant);
-  return flowOrder(variant).filter((id) => up.has(id) && NODES[id].kind === 'control');
+export function controlsFor(target: NodeId): NodeId[] {
+  const up = upstreamOf(target);
+  return FLOW.filter((id) => up.has(id) && NODES[id].kind === 'control');
 }
 
 /** Which of the PA, the booth monitors and the Howler a node's signal ends up in. */
-export function listenersReached(id: NodeId, variant: Variant = 'full'): Listener[] {
-  const down = downstreamOf(id, variant);
+export function listenersReached(id: NodeId): Listener[] {
+  const down = downstreamOf(id);
   return LISTENERS.filter((l) => l === id || down.has(l));
 }
 
@@ -420,16 +334,12 @@ export interface Highlight {
   edges: Set<string>;
 }
 
-export function highlightFor(id: NodeId, variant: Variant = 'full'): Highlight {
+export function highlightFor(id: NodeId): Highlight {
   const direction = directionFor(id);
   const nodes = new Set<NodeId>([id]);
-  if (direction !== 'up') for (const n of downstreamOf(id, variant)) nodes.add(n);
-  if (direction !== 'down') for (const n of upstreamOf(id, variant)) nodes.add(n);
-  const edges = new Set(
-    edgesFor(variant)
-      .filter((e) => nodes.has(e.from) && nodes.has(e.to))
-      .map((e) => e.id),
-  );
+  if (direction !== 'up') for (const n of downstreamOf(id)) nodes.add(n);
+  if (direction !== 'down') for (const n of upstreamOf(id)) nodes.add(n);
+  const edges = new Set(EDGES.filter((e) => nodes.has(e.from) && nodes.has(e.to)).map((e) => e.id));
   return { direction, nodes, edges };
 }
 
@@ -437,165 +347,56 @@ export function highlightFor(id: NodeId, variant: Variant = 'full'): Highlight {
 // Words
 // ---------------------------------------------------------------------------------------------
 
-interface Copy {
+export interface Caption {
   title: string;
-  text: string;
-  /** Replaces `text` in the DJ view. */
-  dj?: string;
-}
-
-/** A no-break space, so "6 dB" never splits across lines. */
-const NB = ' ';
-
-/** Both channels share these. The DJ view names the DJ's own controls, as it names the crew's. */
-const TRIM_COPY: Copy = {
-  title: 'What TRIM touches',
-  text: 'TRIM reaches every output: PA, booth monitors and recording. Set it so the loudest bits peak at the first or second orange light.',
-  dj: 'TRIM is yours. It reaches every output, the recording included. Set it so the loudest bits peak at the first or second orange light.',
-};
-
-const EQ_COPY: Copy = {
-  title: 'What EQ touches',
-  text: `EQ reaches every output. Each knob can add up to 6${NB}dB, so cut rather than boost.`,
-  dj: `The EQ knobs are yours. They reach every output, and each can add up to 6${NB}dB, so cut rather than boost.`,
-};
-
-const METER_TEXT =
-  'Channel meters show each track before its fader, so a blend doesn’t show on them. The middle meters show the mix.';
-/** Ends on the DJ rule's own challenge and response (rules.ts): "In a blend, watch the middle meters." */
-const METER_DJ =
-  'Channel meters show each track before its fader, so a blend doesn’t show on them. In a blend, watch the middle meters.';
-
-const FADER_COPY: Copy = {
-  title: 'What the fader touches',
-  text: 'The fader reaches every output. The channel meter reads before it, so watch the middle meters as you blend.',
-  dj: 'The fader is yours, and it reaches every output. The channel meter reads before it, so watch the middle meters as you blend.',
-};
-
-/**
- * One title and one caption per node (widget captions stay under 25 words). The titles work in
- * both views, so the same drawing can sit in a DJ's guide and on the crew's setup page. The
- * ceilings are named on the drawing; the captions say what each part does to the music.
- */
-export const COPY: Readonly<Record<NodeId, Copy>> = {
-  deck1: {
-    title: 'Where DECK 1 goes',
-    text: 'DECK 1 plays into channel 1, and from there into every output: PA, booth monitors and recording.',
-  },
-  deck2: {
-    title: 'Where DECK 2 goes',
-    text: 'DECK 2 plays into channel 2, and from there into every output: PA, booth monitors and recording.',
-  },
-  trim1: TRIM_COPY,
-  trim2: TRIM_COPY,
-  eq1: EQ_COPY,
-  eq2: EQ_COPY,
-  meter1: { title: 'What the CH1 meter can see', text: METER_TEXT, dj: METER_DJ },
-  meter2: { title: 'What the CH2 meter can see', text: METER_TEXT, dj: METER_DJ },
-  fader1: FADER_COPY,
-  fader2: FADER_COPY,
-  mix: {
-    title: 'Ceiling 1, inside the mixer',
-    text: 'Both channels add up here. Anything that clips up to this point reaches every output, and no later knob can fix it.',
-    dj: 'Both channels add up here, so a blend peaks higher than either track. Crunch made here reaches every output, and no later knob removes it.',
-  },
-  masterLevel: {
-    title: 'What MASTER LEVEL touches',
-    text: 'MASTER LEVEL sets the PA and the recording together, so it stays fully up and marked REC. Set the room’s volume at the amps.',
-    dj: 'MASTER LEVEL is the crew’s knob, marked REC. It sets the PA and the recording together. For more volume, the crew turn up the amps.',
-  },
-  masterMeter: {
-    title: 'What the middle meters can see',
-    text: 'The middle meters show the whole mix after MASTER LEVEL, so blends show up here. Keep MASTER LEVEL fully up, or they read low.',
-    dj: 'The middle meters show the whole mix, so blends show up here. Keep them out of the red.',
-  },
-  booth: {
-    title: 'What BOOTH MONITOR touches',
-    text: 'BOOTH MONITOR sets the booth monitors. It doesn’t reach the PA or the recording, so it’s the DJ’s knob.',
-    dj: 'BOOTH MONITOR is yours, marked MONITOR. It sets the booth monitors, and the PA and the recording don’t hear it.',
-  },
-  master1: {
-    title: 'What MASTER 1 feeds',
-    text: 'MASTER 1 feeds the PA through the DriveRack and the amps. MASTER LEVEL and MASTER ATT, in UTILITY, set its level.',
-    dj: 'MASTER 1 feeds the PA through the DriveRack and the amps. MASTER LEVEL sets its level.',
-  },
-  master2: {
-    title: 'What MASTER 2 feeds',
-    text: 'MASTER 2 feeds the recorder, so MASTER LEVEL sets the record level. Pioneer doesn’t say whether MASTER ATT reaches it. Test it once.',
-    dj: 'MASTER 2 feeds the recorder. It follows MASTER LEVEL, like the PA, which is why that knob is the crew’s.',
-  },
-  boothOut: {
-    title: 'What the BOOTH sockets feed',
-    text: 'The BOOTH sockets feed the booth monitors. BOOTH MONITOR and BOOTH ATT, in UTILITY, set their level.',
-    dj: 'The BOOTH sockets feed the booth monitors, and nothing else. Your BOOTH MONITOR knob sets their level.',
-  },
-  driverack: {
-    title: 'What the DriveRack does',
-    text: `The DriveRack tunes the PA, and protects it if its limiters are set. Keep its input switch on +4${NB}dBu, or its input clips early.`,
-    dj: 'The DriveRack tunes the PA. Its limiter is only there for the speakers, so it can’t save the recording.',
-  },
-  limiter: {
-    title: 'What the limiter protects',
-    text: 'The DriveRack’s limiter works on the PA branch alone, and only when switched on. The recorder is on another branch, so nothing limits it.',
-  },
-  amps: {
-    title: 'What the amps touch',
-    text: 'The amps’ gain knobs, marked RIG, set the room’s volume. When a DJ wants more, turn these up. The recording never hears them.',
-    dj: 'The amps’ gain knobs are the crew’s, marked RIG. They set the room’s volume without touching the recording, so ask the crew for more.',
-  },
-  pa: {
-    title: 'What the crowd hears',
-    text: 'The crowd hears the channels, then MASTER LEVEL, the DriveRack and the amps. BOOTH MONITOR doesn’t reach the PA.',
-    dj: 'The crowd hears your channels through MASTER LEVEL, the DriveRack and the amps. For a louder room, ask the crew.',
-  },
-  monitor: {
-    title: 'What the booth monitors play',
-    text: 'The booth monitors play the channels, then BOOTH MONITOR. MASTER LEVEL and the amps don’t change them.',
-    dj: 'The booth monitors play your channels through BOOTH MONITOR, your knob. Turn it up to hear more in the booth.',
-  },
-  howler: {
-    title: 'What the recorder hears',
-    text: 'The recorder hears the channels, then MASTER LEVEL. BOOTH MONITOR and the amps don’t reach it. Its input is ceiling 2.',
-    dj: 'The recorder hears your channels, then MASTER LEVEL. BOOTH MONITOR and the amps don’t reach it. Its input is ceiling 2.',
-  },
-};
-
-/**
- * Each view's name: the drawing's label for screen readers, and its title when nothing is picked.
- * The guide shows both views, so the names differ.
- */
-export const VIEW_NAME: Readonly<Record<Variant, string>> = {
-  full: 'Which knob touches what',
-  dj: 'Whose knob is whose',
-};
-
-/** The readout when nothing is picked. */
-export function idleCaption(variant: Variant = 'full'): { title: string; text: string } {
-  return { title: VIEW_NAME[variant], text: 'Pick any knob, meter, socket or box to light up its path.' };
+  /** Only what the summary under it (Reaches, Set by, Shows) does not already say. */
+  text?: string;
 }
 
 /**
- * The DJ view's key: whose knobs are whose. The drawing tapes the ones in the middle and the amps;
- * UTILITY is a settings screen, not a knob, so only the key names it.
+ * One title per node, and a line only where there's something the computed summary does not say.
+ * The ceilings are named on the drawing, and the reasons live in the guide's prose.
  */
-export const WHOSE = {
-  yours: 'TRIM, EQ, faders and BOOTH MONITOR',
-  crew: 'MASTER LEVEL, UTILITY and the amps',
+export const COPY: Readonly<Record<NodeId, Caption>> = {
+  deck1: { title: 'Where DECK 1 goes' },
+  deck2: { title: 'Where DECK 2 goes' },
+  trim1: { title: 'What TRIM touches' },
+  trim2: { title: 'What TRIM touches' },
+  eq1: { title: 'What EQ touches' },
+  eq2: { title: 'What EQ touches' },
+  meter1: { title: 'What the CH1 meter can see' },
+  meter2: { title: 'What the CH2 meter can see' },
+  fader1: { title: 'What the fader touches' },
+  fader2: { title: 'What the fader touches' },
+  mix: { title: 'Ceiling 1, inside the mixer', text: 'Both channels add up here.' },
+  masterLevel: { title: 'What MASTER LEVEL touches' },
+  masterMeter: { title: 'What the MASTER meters can see' },
+  booth: { title: 'What BOOTH MONITOR touches', text: 'It’s the DJ’s knob.' },
+  master1: { title: 'What MASTER 1 feeds', text: 'MASTER ATT, in UTILITY, also sets its level.' },
+  master2: { title: 'What MASTER 2 feeds', text: 'MASTER ATT may lower it too (test T2).' },
+  boothOut: { title: 'What the BOOTH sockets feed', text: 'BOOTH ATT, in UTILITY, also sets their level.' },
+  driverack: { title: 'What the DriveRack does', text: 'It tunes the PA.' },
+  limiter: { title: 'What the limiter protects', text: 'It works only when switched on.' },
+  amps: { title: 'What the amps touch', text: 'Their gain knobs set the room’s volume.' },
+  pa: { title: 'What the crowd hears' },
+  monitor: { title: 'What the booth monitors play' },
+  howler: { title: 'What the recorder hears', text: 'Its input is ceiling 2.' },
+};
+
+/** The drawing's name for screen readers. */
+export const DRAWING_NAME = 'Which knob touches what';
+
+/**
+ * The drawing's caveat. What the makers leave out is stated once, in the guide's section on what
+ * they publish (the mixer as one ceiling, the Howler's limit, the channel meters after the EQ).
+ */
+const MAKERS = section('red-top');
+
+export const MODEL_NOTE = {
+  text: 'Parts of this drawing are assumptions.',
+  link: `See ${MAKERS.number}`,
+  href: `#${MAKERS.id}`,
 } as const;
-
-/** The model's honest limits, printed under the drawing. Crew also get the Howler's. */
-export function modelNote(variant: Variant = 'full'): string {
-  const mixer = 'Where exactly the XDJ clips inside isn’t published, so the mixer counts as one ceiling.';
-  const howler = 'Howler doesn’t publish its input limit either. Its LEVEL light is the only guide.';
-  // The drawing taps the channel meters after the EQ (the eq>meter edges), so it says "Shows TRIM and EQ".
-  const meters = 'Pioneer doesn’t say whether the channel meters read after the EQ. This drawing assumes they do.';
-  return variant === 'full' ? `${mixer} ${howler} ${meters}` : `${mixer} ${meters}`;
-}
-
-export function captionFor(id: NodeId, variant: Variant = 'full'): { title: string; text: string } {
-  const copy = COPY[id];
-  return { title: copy.title, text: variant === 'dj' && copy.dj !== undefined ? copy.dj : copy.text };
-}
 
 /** "A", "A and B", "A, B and C" (UK style: no serial comma). */
 export function listText(items: readonly string[], joiner: 'and' | 'or' = 'and'): string {
@@ -631,22 +432,22 @@ const BRANCH_KNOBS: readonly NodeId[] = ['masterLevel', 'booth', 'amps'];
  * The highlight in words, worked out from the graph: what a knob reaches, what sets a socket or
  * a box, what a meter shows. It sits under the caption so the drawing never relies on colour.
  */
-export function summaryFor(id: NodeId, variant: Variant = 'full'): Summary {
+export function summaryFor(id: NodeId): Summary {
   const direction = directionFor(id);
   const { kind, blindSpots } = NODES[id];
   if (kind === 'meter') {
-    const summary: Summary = { label: 'Shows', items: listText(controlNames(controlsFor(id, variant))) };
+    const summary: Summary = { label: 'Shows', items: listText(controlNames(controlsFor(id))) };
     if (blindSpots && blindSpots.length > 0) {
-      summary.notLabel = 'Can’t see';
+      summary.notLabel = 'Cannot see';
       summary.notItems = listText(controlNames(blindSpots), 'or');
     }
     return summary;
   }
   if (direction === 'up' || kind === 'output') {
-    const controls = controlsFor(id, variant);
+    const controls = controlsFor(id);
     const summary: Summary = { label: 'Set by', items: listText(controlNames(controls)) };
     // Knobs on other branches. Those further down this one (the amps, after MASTER 1) go unsaid.
-    const down = downstreamOf(id, variant);
+    const down = downstreamOf(id);
     const missing = BRANCH_KNOBS.filter((k) => !controls.includes(k) && !down.has(k));
     if (missing.length > 0) {
       summary.notLabel = 'Not by';
@@ -654,11 +455,11 @@ export function summaryFor(id: NodeId, variant: Variant = 'full'): Summary {
     }
     return summary;
   }
-  const reached = listenersReached(id, variant);
+  const reached = listenersReached(id);
   const summary: Summary = { label: 'Reaches', items: listText(reached.map((l) => LISTENER_NAME[l])) };
   const missed = LISTENERS.filter((l) => !reached.includes(l));
   if (missed.length > 0) {
-    summary.notLabel = 'Doesn’t reach';
+    summary.notLabel = 'Does not reach';
     summary.notItems = listText(
       missed.map((l) => LISTENER_NAME[l]),
       'or',
@@ -700,7 +501,7 @@ export interface Dot {
   edges: string[];
 }
 
-/** A lead's name, drawn next to its wire in the full view. */
+/** A lead's name, drawn next to its wire. */
 export interface WireLabel {
   edge: string;
   x: number;
@@ -715,7 +516,7 @@ export interface Layout {
   height: number;
   /** The XDJ-RX2 itself. The output sockets sit on its edge. */
   chassis: Rect;
-  rects: Partial<Record<NodeId, Rect>>;
+  rects: Record<NodeId, Rect>;
   wires: Wire[];
   dots: Dot[];
   labels: WireLabel[];
@@ -810,23 +611,21 @@ interface Draft {
   labels: WireLabel[];
 }
 
-function finish(name: LayoutName, draft: Draft, variant: Variant): Layout {
-  const wires: Wire[] = edgesFor(variant).map((e) => {
+function finish(name: LayoutName, draft: Draft): Layout {
+  const wires: Wire[] = EDGES.map((e) => {
     const points = draft.routes[e.id];
     if (!points) throw new Error(`No route for ${e.id} in the ${name} layout`);
     return { edge: e.id, points, d: roundedPath(points), arrow: arrowHead(points) };
   });
-  const shown = visibleNodes(variant);
   return {
     name,
     width: draft.width,
     height: draft.height,
     chassis: draft.chassis,
-    rects: Object.fromEntries(shown.map((id) => [id, draft.rects[id]])),
+    rects: draft.rects,
     wires,
     dots: draft.dots,
-    // The DJ view leaves the leads unnamed.
-    labels: variant === 'full' ? draft.labels : [],
+    labels: draft.labels,
   };
 }
 
@@ -855,13 +654,13 @@ const TALL_TWO = 74;
 export const TALL_HIT_PAD = { x: 2, y: 4 } as const;
 
 /** Phones: both channels side by side, the signal running down the screen. */
-function tallLayout(variant: Variant): Layout {
+function tallLayout(): Layout {
   const L = { x: 4, w: 92 };
   const M = { x: 104, w: 92 };
   const R = { x: 204, w: 92 };
   const at = (col: { x: number; w: number }, y: number, h = TALL_ONE): Rect => ({ x: col.x, y, w: col.w, h });
-  // Under the XDJ the PA branch runs down the left: DriveRack, the limiter (full view only), amps.
-  const ampsY = variant === 'full' ? 814 : 744;
+  // Under the XDJ the PA branch runs down the left: DriveRack, the limiter, amps.
+  const ampsY = 814;
   // The three places the music ends up share the bottom row.
   const yEnd = ampsY + TALL_TWO + 16;
 
@@ -929,60 +728,55 @@ function tallLayout(variant: Variant): Layout {
     'master1>driverack': down(r.master1, r.driverack),
     'driverack>limiter': down(r.driverack, r.limiter),
     'limiter>amps': down(r.limiter, r.amps),
-    'driverack>amps': down(r.driverack, r.amps),
     'amps>pa': down(r.amps, r.pa),
     'master2>howler': down(r.master2, r.howler),
     'boothOut>monitor': down(r.boothOut, r.monitor),
   };
 
-  return finish(
-    'tall',
-    {
-      width: 300,
-      height: yEnd + TALL_TWO + 6,
-      chassis: { x: 0.5, y: 0.5, w: 299, h: cy(r.master1) - 0.5 },
-      rects: r,
-      routes,
-      dots: [
-        { x: cx(r.eq1), y: tapY, edges: ['eq1>fader1', 'eq1>meter1'] },
-        { x: cx(r.eq2), y: tapY, edges: ['eq2>fader2', 'eq2>meter2'] },
-        { x: cx(r.mix), y: mergeY, edges: ['fader1>mix', 'fader2>mix'] },
-        { x: cx(r.mix), y: splitY, edges: ['mix>masterLevel', 'mix>booth'] },
-        {
-          x: cx(r.masterLevel),
-          y: busY,
-          edges: ['masterLevel>master2', 'masterLevel>master1', 'masterLevel>masterMeter'],
-        },
-        { x: cx(r.master1), y: busY, edges: ['masterLevel>master1', 'masterLevel>masterMeter'] },
-      ],
-      labels: [
-        {
-          edge: 'master2>howler',
-          x: cx(r.master2) + 6,
-          y: (bottom(r.master2) + yEnd) / 2 - 4,
-          anchor: 'start',
-          lines: ['RCA', 'lead'],
-        },
-      ],
-    },
-    variant,
-  );
+  return finish('tall', {
+    width: 300,
+    height: yEnd + TALL_TWO + 6,
+    chassis: { x: 0.5, y: 0.5, w: 299, h: cy(r.master1) - 0.5 },
+    rects: r,
+    routes,
+    dots: [
+      { x: cx(r.eq1), y: tapY, edges: ['eq1>fader1', 'eq1>meter1'] },
+      { x: cx(r.eq2), y: tapY, edges: ['eq2>fader2', 'eq2>meter2'] },
+      { x: cx(r.mix), y: mergeY, edges: ['fader1>mix', 'fader2>mix'] },
+      { x: cx(r.mix), y: splitY, edges: ['mix>masterLevel', 'mix>booth'] },
+      {
+        x: cx(r.masterLevel),
+        y: busY,
+        edges: ['masterLevel>master2', 'masterLevel>master1', 'masterLevel>masterMeter'],
+      },
+      { x: cx(r.master1), y: busY, edges: ['masterLevel>master1', 'masterLevel>masterMeter'] },
+    ],
+    labels: [
+      {
+        edge: 'master2>howler',
+        x: cx(r.master2) + 6,
+        y: (bottom(r.master2) + yEnd) / 2 - 4,
+        anchor: 'start',
+        lines: ['RCA', 'lead'],
+      },
+    ],
+  });
 }
 
 /**
- * Wider screens: the two channels as rows, the signal running left to right. The middle meters sit
+ * Wider screens: the two channels as rows, the signal running left to right. The MASTER meters sit
  * over MASTER LEVEL, tapping the wire that rises from it to MASTER 1, so the drawing needs no
  * column of its own for them and fits the widest names at 15 px from `WIDE_FROM_PX` up.
  */
-function wideLayout(variant: Variant): Layout {
+function wideLayout(): Layout {
   // Row A starts under the XDJ-RX2's printed name, in the chassis's top corner.
   const A = 56;
   const B = 156;
   const C = 256;
   const H = 66;
   const at = (x: number, w: number, row: number, h = H): Rect => ({ x, y: row - h / 2, w, h });
-  // The PA branch runs along the top row: DriveRack, the limiter (full view only), amps.
-  const ampsX = variant === 'full' ? 736 : 662;
+  // The PA branch runs along the top row: DriveRack, the limiter, amps.
+  const ampsX = 736;
   // The three places the music ends up share the last column.
   const xEnd = ampsX + 66 + 14;
 
@@ -1049,42 +843,37 @@ function wideLayout(variant: Variant): Layout {
     'master1>driverack': across(r.master1, r.driverack),
     'driverack>limiter': across(r.driverack, r.limiter),
     'limiter>amps': across(r.limiter, r.amps),
-    'driverack>amps': across(r.driverack, r.amps),
     'amps>pa': across(r.amps, r.pa),
     'master2>howler': across(r.master2, r.howler),
     'boothOut>monitor': across(r.boothOut, r.monitor),
   };
 
-  return finish(
-    'wide',
-    {
-      width: xEnd + 74 + 6,
-      height: bottom(r.deck2) + 8,
-      chassis: { x: 0.5, y: 0.5, w: cx(r.master1) - 0.5, h: bottom(r.deck2) + 7 },
-      rects: r,
-      routes,
-      dots: [
-        { x: tapX, y: A, edges: ['eq1>fader1', 'eq1>meter1'] },
-        { x: tapX, y: C, edges: ['eq2>fader2', 'eq2>meter2'] },
-        { x: mergeX, y: B, edges: ['fader1>mix', 'fader2>mix'] },
-        { x: splitX, y: B, edges: ['mix>masterLevel', 'mix>booth'] },
-        { x: riserX, y: B, edges: ['masterLevel>master1', 'masterLevel>master2'] },
-        { x: riserX, y: meterTapY, edges: ['masterLevel>master1', 'masterLevel>masterMeter'] },
-      ],
-      labels: [
-        {
-          edge: 'master2>howler',
-          x: (right(r.master2) + xEnd) / 2,
-          y: B - 8,
-          anchor: 'middle',
-          lines: ['RCA lead'],
-        },
-      ],
-    },
-    variant,
-  );
+  return finish('wide', {
+    width: xEnd + 74 + 6,
+    height: bottom(r.deck2) + 8,
+    chassis: { x: 0.5, y: 0.5, w: cx(r.master1) - 0.5, h: bottom(r.deck2) + 7 },
+    rects: r,
+    routes,
+    dots: [
+      { x: tapX, y: A, edges: ['eq1>fader1', 'eq1>meter1'] },
+      { x: tapX, y: C, edges: ['eq2>fader2', 'eq2>meter2'] },
+      { x: mergeX, y: B, edges: ['fader1>mix', 'fader2>mix'] },
+      { x: splitX, y: B, edges: ['mix>masterLevel', 'mix>booth'] },
+      { x: riserX, y: B, edges: ['masterLevel>master1', 'masterLevel>master2'] },
+      { x: riserX, y: meterTapY, edges: ['masterLevel>master1', 'masterLevel>masterMeter'] },
+    ],
+    labels: [
+      {
+        edge: 'master2>howler',
+        x: (right(r.master2) + xEnd) / 2,
+        y: B - 8,
+        anchor: 'middle',
+        lines: ['RCA lead'],
+      },
+    ],
+  });
 }
 
-export function layoutFor(name: LayoutName, variant: Variant = 'full'): Layout {
-  return name === 'tall' ? tallLayout(variant) : wideLayout(variant);
+export function layoutFor(name: LayoutName): Layout {
+  return name === 'tall' ? tallLayout() : wideLayout();
 }

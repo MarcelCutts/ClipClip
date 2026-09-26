@@ -1,31 +1,44 @@
 import { describe, expect, it } from 'vitest';
 import { CHECKLISTS } from './checklists';
 import {
-  CHANGEOVER_LINE,
   chatMessages,
   DOORS_PATH,
-  firstSentence,
   GUIDE_PATH,
+  MAX_WORDS,
+  NAME_BLANK,
   parseInline,
   parseMessage,
   REVIEW_PATH,
   ruleLine,
   wordCount,
 } from './messages';
+import { CARDS } from './quiz/cards';
 import { DJ_RULES } from './rules';
-import { MONITOR_TAG } from './tags';
 
 const BASE = 'https://crew.example/out-of-the-red';
 const messages = chatMessages((path) => `${BASE}${path}`);
 const textOf = (id: string) => messages.find((m) => m.id === id)?.text ?? '';
 
 describe('chat messages', () => {
-  it('has the four messages', () => {
-    expect(messages.map((m) => m.id)).toEqual(['dj-briefing', 'crew-setup', 'changeover', 'review']);
+  it('has three messages: the words for the next DJ are said at the booth (C2), not sent', () => {
+    expect(messages.map((m) => m.id)).toEqual(['dj-briefing', 'crew-setup', 'review']);
   });
 
-  it.each(messages)('$title is 60 words or fewer', ({ text }) => {
-    expect(wordCount(text)).toBeLessThanOrEqual(60);
+  it.each(messages)('$title fits one phone screen: 80 words or fewer', ({ text }) => {
+    expect(MAX_WORDS).toBe(80);
+    expect(wordCount(text)).toBeLessThanOrEqual(MAX_WORDS);
+  });
+
+  it('adds few words of its own to what the pages say', () => {
+    // The briefing is the three DJ lines plus one line before them and the link after: 15 words at most.
+    const briefing = textOf('dj-briefing');
+    const own = briefing
+      .split('\n')
+      .filter((line) => !DJ_RULES.some((r) => line === ruleLine(r)))
+      .join(' ');
+    expect(wordCount(own)).toBeLessThanOrEqual(15);
+    // The reminder is one sentence of its own and the link.
+    expect(wordCount(textOf('review'))).toBeLessThanOrEqual(25);
   });
 
   it.each(messages)('$title opens in bold and ends on its link', ({ text }) => {
@@ -35,9 +48,10 @@ describe('chat messages', () => {
     expect(text.indexOf('https://')).toBe(text.lastIndexOf('https://'));
   });
 
-  it.each(messages)('$title says no please, and never shouts', ({ text }) => {
+  it.each(messages)('$title says no please, never shouts, and spells out its negatives', ({ text }) => {
     expect(text).not.toMatch(/\bplease\b/i);
     expect(text).not.toContain('!');
+    expect(text).not.toMatch(/n’t\b|n't\b/);
   });
 
   it.each(messages)('$title links into the new site: the guide or the night page', ({ text }) => {
@@ -52,28 +66,32 @@ describe('chat messages', () => {
     }
   });
 
-  it('briefs DJs with the rules as the “Know by heart” boxes set them', () => {
+  it('briefs DJs with the rules as the “Know by heart” boxes set them, notes and all', () => {
     const briefing = textOf('dj-briefing');
     for (const rule of DJ_RULES) {
-      expect(briefing).toContain(`- ${rule.challenge}: ${rule.response}.`);
-      // What to do if the rule isn't met: the note's first sentence. The rest is on the page.
-      if (rule.note) expect(briefing).toContain(`${rule.response}. ${firstSentence(rule.note)}`);
+      expect(briefing.split('\n')).toContain(`- ${rule.challenge}: ${rule.response}. ${rule.note}`);
       expect(briefing.split('\n')).toContain(ruleLine(rule));
     }
-    expect(firstSentence('If red, ease TRIM back. Set it on cue.')).toBe('If red, ease TRIM back.');
-  });
-
-  it('tells DJs what they get before the rules, and which knob is theirs', () => {
-    const briefing = textOf('dj-briefing');
-    const [first = ''] = briefing.split('\n');
-    expect(first).toMatch(/Every set here is recorded/);
-    // MASTER LEVEL is the crew’s (the rule says so); BOOTH MONITOR is the DJ’s, as its tape says.
-    expect(briefing).toContain(`- BOOTH MONITOR is ${MONITOR_TAG.owner}.`);
-    expect(briefing).toMatch(/MASTER LEVEL is the crew’s/);
+    expect(DJ_RULES).toHaveLength(3);
+    expect(briefing).toMatch(/MASTER LEVEL: fully up, the crew’s\./);
     expect(briefing.endsWith(`${BASE}${GUIDE_PATH}`)).toBe(true);
+    expect(GUIDE_PATH).toBe('/#trim');
   });
 
-  it('builds the crew’s check from the doors checklist, so the two can’t disagree', () => {
+  it('tells DJs that BOOTH MONITOR is theirs, once', () => {
+    const briefing = textOf('dj-briefing');
+    expect(briefing).toContain('For a louder booth, turn up BOOTH MONITOR.');
+    expect(briefing.match(/BOOTH MONITOR/g)).toHaveLength(1);
+  });
+
+  it('tells DJs the set is recorded and who is on crew, and promises nothing more', () => {
+    const [first = ''] = textOf('dj-briefing').split('\n');
+    expect(first).toBe(`*Every set here is recorded.* ${NAME_BLANK} is on crew tonight.`);
+    const all = messages.map((m) => m.text).join('\n');
+    expect(all).not.toMatch(/sent (you )?your set|you(’ll| will) (get|be sent)|get your set/i);
+  });
+
+  it('builds the crew’s check from the doors checklist, so the two cannot disagree', () => {
     const check = textOf('crew-setup');
     const bullets = check.split('\n').filter((line) => line.startsWith('- '));
     expect(bullets).toEqual(CHECKLISTS.doors.items.map((i) => `- ${i.check}: ${i.target}`));
@@ -83,27 +101,15 @@ describe('chat messages', () => {
     expect(DOORS_PATH).toBe('/night/#doors');
   });
 
-  it('sends the reminder to the meter check, by the name the guide gives it', () => {
-    expect(textOf('review')).toContain(`${BASE}${REVIEW_PATH}`);
+  it('sends the reminder to the meter check’s heading, with its number of questions', () => {
+    const reminder = textOf('review');
+    expect(reminder).toContain(`${BASE}${REVIEW_PATH}`);
     expect(REVIEW_PATH).toBe('/#check');
-    expect(textOf('review')).toMatch(/the meter check/);
-    // The middle meters and the channel meters are named as such: never "the XDJ meters".
-    expect(textOf('review')).not.toMatch(/XDJ meters/);
-  });
-
-  it('gives the next DJ a meter position, not just a colour', () => {
-    // Orange runs from 0 to +9, and a blend adds up to two more lights.
-    expect(CHANGEOVER_LINE).toMatch(/first or second orange/);
-    // Who to ask for more, in the rule's own words.
-    expect(CHANGEOVER_LINE).toMatch(/For a louder room, ask us\./);
-  });
-
-  it('keeps the changeover line to about a dozen speakable words', () => {
-    expect(textOf('changeover')).toContain(CHANGEOVER_LINE);
-    expect(wordCount(CHANGEOVER_LINE)).toBeLessThanOrEqual(14);
-    for (const sentence of CHANGEOVER_LINE.split(/(?<=\.)\s+/)) {
-      expect(wordCount(sentence)).toBeLessThanOrEqual(8);
-    }
+    expect(reminder).toMatch(/the meter check/);
+    expect(CARDS).toHaveLength(4);
+    expect(reminder).toContain('four questions');
+    // No time the check was never timed to.
+    expect(reminder).not.toMatch(/minute|second/);
   });
 });
 
