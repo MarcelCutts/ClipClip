@@ -5,7 +5,7 @@ import MeterPicture from '../../src/islands/quiz/MeterBridge.svelte';
 
 test('a meter check answer commits on "How sure are you?", then locks and marks itself in words', async () => {
   const screen = await render(MeterCheck);
-  await screen.getByRole('radio', { name: 'The top orange, just under the red' }).click();
+  await screen.getByRole('radio', { name: 'The second orange, on every kick' }).click();
   const certain = screen.getByRole('button', { name: 'Certain' });
   await expect.element(certain).toHaveAttribute('aria-pressed', 'false');
   await certain.click();
@@ -53,7 +53,7 @@ test('the meter check is a printed card, with black kept for the gear', async ()
   const check = await render(MeterCheck);
   expect(check.container.querySelector('.panel')).toBeNull();
   // The meters are gear, so on the second card they sit on a scrap of black faceplate.
-  await check.getByRole('radio', { name: 'The first or second orange' }).click();
+  await check.getByRole('radio', { name: 'The first orange (0)' }).click();
   await check.getByRole('button', { name: 'Guessing' }).click();
   await check.getByRole('button', { name: 'Next question' }).click();
   await expect.element(check.getByRole('meter', { name: 'MASTER level' })).toBeInTheDocument();
@@ -62,10 +62,10 @@ test('the meter check is a printed card, with black kept for the gear', async ()
 
 test('a chosen answer says so in words and shapes once it’s in, not by colour alone', async () => {
   const screen = await render(MeterCheck);
-  await screen.getByRole('radio', { name: 'The first or second orange' }).click();
+  await screen.getByRole('radio', { name: 'The first orange (0)' }).click();
   await screen.getByRole('button', { name: 'Guessing' }).click();
   // The right answer's row carries its mark in words, and the radio's name says it too.
-  await expect.element(screen.getByRole('radio', { name: /first or second orange.*Right answer/ })).toBeChecked();
+  await expect.element(screen.getByRole('radio', { name: /first orange \(0\).*Right answer/ })).toBeChecked();
   expect(screen.container.textContent).not.toContain('Your answer');
   await expect.element(screen.getByRole('status')).toMatchTextContent(/^Right\. /);
 });

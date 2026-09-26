@@ -6,6 +6,7 @@ import { GLOSSARY } from './glossary';
 import * as HEAR_COPY from './hear/copy';
 import * as LAB_COPY from './lab/copy';
 import { chatMessages } from './messages';
+import { KICKS_TOGETHER_DB, TARGET_PEAK_DB } from './model';
 import { MYTHS } from './myths';
 import { CARDS } from './quiz/cards';
 import { STEPS } from './record/flow';
@@ -13,7 +14,7 @@ import { COPY as RIG_COPY } from './rig';
 import { CREW_RULES, DJ_RULES } from './rules';
 import { SOURCES } from './sources';
 import { MASTER_TAG, SHORT_TAGS } from './tags';
-import { METER_SEGMENTS, scaleLabel } from './xdj';
+import { CEILING_DB, litCount, METER_SEGMENTS, scaleLabel } from './xdj';
 
 const words = (s: string) => s.trim().split(/\s+/).length;
 const MESSAGES = chatMessages((path) => `https://crew.example${path}`);
@@ -59,6 +60,34 @@ describe('content guards', () => {
     expect(master?.text && master.note.startsWith(master.text)).toBe(true);
   });
 
+  it('names the DJ’s targets by the light and its mark, as the model sets them', () => {
+    const [channel, master] = DJ_RULES;
+    const orange = METER_SEGMENTS.filter((s) => s.zone === 'orange');
+    // The aim is the first orange light, 0. The MASTER meters keep the top orange, +9, dark.
+    expect(TARGET_PEAK_DB.aim).toBe(orange[0]?.db);
+    expect(TARGET_PEAK_DB.top).toBe(orange.at(-1)?.db);
+    expect(channel?.response).toBe(`first orange (${scaleLabel(TARGET_PEAK_DB.aim)}) at the loudest part`);
+    expect(channel?.note).toMatch(/^If the second orange lights on every kick, turn TRIM/);
+    expect(master?.response).toBe('top orange dark');
+    expect(master?.note).toMatch(/^If the top orange lights, pull a channel fader down/);
+    // Lined-up kicks can add up to 6 dB, two lights. From the aim, a blend stays under the top orange.
+    expect(TARGET_PEAK_DB.blend).toBe(TARGET_PEAK_DB.aim + KICKS_TOGETHER_DB);
+    expect(litCount(TARGET_PEAK_DB.blend) - litCount(TARGET_PEAK_DB.aim)).toBe(2);
+    expect(litCount(TARGET_PEAK_DB.blend)).toBeLessThan(litCount(TARGET_PEAK_DB.top));
+    // A light is a threshold: a channel just under the second orange still keeps a lined-up blend
+    // under the top orange. From the top orange, a blend passes red.
+    expect((orange[1]?.db ?? 0) - 0.1 + KICKS_TOGETHER_DB).toBeLessThan(TARGET_PEAK_DB.top);
+    expect(TARGET_PEAK_DB.top + KICKS_TOGETHER_DB).toBeGreaterThan(CEILING_DB);
+    // The old target, which let a blend reach red, is gone from the shared words.
+    expect(JSON.stringify({ DJ_RULES, CREW_RULES, MYTHS, GLOSSARY })).not.toMatch(/first or second orange/);
+  });
+
+  it('keeps the room’s volume at the amps, no higher than the RIG marks', () => {
+    const crew = CREW_RULES.find((r) => r.challenge === 'MASTER LEVEL');
+    expect(crew?.response).toBe('fully up, on the REC mark');
+    expect(crew?.note).toBe('If a DJ wants a louder room, turn up the amps, no higher than the RIG marks.');
+  });
+
   it('points each crew line at its drill on the night page', () => {
     for (const rule of CREW_RULES)
       expect(
@@ -85,7 +114,15 @@ describe('content guards', () => {
 
   it('quotes Pioneer word for word, with the page, where a myth leans on the manual', () => {
     const headroom = MYTHS.find((m) => m.id === 'headroom');
+    // Pioneer gives output levels (Quick Start Guide p. 20), but no margin above the red light.
+    expect(headroom?.answer).toMatch(/^Pioneer publishes no headroom figure above the red light\./);
     expect(headroom?.answer).toContain('“or the sound may be distorted” (p. 31)');
+    // The big names: nobody after the mixer takes its crunch out. Another Pioneer mixer's room above
+    // its meter is published, in AlphaTheta's words; none is published for ours.
+    const videos = MYTHS.find((m) => m.id === 'videos');
+    expect(videos?.truth).not.toMatch(/engineer/);
+    expect(videos?.answer).toContain('“up to 21\u00a0dB”');
+    expect(videos?.answer).toMatch(/no such figure for the XDJ-RX2\./);
     const limiter = MYTHS.find((m) => m.id === 'limiter');
     // Pioneer lists no limiter; it never says there is none, so neither do we.
     expect(limiter?.answer).toMatch(/Pioneer lists no limiter/);
@@ -105,9 +142,11 @@ describe('content guards', () => {
   });
 
   it('names only the streaming service whose loudness normalisation it can cite', () => {
-    // SoundCloud's help page says it "applies Loudness Normalization to your tracks as they're played".
+    // SoundCloud's help page says it "applies Loudness Normalization to your tracks as they're played". It
+    // does not say whether it turns quiet tracks up, so the claim is SoundCloud's own words, and no more.
     const quiet = MYTHS.find((m) => m.id === 'quiet-file');
-    expect(quiet?.answer).toMatch(/SoundCloud turns loud tracks down/);
+    expect(quiet?.answer).toContain('SoundCloud “applies Loudness Normalization” as it plays tracks.');
+    expect(quiet?.answer).not.toMatch(/turns loud tracks down|no louder/);
     expect(quiet?.source?.url).toMatch(/^https:\/\/help\.soundcloud\.com\//);
     const text = JSON.stringify(MYTHS);
     expect(text).not.toMatch(/and others|Spotify|Apple Music|YouTube|Mixcloud/);
@@ -156,7 +195,11 @@ describe('content guards', () => {
 
   it('uses UK spelling and the words on the hardware', () => {
     const text = JSON.stringify({ ...SHARED, DJ_RULES, CREW_RULES });
-    expect(text).not.toMatch(/\bnormaliz|\bcolor\b|\bcenter\b|\byellow\b/i);
+    // A name keeps its maker's spelling, capitalised as printed: Audacity's Normalize, SoundCloud's
+    // “Loudness Normalization”, AlphaTheta's Help Center. Our own words are normalise, colour and centre.
+    expect(text).not.toMatch(/\bnormaliz|\bcolor\b|\bcenter\b/);
+    // The LEDs are orange, whatever the case.
+    expect(text).not.toMatch(/\byellow\b/i);
     expect(text).not.toMatch(/\bTHD\b/);
   });
 

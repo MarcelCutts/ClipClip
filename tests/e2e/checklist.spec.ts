@@ -89,11 +89,15 @@ test.describe('the night page', () => {
     // The step it landed on is outlined, so the eye finds it in either theme.
     await expect(step).toHaveCSS('outline-style', 'solid');
     await expect(step).toHaveCSS('outline-width', '3px');
-    // Before MASTER ATT turns the room down with the recording, the DJ is told, in these words.
+    // Before the recording is turned down, which may turn the room down too, the DJ is told, in these words.
     await expect(step).toContainText(
-      'Say to the DJ: “The room goes quieter for a few seconds. Keep your levels as they are.”',
+      'Say to the DJ: “The room may go quieter for a few seconds. Keep your levels as they are.”',
     );
-    await expect(page.locator('#fix-howler-red-step-3')).toContainText('Look at MASTER ATT in UTILITY.');
+    // A rig where T2 found MASTER ATT misses MASTER 2 goes straight to the last resort.
+    await expect(page.locator('#fix-howler-red-step-3')).toContainText(
+      'If the REC tape says MASTER ATT does not reach the Howler (T2), go to step 5.',
+    );
+    await expect(page.locator('#fix-howler-red-step-4')).toContainText('Look at MASTER ATT in UTILITY.');
     await expect(nav.getByRole('link', { name: named('F', 'Something’s wrong') })).toHaveAttribute(
       'aria-current',
       'location',

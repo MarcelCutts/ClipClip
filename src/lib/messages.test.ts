@@ -24,9 +24,17 @@ describe('chat messages', () => {
     expect(messages.map((m) => m.id)).toEqual(['dj-briefing', 'crew-setup', 'review']);
   });
 
-  it.each(messages)('$title fits one phone screen: 80 words or fewer', ({ text }) => {
-    expect(MAX_WORDS).toBe(80);
+  it.each(messages)('$title fits one phone screen: 90 words or fewer', ({ text }) => {
+    expect(MAX_WORDS).toBe(90);
     expect(wordCount(text)).toBeLessThanOrEqual(MAX_WORDS);
+  });
+
+  it('keeps the briefing’s own words to the few it needs: the recording, who is on crew, and the link', () => {
+    // The limit went from 80 to 90 for the DJ lines, not for anything added around them.
+    const own = textOf('dj-briefing')
+      .split('\n')
+      .filter((line) => !DJ_RULES.some((r) => line === ruleLine(r)));
+    expect(own.map(wordCount)).toEqual([10, 4]);
   });
 
   it('adds few words of its own to what the pages say', () => {
@@ -73,7 +81,7 @@ describe('chat messages', () => {
       expect(briefing.split('\n')).toContain(ruleLine(rule));
     }
     expect(DJ_RULES).toHaveLength(3);
-    expect(briefing).toMatch(/MASTER LEVEL: fully up, the crew’s\./);
+    expect(briefing).toMatch(/MASTER LEVEL: leave it fully up\./);
     expect(briefing.endsWith(`${BASE}${GUIDE_PATH}`)).toBe(true);
     expect(GUIDE_PATH).toBe('/#trim');
   });

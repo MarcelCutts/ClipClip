@@ -12,9 +12,12 @@
  *   EQ flat. The synth loops are normalised to a peak of exactly 1.0, so the gain is simply
  *   `meterDbToSample(trim)`.
  * - LOW scales the synth's `low` stem (kick and bass line), like the EQ in EQ mode (−26…+6 dB).
- * - The channel meters read after TRIM and EQ and before the fader, as on the XDJ-RX2. Only the
- *   master meter sees the sum.
- * - The crossfader is assumed to be on THRU, so only the channel faders count.
+ * - The channel meters read after TRIM and EQ and before the fader, as we assume for the XDJ-RX2
+ *   (the guide's section on what the makers publish). Only the master meter sees the sum.
+ * - The crossfader is assumed to be on THRU, Pioneer's setting for not using it (manual p. 28), so
+ *   only the channel faders count. The lab's notes say so (copy.ts, MODEL_NOTES).
+ * - The DJ box's targets come from model.ts: a channel on the first orange (TARGET_PEAK_DB.aim),
+ *   and the MASTER meters' top orange (TARGET_PEAK_DB.top) dark. The challenge asks for the second.
  * - Every level is measured at one fixed rate (ANALYSIS_RATE), so the server render, the browser
  *   and the tests agree to the sample. Kicks stack by a slightly different amount at other rates.
  */
@@ -22,8 +25,8 @@ import { clip, peak } from '../dsp/analysis';
 import { dbToGain } from '../dsp/db';
 import { kWeightedPower } from '../dsp/loudness';
 import { type Loop, normaliseLoop, renderLoop } from '../dsp/synth';
-import { TARGET_PEAK_DB } from '../model';
-import { CEILING_DB, meterDbToSample, RANGES, sampleToMeterDb } from '../xdj';
+import { KICKS_TOGETHER_DB, TARGET_PEAK_DB } from '../model';
+import { CEILING_DB, METER_SEGMENTS, meterDbToSample, RANGES, sampleToMeterDb } from '../xdj';
 
 /** Levels, meters and the waveform are all measured at this rate. */
 export const ANALYSIS_RATE = 48_000;
@@ -49,8 +52,12 @@ export interface BlendSettings {
 
 export type ClipState = 'off' | 'slow' | 'fast';
 
-/** TRIM range, as the channel meter reading it produces with the EQ flat. Default: upper orange. */
-export const TRIM = { min: -6, max: 12, step: 1, initial: 6 } as const;
+/**
+ * TRIM range, as the channel meter reading it produces with the EQ flat. It starts on the second
+ * orange, one light over the DJ box's aim: the highest level from which a blend with the kicks
+ * lined up reaches the MASTER meters' top orange (+3, and 6 dB more is +9).
+ */
+export const TRIM = { min: -6, max: 12, step: 1, initial: TARGET_PEAK_DB.top - KICKS_TOGETHER_DB } as const;
 
 /**
  * The LOW knob's stops, from full left to full right: the panel's EQ range (xdj.ts). 0 dB sits in
@@ -72,7 +79,8 @@ export const FADER = { min: 0, max: 10, step: 1 } as const;
  *   10 → 0 dB · 8 → −6 dB · 6 → −12 dB · 4 → −20 dB · 2 → −35 dB · 0 → off
  *
  * Between those points the curve is a straight line in dB. Below 2 it fades linearly in gain to
- * silence. Pioneer doesn't publish the XDJ-RX2's curves, so this is a model.
+ * silence. Pioneer describes the XDJ-RX2's three channel fader curves only in words (manual pp. 27
+ * and 32: CURVE1, CURVE2, the factory setting, and CURVE3), with no dB figures, so this is a model.
  */
 export const FADER_CURVE: ReadonlyArray<readonly [position: number, db: number]> = [
   [2, -35],
@@ -115,14 +123,20 @@ export function clipState(mixDb: number): ClipState {
 }
 
 /**
- * A level rounded to whole dB for display, without ever rounding across a colour boundary
- * (0 dB, where orange starts, and +12, the red LED). So "+12 dB" always means the red light is
- * on, and a number never contradicts the colour words or the LEDs next to it.
+ * How close to a light's mark counts as reaching it. A TRIM of +6 can measure 5.999999…: rounding
+ * noise, not a level under the light.
+ */
+const MARK_TOLERANCE_DB = 1e-6;
+
+/**
+ * A level rounded to whole dB for display, without ever rounding up to a light that is still dark.
+ * So "+12 dB" always means the red light is on, "+9 dB" the top orange, "0 dB" the first orange,
+ * and a number never contradicts the colour words or the LEDs next to it.
  */
 export function displayDb(db: number): number {
   if (!Number.isFinite(db)) return db;
   let r = Math.round(db);
-  for (const edge of [0, CEILING_DB]) if (db < edge && r >= edge) r = edge - 1;
+  for (const { db: mark } of METER_SEGMENTS) if (db < mark - MARK_TOLERANCE_DB && r >= mark) r = mark - 1;
   return r === 0 ? 0 : r;
 }
 
@@ -273,13 +287,15 @@ export interface Preset {
 
 /**
  * Each pad sets the whole mixer, so it always shows the same thing however you got there. They
- * come in two sets: two ways into the red, and three ways out of it, each of which solves the
- * challenge in one press (so the lab keeps them back until the reader has hit the red).
+ * come in two sets: two blends that light the MASTER meters' top orange, and three ways to keep it
+ * dark, each of which solves the challenge in one press (so the lab keeps them back until the
+ * reader has lit the top orange).
  *
  * Top orange puts both tracks on the top orange light, so the blend lands 3 dB past the red and
- * Listen has something to cut. From the start (both on +6) the kicks only reach the red, where
- * the ceiling cuts too little to hear (see `barelyOver`). The fixes start from +6, where one
- * change is enough.
+ * Listen has something to cut. Boost the LOW is the start with deck 2 in and its LOW fully up: it
+ * lights CLIP just under the red. The fixes start from the start's levels (both on the second
+ * orange), where one change is enough: a fader one mark down, the bass swapped, or both TRIMs on
+ * the first orange.
  */
 export const PRESETS: readonly Preset[] = [
   {
@@ -292,25 +308,26 @@ export const PRESETS: readonly Preset[] = [
     id: 'boost',
     label: 'Boost the LOW',
     group: 'push',
-    settings: { deck1: deck(6, 0, 10), deck2: deck(6, 6, 10), aligned: true },
+    settings: { deck1: deck(TRIM.initial, 0, 10), deck2: deck(TRIM.initial, RANGES.eq.max, 10), aligned: true },
   },
   {
     id: 'ease',
     label: 'Pull a fader down',
     group: 'out',
-    settings: { deck1: deck(6, 0, 8), deck2: deck(6, 0, 10), aligned: true },
+    // One printed mark, −3 dB: the DJ box's "pull a channel fader down a little".
+    settings: { deck1: deck(TRIM.initial, 0, 9), deck2: deck(TRIM.initial, 0, 10), aligned: true },
   },
   {
     id: 'swap',
     label: 'Swap the bass',
     group: 'out',
-    settings: { deck1: deck(6, -26, 10), deck2: deck(6, 0, 10), aligned: true },
+    settings: { deck1: deck(TRIM.initial, RANGES.eq.min, 10), deck2: deck(TRIM.initial, 0, 10), aligned: true },
   },
   {
     id: 'orange',
     label: 'First orange',
     group: 'out',
-    settings: { deck1: deck(0, 0, 10), deck2: deck(0, 0, 10), aligned: true },
+    settings: { deck1: deck(TARGET_PEAK_DB.aim, 0, 10), deck2: deck(TARGET_PEAK_DB.aim, 0, 10), aligned: true },
   },
 ];
 
@@ -323,8 +340,12 @@ export function preset(id: PresetId): Preset {
 /** The pads in one set, in the order they sit on the panel. */
 export const presetsIn = (group: PresetGroup): Preset[] => PRESETS.filter((p) => p.group === group);
 
-/** Where the lab starts: deck 1 playing, deck 2 cued with its fader down, both trimmed to +6. */
-export const START: BlendSettings = { deck1: deck(6, 0, 10), deck2: deck(6, 0, 0), aligned: true };
+/** Where the lab starts: deck 1 playing, deck 2 cued with its fader down, both on the second orange. */
+export const START: BlendSettings = {
+  deck1: deck(TRIM.initial, 0, 10),
+  deck2: deck(TRIM.initial, 0, 0),
+  aligned: true,
+};
 
 export function cloneSettings(s: BlendSettings): BlendSettings {
   return { deck1: { ...s.deck1 }, deck2: { ...s.deck2 }, aligned: s.aligned };
@@ -337,15 +358,18 @@ export function sameSettings(x: BlendSettings, y: BlendSettings): boolean {
 }
 
 /**
- * "Bring deck 2 all the way up without the MASTER meters going red." It only counts as a blend
- * if the kicks are lined up and deck 1 is still audibly in the mix (fader at 4, about −20 dB, or
- * higher), and CLIP has to stay dark too, since a slow blink means it's about to distort. The
+ * "Bring deck 2 all the way up without lighting the top orange on the MASTER meters": the DJ box's
+ * line for them. It only counts as a blend if the kicks are lined up and deck 1 is still audibly
+ * in the mix (fader at 4, about −20 dB, or higher). Red and CLIP fail it too, and each says so. The
  * channel meters have to stay out of the red as well: a red channel is cut flat before its fader,
  * so easing that fader after it can't make the blend clean.
  */
 export const CHALLENGE = { deck1MinFader: 4 } as const;
 
-export type ChallengeStatus = 'waiting' | 'red' | 'clip' | 'hot1' | 'hot2' | 'apart' | 'cut' | 'done';
+export type ChallengeStatus = 'waiting' | 'red' | 'clip' | 'top' | 'hot1' | 'hot2' | 'apart' | 'cut' | 'done';
+
+/** The MASTER meters light the top orange (or more): the DJ box's line for them says keep it dark. */
+export const topLit = (r: BlendAnalysis): boolean => displayDb(r.mix) >= TARGET_PEAK_DB.top;
 
 /** Which decks light the red LED on their own channel meter. */
 export function hotDecks(r: BlendAnalysis): Array<1 | 2> {
@@ -359,6 +383,7 @@ export function challengeStatus(s: BlendSettings, r: BlendAnalysis): ChallengeSt
   if (s.deck2.fader < FADER.max) return 'waiting';
   if (displayDb(r.mix) >= CEILING_DB) return 'red';
   if (r.clip !== 'off') return 'clip';
+  if (topLit(r)) return 'top';
   const [hot] = hotDecks(r);
   if (hot) return hot === 1 ? 'hot1' : 'hot2';
   if (!s.aligned) return 'apart';
@@ -370,8 +395,9 @@ export function challengeStatus(s: BlendSettings, r: BlendAnalysis): ChallengeSt
  * How far past the red the ceiling only shaves the tips of the kicks: every level the lab shows
  * as "+12 dB". Up to here it cuts away at most about 0.3% of these loops (RMS, at 44.1 or 48 kHz,
  * even when a channel and the mix both touch), too little to hear. By +13.5 a cut on a channel
- * and again on the mix can reach 2.3%, close to Boost the LOW (2.6 to 2.9%). Bringing deck 2
- * fully up from the start lands here.
+ * and again on the mix can reach 2.3%, close to Top orange (2.1 to 2.5%). Two tracks on the third
+ * orange (+6), blended, land here. The two-ceilings lab names the same cut "Tips cut"
+ * (lab/ceilings.ts, CRUNCH_LIMITS).
  */
 export const BARELY_OVER_DB = 0.5;
 

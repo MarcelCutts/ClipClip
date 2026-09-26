@@ -7,7 +7,7 @@ const words = [
   MASTER_TAG.name,
   ...MASTER_TAG.lines,
   MASTER_TAG.where,
-  ...SHORT_TAGS.flatMap((t) => [t.name, t.owner, t.where]),
+  ...SHORT_TAGS.flatMap((t) => [t.name, t.owner, t.where, t.rule ?? '']),
 ];
 
 describe('knob tags', () => {
@@ -31,6 +31,13 @@ describe('knob tags', () => {
       expect(line).not.toMatch(/\?/);
       expect(line).not.toMatch(/n’t\b|n't\b/);
     }
+  });
+
+  it('mark the RIG tape as the amps’ limit: the knobs go no higher than the RIG marks', () => {
+    expect(RIG_TAG.rule).toBe('No higher than the marks');
+    expect(RIG_TAG.where).toMatch(/\bS4\b draws the RIG marks/);
+    // The others carry no rule: REC has its blanks, and MONITOR is the DJ's to turn.
+    expect(SHORT_TAGS.filter((t) => t.rule)).toEqual([RIG_TAG]);
   });
 
   it('give the REC tape a blank for each attenuator the night’s checklists compare with it', () => {

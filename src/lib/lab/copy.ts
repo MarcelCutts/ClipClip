@@ -4,7 +4,7 @@
  * one claim per sentence, and feedback that says what happened, never how the lab teaches.
  */
 import { formatDb } from '../dsp/db';
-import { KICKS_TOGETHER_DB, MIXER_CEILING_DB } from '../model';
+import { KICKS_TOGETHER_DB, MIXER_CEILING_DB, TARGET_PEAK_DB } from '../model';
 import { section } from '../sections';
 import { describeLevel } from '../xdj';
 import type { Crunch, Reading, Stage, Step } from './ceilings';
@@ -41,9 +41,12 @@ export const STEPS: Record<Step, { title: string; body: string }> = {
     title: 'Turn the channel down',
     body: 'Stop when the crunch reads Clean, CH1’s red light is dark and the LEVEL light is green.',
   },
+  // The step opens with CH1 on the top orange (ceilings.ts), loud enough to overload the Howler
+  // with the recording level fully up. The words name what matters here, the mixer's ceiling,
+  // and never hold the top orange up as a level to play at.
   3: {
     title: 'Recording level too high',
-    body: 'The channel is out of the red. The Howler’s LEVEL light is red. Turn the recording level down until the light is green.',
+    body: 'The mixer is clean. The Howler’s LEVEL light is red. Turn the recording level down until the light is green.',
   },
 };
 
@@ -74,17 +77,23 @@ export function revealFeedback(r: Reading): Feedback {
 }
 
 /**
- * The lab plays one track. A blend lands two tracks' peaks together, KICKS_TOGETHER_DB higher
- * (model.ts): two more lights on the meter, and that much nearer each ceiling.
+ * The lab plays one track. A blend can land two tracks' peaks together, up to KICKS_TOGETHER_DB
+ * higher (model.ts): two more lights on the meter, and that much nearer each ceiling. The DJ box
+ * keeps the MASTER meters' top orange dark, and a channel on the first orange leaves room for it.
  */
-const blendReachesRed = (r: Reading) => r.channels + KICKS_TOGETHER_DB >= MIXER_CEILING_DB;
+const blendReaches = (r: Reading, db: number) => r.channels + KICKS_TOGETHER_DB >= db;
 const blendClipsRecording = (r: Reading) => r.recordingPeakDbfs + KICKS_TOGETHER_DB > 0;
+
+/** The DJ box's line for a channel, in its own words (rules.ts). */
+const KEEP_CH1 = `Keep CH1 on the first orange (0) at the loudest${NBSP}part.`;
 
 export function successFeedback(step: Step, r: Reading): Feedback | null {
   if (step === 2) {
-    const blend = blendReachesRed(r)
-      ? `A blend can add two more lights and reach the red. Keep CH1 on the first or second${NBSP}orange.`
-      : `A blend can add two more lights and stay out of the${NBSP}red.`;
+    const blend = blendReaches(r, MIXER_CEILING_DB)
+      ? `A blend can add up to two more lights and reach the red. ${KEEP_CH1}`
+      : blendReaches(r, TARGET_PEAK_DB.top)
+        ? `A blend can add up to two more lights and reach the top orange on the MASTER meters. ${KEEP_CH1}`
+        : `A blend can add up to two more lights and leave the top orange on the MASTER meters${NBSP}dark.`;
     return {
       title: 'Fixed at the channel',
       lines: ['The channel comes before the mixer’s ceiling.', blend],
@@ -115,8 +124,10 @@ export function levelWords(level: number): string {
   return `${words[0]!.toUpperCase()}${words.slice(1)}`;
 }
 
+/** The first dB over only cuts the tips, as the blend lab says of its red (ceilings.ts, CRUNCH_LIMITS). */
 export const CRUNCH_WORDS: Record<Crunch, string> = {
   clean: 'Clean',
+  tips: 'Tips cut',
   some: 'Some crunch',
   heavy: 'Heavy crunch',
 };

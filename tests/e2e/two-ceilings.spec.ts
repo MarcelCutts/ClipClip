@@ -80,7 +80,7 @@ test('the channel fixes crunch made in the mixer, and the recording level fixes 
   await expect(lab.getByText('Fixed at the channel', { exact: true })).toBeVisible();
   // Anchored: the live region repeats the whole feedback a moment later.
   await expect(
-    lab.getByText(/^A blend can add two more lights and reach the red\. Keep CH1 on the first/),
+    lab.getByText(/^A blend can add up to two more lights and reach the red\. Keep CH1 on the first orange/),
   ).toBeVisible();
 
   await lab.getByRole('button', { name: 'Next: recording level too high' }).click();

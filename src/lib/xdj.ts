@@ -37,12 +37,13 @@ export const METER_SEGMENTS: readonly MeterSegment[] = [
  */
 export const scaleLabel = (db: number): string => formatDb(db, { unit: '' });
 
-/** Control ranges printed on the panel. */
+/** Control ranges printed on the panel (manual p. 27). */
 export const RANGES = {
   trim: { min: Number.NEGATIVE_INFINITY, max: 9 },
-  /** HI, MID and LOW with the EQ/ISO switch on EQ. */
+  /** HI, MID and LOW with EQUALIZER CURVE on EQUALIZER in UTILITY (p. 32); the panel prints −26/−∞ … +6. */
   eq: { min: -26, max: 6 },
-  // The output knobs: fully up is 0, so they can only turn down.
+  // The output knobs: the panel prints them −∞ … 0. We take fully up as no gain; Pioneer gives no
+  // gain figure, and test T3 on /setup/ checks it on the unit.
   masterLevel: { min: Number.NEGATIVE_INFINITY, max: 0 },
   boothMonitor: { min: Number.NEGATIVE_INFINITY, max: 0 },
 } as const;

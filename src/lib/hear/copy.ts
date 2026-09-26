@@ -39,18 +39,27 @@ export const PLAYER_LABEL = 'Listening test';
 
 /**
  * One line under each round's heading, with how far that round pushed the clipped copy (it never
- * says which one it is). The first also says what to do, and that both play at the same loudness.
+ * says which one it is). The first also says what to do, and that both play at the same measured
+ * loudness: the match is measured on the full range (model.ts), and small speakers upset it.
  */
 export const ROUND_INTROS: readonly string[] = ROUND_PUSHES_DB.map((db, i) =>
   i === 0
-    ? `Play A and B. One was pushed ${dbText(db)} past the red and clipped. Both play at the same loudness.`
+    ? `Play A and B. One was pushed ${dbText(db)} past the red and clipped. Both play at the same measured loudness.`
     : `The clipped one was pushed ${dbText(db)} past the red.`,
 );
 
+/**
+ * Said on the speakers that drop the bass. With the bass cut below 150 to 500 Hz, round 1's clipped
+ * copy measures 1.2 to 1.6 LU louder than the clean one; rounds 2 and 3 stay within 0.5 LU (the
+ * fact-check's science B5). The tip says the match slips, never which way, and gives nothing away.
+ * The guide asks for headphones just above the test, so this gives the reason, not the request.
+ */
+const SMALL_SPEAKERS = 'Without it, A and B can differ a little in loudness. Headphones keep them matched.';
+
 /** What to listen for, before you press play: the action first, then why on this device. */
 export const DEVICE_TIPS: Record<Device, string> = {
-  phone: 'Listen for crunch on the edge of the kick and on the hi-hats. Phone speakers drop the deep bass.',
-  laptop: 'Listen for crunch on the edge of the kick and on the hi-hats. Laptop speakers drop most of the bass.',
+  phone: `Listen for crunch on the edge of the kick and on the hi-hats. Phone speakers drop the deep bass. ${SMALL_SPEAKERS}`,
+  laptop: `Listen for crunch on the edge of the kick and on the hi-hats. Laptop speakers drop most of the bass. ${SMALL_SPEAKERS}`,
   headphones: 'Listen for crunch on the kick and the hi-hats.',
 };
 

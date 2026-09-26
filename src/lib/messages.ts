@@ -2,7 +2,7 @@
  * Messages for the group chat, with copy buttons on /print/. Written for WhatsApp, which turns
  * *stars* into bold, _underscores_ into italics and lines starting "- " into a bulleted list.
  *
- * House style for every message: short enough to read on one phone screen (80 words or fewer), a
+ * House style for every message: short enough to read on one phone screen (90 words or fewer), a
  * bold first line, the link last, and plain statements, with "If …" for a condition rather than a
  * question and its answer. The DJ briefing carries the three DJ lines word for word as the "Know by
  * heart" boxes set them, notes and all, and the crew's check the doors checklist, so neither can
@@ -30,8 +30,13 @@ export interface ChatMessage {
 /** Turns a site path like "/night/" into the full address people can tap. */
 export type LinkTo = (path: string) => string;
 
-/** The most words a message may have: about one phone screen in the chat, rules and link included. */
-export const MAX_WORDS = 80;
+/**
+ * The most words a message may have: about one phone screen in the chat, rules and link included.
+ * It was 80 until the DJ lines named their lights (first orange, top orange): the three lines alone
+ * are 71 words, and the briefing's own words (the recording, who is on crew, the link) can't come
+ * under 11 without losing one of them.
+ */
+export const MAX_WORDS = 90;
 
 /** Where the guide starts on playing a set: setting TRIM. The booth card's QR code goes here too. */
 export const GUIDE_PATH = `/#${section('trim').id}`;

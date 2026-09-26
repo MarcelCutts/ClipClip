@@ -1,15 +1,15 @@
 ---
 /**
  * The home page's opening: the title, what the site is for, and the XDJ-RX2's own twelve-light
- * meter. On load the lights climb to the second orange, where a well-set track peaks, and stop,
- * with the red dark. An "Aim" bracket marks the 0 and +3 lights, and each colour's zone is named
- * under the printed scale. The meter doesn't rely on colour alone: a wider, printed break sits
- * where the colour changes, the 0 mark is bold, and the zones are named in words.
+ * meter. On load the lights climb to the first orange, where a well-set track peaks, and stop,
+ * with the rest of the orange and the red dark. An "Aim" bracket marks the 0 light, and each
+ * colour's zone is named under the printed scale. The meter doesn't rely on colour alone: a wider,
+ * printed break sits where the colour changes, the 0 mark is bold, and the zones are named in words.
  */
 import { TARGET_PEAK_DB } from '../lib/model';
 import { METER_SEGMENTS, scaleLabel, type Zone } from '../lib/xdj';
 
-const peak = TARGET_PEAK_DB.second;
+const peak = TARGET_PEAK_DB.aim;
 
 // The meter's columns: one per light, plus a narrow break column wherever the colour changes
 // (between −3 and 0, and between +9 and +12). The lights, the scale, the aim bracket and the zone
@@ -29,13 +29,12 @@ const columns = Array.from({ length: column }, (_, c) => (breaks.has(c + 1) ? 'v
 const columnOf = (db: number) => segments.find((s) => s.db === db)?.column ?? 1;
 const span = (from: number, to: number) => `grid-column: ${columnOf(from)} / ${columnOf(to) + 1}`;
 
-const aim = span(TARGET_PEAK_DB.first, TARGET_PEAK_DB.second);
+const aim = span(TARGET_PEAK_DB.aim, TARGET_PEAK_DB.aim);
 
 // Each zone's mark runs under all its lights. Its words start at the zone's first light, except
 // red's: one light is too narrow on a phone, so they end at the red light and take the room over
-// the lights above the aim, which the orange words leave free.
+// the upper orange lights. The orange words keep to the first two.
 const zoneLights = (zone: Zone) => segments.filter((s) => s.zone === zone);
-const aboveAim = METER_SEGMENTS.find((s) => s.db > TARGET_PEAK_DB.second)?.db ?? TARGET_PEAK_DB.second;
 const ends = (zone: Zone) => {
   const lights = zoneLights(zone);
   return { first: lights[0]?.db ?? 0, last: lights.at(-1)?.db ?? 0 };
@@ -43,6 +42,7 @@ const ends = (zone: Zone) => {
 const green = ends('green');
 const orange = ends('orange');
 const red = ends('red');
+const [, secondOrange, thirdOrange] = zoneLights('orange');
 const zones = [
   { zone: 'green', name: 'Green', meaning: 'headroom', mark: span(green.first, green.last), words: span(green.first, green.last) },
   {
@@ -50,13 +50,19 @@ const zones = [
     name: 'Orange',
     meaning: 'loudest parts',
     mark: span(orange.first, orange.last),
-    words: span(TARGET_PEAK_DB.first, TARGET_PEAK_DB.second),
+    words: span(orange.first, secondOrange?.db ?? orange.first),
   },
-  { zone: 'red', name: 'Red', meaning: 'may distort', mark: span(red.first, red.last), words: span(aboveAim, red.last) },
+  {
+    zone: 'red',
+    name: 'Red',
+    meaning: 'may distort',
+    mark: span(red.first, red.last),
+    words: span(thirdOrange?.db ?? red.first, red.last),
+  },
 ];
 
 const litCount = segments.filter((s) => s.lit).length;
-const caption = `The mixer’s meter, lit up to the second orange light, ${litCount} lights out of ${segments.length}. Aim for the first two orange lights, ${scaleLabel(TARGET_PEAK_DB.first)} and ${scaleLabel(TARGET_PEAK_DB.second)}. Green is headroom, orange is for the loudest parts, and red may distort.`;
+const caption = `The mixer’s meter, lit up to the first orange light, ${litCount} lights out of ${segments.length}. Aim for the first orange light, ${scaleLabel(TARGET_PEAK_DB.aim)}, at a track’s loudest part. Green is headroom, orange is for the loudest parts, and red may distort.`;
 ---
 
 <header class="hero flow">
@@ -145,7 +151,8 @@ const caption = `The mixer’s meter, lit up to the second orange light, ${litCo
     padding-inline: calc(var(--bezel) + 1px);
   }
 
-  /* Where to aim: a bracket over the 0 and +3 lights, named like a note on the page. */
+  /* Where to aim: a bracket over the 0 light, named like a note on the page. The word is wider than
+     one light on a phone, so it stays on one line and spills evenly over its neighbours. */
   .aim-mark {
     display: grid;
     justify-items: center;
@@ -153,6 +160,7 @@ const caption = `The mixer’s meter, lit up to the second orange light, ${litCo
     font-size: var(--text-sm);
     font-weight: 700;
     line-height: 1.2;
+    white-space: nowrap;
     color: var(--ink);
   }
 

@@ -1,17 +1,18 @@
 <script lang="ts">
   /**
-   * W3 "Blends add up". Two decks, each trimmed to peak in the orange on its own channel meter.
-   * Bring deck 2 in and the MASTER meters climb to the red, because kicks that land together add
-   * 6 dB. The channel meters never move with a fader: they read before it. Fix the blend by
-   * swapping the bass, pulling a fader down or trimming lower.
+   * W3 "Blends add up". Two decks, each trimmed to the second orange on its own channel meter.
+   * Bring deck 2 in and the MASTER meters climb to the top orange, which the DJ box keeps dark,
+   * because kicks that land together can add up to 6 dB. The channel meters never move with a
+   * fader: they read before it. Fix the blend by swapping the bass, pulling a fader down or
+   * trimming both decks to the first orange.
    *
    * The MASTER meters are the centre of the lab: the biggest thing on the panel, with the two
-   * faders either side and the verdict (Mix +12 dB, in the red) by them. Each deck's TRIM and LOW
+   * faders either side and the verdict (Mix +9 dB, on the top orange) by them. Each deck's TRIM and LOW
    * sit straight under its fader, deck 1 on the left and deck 2 on the right, so on a phone the
    * meters and every control that moves them share one screen. Before deck 2 comes up the reader
    * can guess where MASTER will peak by tapping it; the prompt sits above the meters, and the
-   * guess meets the real peak there. The pads come in two sets: blends that hit the red, and
-   * fixes, which wait until the reader has hit the red (each one solves the challenge in one
+   * guess meets the real peak there. The pads come in two sets: blends that light the top orange,
+   * and fixes, which wait until the reader has lit it (each one solves the challenge in one
    * press). A pad tapped on a phone scrolls the meters back into view. On a touch screen the
    * sliders move only by their caps, so scrolling past the lab never changes it.
    *
@@ -59,6 +60,7 @@
     analyseBlend,
     type BlendSettings,
     barelyOver,
+    type ChallengeStatus,
     challengeStatus,
     cloneSettings,
     displayDb,
@@ -89,7 +91,7 @@
   let { start = 'incoming' }: Props = $props();
 
   const uid = $props.id();
-  /** Once the reader has hit the red, show the hint after this long without a change or a solve. */
+  /** Once the reader has lit the top orange, show the hint after this long without a change or a solve. */
   const HINT_AFTER_MS = 20_000;
   /**
    * The live region waits this long after the last change. Longer than the 400 ms the fader's
@@ -195,11 +197,12 @@
   // Challenge and hint --------------------------------------------------------------------------
 
   let solved = $state(false);
-  /** Seen the MASTER meters go red (or CLIP blink) with deck 2 fully up: the hint now makes sense. */
-  let tried = $state(untrack(() => status === 'red' || status === 'clip'));
+  /** The top orange, CLIP or the red seen on the MASTER meters with deck 2 fully up: the hint now makes sense. */
+  const failed = (s: ChallengeStatus) => s === 'top' || s === 'clip' || s === 'red';
+  let tried = $state(untrack(() => failed(status)));
   let hint = $state(false);
   const showHint = $derived(hint && !solved);
-  /** The fixes wait for the first red, unless the reader asks for them. */
+  /** The fixes wait for the first top orange, unless the reader asks for them. */
   let asked = $state(false);
   const waysShown = $derived(tried || asked);
 
@@ -212,7 +215,7 @@
 
   $effect(() => {
     if (status === 'done') solved = true;
-    if (status === 'red' || status === 'clip') tried = true;
+    if (failed(status)) tried = true;
   });
 
   $effect(() => {
@@ -321,7 +324,8 @@
   <div class="layout">
     <div class="challenge" bind:this={challengeEl}>
       <p class="prompt">{CHALLENGE_PROMPT}</p>
-      <!-- A lamp with its legend printed beside it: lit red in the red, lit white once done. -->
+      <!-- A lamp with its legend printed beside it: lit orange on the top orange, red in the red,
+           white once done. -->
       <p class="status" data-tone={lamp.tone}>
         <span class="visually-hidden">Status: </span>
         <span class="lamp" aria-hidden="true"></span>
@@ -541,7 +545,13 @@
     background: var(--led-off);
   }
 
-  /* Lit red for the red: the same signal state the MASTER meters show. */
+  /* Lit orange for the top orange and red for the red: the same signal state the MASTER meters show. */
+  .status[data-tone='orange'] .lamp {
+    border-color: var(--led-a);
+    background: var(--led-a);
+    box-shadow: 0 0 0.5rem var(--led-a);
+  }
+
   .status[data-tone='red'] .lamp {
     border-color: var(--led-r);
     background: var(--led-r);
@@ -910,6 +920,7 @@
       box-shadow: none;
     }
 
+    .status[data-tone='orange'] .lamp,
     .status[data-tone='red'] .lamp,
     .status[data-tone='done'] .lamp {
       border-color: CanvasText;

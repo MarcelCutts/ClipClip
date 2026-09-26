@@ -25,20 +25,30 @@
  * The rig, one way only: MASTER 1 (XLR) → DriveRack PA2 → two QSC GX7 amps → PA; MASTER 2 (RCA) → Howler;
  * BOOTH → booth monitors. MASTER LEVEL sets MASTER 1 and MASTER 2 (Pioneer manual p.27) and is taped fully
  * up on the REC mark, so the MASTER meters, which read after it (p.31), show the mix itself. The room's
- * volume comes from the amps' gain knobs (RIG). Both attenuators are UTILITY settings (p.32), written on the
- * REC tape at setup (S1, S3).
+ * volume comes from the amps' gain knobs, never above the RIG marks that S4 finds. Both attenuators are
+ * UTILITY settings (p.32), written on the REC tape at setup (S1, S3). Pioneer does not say which sockets
+ * MASTER ATT reaches: T2 finds out on the kit, and the drills never count on it turning the room down.
  *
  * Facts come from the documents in sources.ts, with page numbers in the comments:
- * - Pioneer, XDJ-RX2 Operating Instructions (DRI1479A);
+ * - Pioneer, XDJ-RX2 Operating Instructions (DRI1479A) and Quick Start Guide (DRH1447A);
  * - QSC, GX3, GX5 and GX7 user manual;
  * - dbx, DriveRack PA2 Owner's Manual (printed page numbers);
- * - Howler, Recorder+Streamer MK1 manual; Rane Note 110.
+ * - Howler, Recorder+Streamer MK1 manual and FAQ; Rane Note 110;
+ * - HSE, Electrical safety at places of entertainment (GS50) and Electrical safety for entertainers
+ *   (INDG247), for the earth, the generator and RCDs.
  *
  * Typography: numbers and units are joined by a no-break space (U+00A0), minus signs are true minus
  * signs (−, U+2212), apostrophes and quotes are curly.
  */
 
-import { FADER_DOWN, IN_UTILITY, LEVEL_FALLBACK, OPEN_UTILITY } from './checklists';
+import {
+  ATT_NOTE,
+  CHANNEL_METERS_WORDS,
+  FADER_DOWN,
+  LEVEL_FALLBACK,
+  MASTER_METERS_WORDS,
+  OPEN_UTILITY,
+} from './checklists';
 
 /** A light drawn lit beside a drill's title, in its real colour: the one you're looking at. */
 export type DrillLight = 'howler-red' | 'meters-red' | 'clip' | 'driverack-clip';
@@ -166,16 +176,14 @@ export const drillAnchor = (id: string, step?: number): string =>
 export const SAY_TO = 'Say to the DJ:';
 
 /**
- * Said to the DJ before MASTER ATT turns the room down with the recording (rig.ts: MASTER ATT sets
- * MASTER 1's level too), so a DJ who hears the room drop doesn't push TRIM to get it back.
+ * Said to the DJ before MASTER ATT or MASTER LEVEL turns the recording down, so a DJ who hears the room
+ * drop doesn't push TRIM to get it back. MASTER LEVEL sets MASTER 1 as well (Pioneer p.27). Whether MASTER
+ * ATT does is not published (T2 finds out), so the room "may" go quieter.
  */
-const ROOM_DROPS = 'The room goes quieter for a few seconds. Keep your levels as they are.';
+const ROOM_MAY_DROP = 'The room may go quieter for a few seconds. Keep your levels as they are.';
 
-/** The DJ box's first line, as said to a DJ: the words on the booth card. */
-const CHANNELS_ORANGE = 'Keep the channel meters on the first or second orange.';
-
-/** When the amps have no more to give. */
-const RIG_LIMIT = 'That is as loud as this rig goes.';
+/** At the RIG marks, the amps have no more to give: S4 found the highest click with both CLIP lights dark. */
+const RIG_LIMIT = 'That is the room’s limit.';
 
 /**
  * F1's first step that turns the recording down: the words to the DJ, then MASTER ATT. F6 sends the crew
@@ -187,17 +195,20 @@ export const FIXES: Fix[] = [
   // ---- In the booth, on the night ----------------------------------------------------------------
   {
     // Howler doesn't publish where its light turns red (MK1 manual: blinking red means the volume is too high,
-    // so turn the source down). Pioneer's fix for distortion is MASTER ATT (manual p.34; UTILITY table p.32,
-    // settings 0, −6 and −12 dB), but Pioneer doesn't say it reaches MASTER 2 (setup test T2), so MASTER LEVEL
-    // is the last resort, worded once in checklists.ts. The MASTER meters read after MASTER LEVEL (p.31). Both
-    // turn the PA down too, so the DJ hears it first and the room comes back up at the amps. Mid-set, because a
-    // clipped recording cannot be put right later; the tape can wait.
+    // so turn the source down). Its BATTERY indicator is "red when charging", which is not this drill. Pioneer's
+    // fixes for distortion are MASTER LEVEL, then the attenuator (manual p.34; UTILITY table p.32, settings 0,
+    // −6 and −12 dB), but Pioneer doesn't say which sockets MASTER ATT reaches (setup test T2), so MASTER LEVEL
+    // is the last resort, worded once in checklists.ts, and the room comes back up at the amps only if it went
+    // quieter. A change in UTILITY is stored when the rotary selector is pressed (p.31). The MASTER meters read
+    // after MASTER LEVEL (p.31). Mid-set, because a clipped recording cannot be put right later; the tape can
+    // wait.
     id: 'howler-red',
     code: 'F1',
     where: 'booth',
     title: 'Howler LEVEL light: red',
     short: 'Howler LEVEL: red',
     light: 'howler-red',
+    condition: 'The LEVEL light blinks red. A steady red BATTERY light means the Howler is charging.',
     objective: 'Find where the sound clips, and stop it there.',
     steps: [
       {
@@ -208,25 +219,33 @@ export const FIXES: Fix[] = [
           { finding: 'Below red', next: 2 },
         ],
       },
-      { say: ROOM_DROPS },
+      { say: ROOM_MAY_DROP },
+      { if: 'If the REC tape says MASTER ATT does not reach the Howler (T2)', next: 5 },
       {
         do: 'Look at MASTER ATT in UTILITY.',
         note: OPEN_UTILITY,
         choose: [
-          { finding: '0 dB', action: 'Set it to −6 dB.', next: 5 },
-          { finding: '−6 dB', action: 'Set it to −12 dB.', next: 5 },
-          { finding: '−12 dB', next: 4 },
+          {
+            finding: '0 dB',
+            action: 'Set it to −6 dB. Press the rotary selector. The changed settings are stored.',
+            next: 6,
+          },
+          {
+            finding: '−6 dB',
+            action: 'Set it to −12 dB. Press the rotary selector. The changed settings are stored.',
+            next: 6,
+          },
+          { finding: '−12 dB', next: 5 },
         ],
       },
       { before: LEVEL_FALLBACK.consequence, challenge: LEVEL_FALLBACK.challenge, response: LEVEL_FALLBACK.response },
       {
-        challenge: 'The room’s volume',
-        response: 'back up, at the amps',
-        note: 'All four amp gain knobs move by the same number of clicks.',
+        if: 'If the room went quieter',
+        action: 'turn the four amp gain knobs back up, no higher than the RIG marks.',
       },
     ],
     later: { when: 'At the changeover', steps: [{ challenge: 'REC tape', response: 're-marked' }] },
-    why: 'If the MASTER meters are below red, the mix is clean and the recording level is too high. Step 4 is for a rig where MASTER ATT does not reach MASTER 2 (T2).',
+    why: 'If the MASTER meters are below red, a red LEVEL light means the recording level is too high. Pioneer does not say which sockets MASTER ATT reaches: T2 finds out.',
     see: '#two-ceilings',
   },
   {
@@ -247,7 +266,7 @@ export const FIXES: Fix[] = [
   },
   {
     // Pioneer manual p.27: CLIP blinks when the output level is too high. Blinking slowly: the sound is about to
-    // be distorted. Blinking fast: the sound is distorted.
+    // be distorted. Blinking fast: the sound is distorted. The words between tracks are the DJ box's MASTER line.
     id: 'clip',
     code: 'F3',
     where: 'booth',
@@ -260,7 +279,7 @@ export const FIXES: Fix[] = [
       {
         if: 'If it blinks on every blend',
         action: 'say to the DJ between tracks:',
-        say: 'Keep the MASTER meters below red in a blend. Play one bassline at a time.',
+        say: `${MASTER_METERS_WORDS} Play one bassline at a time.`,
       },
     ],
     why: 'Pioneer: CLIP blinks slowly when the sound is about to be distorted, and fast when it is distorted (p. 27). With MASTER LEVEL fully up, only the DJ’s faders and TRIMs bring the mix down.',
@@ -269,7 +288,10 @@ export const FIXES: Fix[] = [
   {
     // QSC GX manual: gain controls CH1 and CH2 on the front, marked in dB of attenuation (p.5), with 21 detents
     // (p.11). Red CLIP LEDs flash when the amp is overdriven, and heavy overdrive makes it turn itself down (p.5).
-    // The loop ends in step 1: at 0 dB, or at the first red CLIP light.
+    // dbx sets the limiters "based on where you have set your amplifier attenuators" (p.44), and raising them past
+    // that point "will cause the amplifiers to clip" (p.22). dbx doesn't say which GX7 gain the wizard assumes, so
+    // S4 finds the RIG marks: the highest click with both CLIP lights dark on the loudest blend. The loop ends in
+    // step 1: on the RIG marks, or at the first red CLIP light.
     id: 'not-loud',
     code: 'F4',
     where: 'booth',
@@ -280,9 +302,9 @@ export const FIXES: Fix[] = [
       {
         challenge: 'Amp gain knobs',
         response: 'one click up, all four',
-        note: 'Each GX7 has two, CH1 and CH2, on the front.',
+        note: 'Each GX7 has two, CH1 and CH2, on the front. The RIG marks are as high as they go.',
         choose: [
-          { finding: 'Already at 0, fully up', say: RIG_LIMIT, end: true },
+          { finding: 'Already on the RIG marks', say: RIG_LIMIT, end: true },
           {
             finding: 'A red CLIP light on either amp',
             action: 'Turn all four back one click.',
@@ -308,7 +330,7 @@ export const FIXES: Fix[] = [
     short: 'Pushed, no louder',
     objective: 'Find which part of the rig is at its limit.',
     steps: [
-      { say: CHANNELS_ORANGE },
+      { say: CHANNEL_METERS_WORDS },
       {
         do: 'Look at the lights on the DriveRack and the amps.',
         choose: [
@@ -326,9 +348,12 @@ export const FIXES: Fix[] = [
   {
     // dbx manual p.5: the input CLIP LEDs light when the inputs are overdriven; reduce the mixer's output. On
     // −10 dBV a +4 dBu source lights them early (0 dBFS at about +9.9 dBu, not +19.9 dBu): set the switch to
-    // +4 dBu, muting the outputs first. Once on +4 dBu the same input sits about 10 dB lower inside the
-    // DriveRack, so the room may need the amps turned up (F4). MASTER 1 is about +6 dBu (Quick Start
-    // specifications), so on +4 dBu the input only clips once the mix itself is past red.
+    // +4 dBu, muting the outputs first. p.7: the switch is recessed, "+4dBu option (switch out)", "-10dBV option
+    // (switch in)", reached with "an object with a pointy tip, such as a pen". p.5: each output MUTE button's state
+    // "will be retained after a power cycle". Once on +4 dBu the same input sits about 10 dB lower inside the
+    // DriveRack, so the room may need the amps turned up (F4). Pioneer gives MASTER 1 a standard output level of
+    // +6 dBu and a rated output of +24 dBu (Quick Start Guide p.20). It doesn't say what level the red light
+    // stands for, so we assume that on +4 dBu (clipping at +19.9 dBu) the input clips only once the mix is past red.
     id: 'driverack-clip',
     code: 'F6',
     where: 'booth',
@@ -348,6 +373,7 @@ export const FIXES: Fix[] = [
       {
         challenge: 'DriveRack input switch, on the back',
         response: '+4 dBu',
+        note: 'Out is +4 dBu. Pushed in is −10 dBV.',
         choose: [
           { finding: '+4 dBu', next: { drill: 'howler-red', step: F1_TURN_DOWN } },
           { finding: '−10 dBV', next: 3 },
@@ -360,10 +386,18 @@ export const FIXES: Fix[] = [
         {
           before: 'The room goes silent until step 5.',
           challenge: 'DriveRack outputs',
-          response: 'muted',
+          response: 'every MUTE button on',
         },
-        { challenge: 'DriveRack input switch', response: '+4 dBu' },
-        { challenge: 'DriveRack outputs', response: 'unmuted' },
+        {
+          challenge: 'DriveRack input switch',
+          response: '+4 dBu, out',
+          note: 'It sits deep in the panel: a pen tip reaches it.',
+        },
+        {
+          challenge: 'DriveRack outputs',
+          response: 'every MUTE button off',
+          note: 'A MUTE button left on stays on, even after the power goes off and on.',
+        },
         { if: 'If the room is now too quiet', next: 'not-loud' },
       ],
     },
@@ -371,9 +405,11 @@ export const FIXES: Fix[] = [
     see: '#two-ceilings',
   },
   {
-    // Pioneer manual p.31: MY SETTINGS on a USB stick calls out the DJ's UTILITY settings; both attenuators are
-    // UTILITY settings (p.32). A change is lost if the mixer goes off within 10 s of it (p.35); C3 switches the
-    // mixer off after the amps, and S3 says so where the settings are made.
+    // Pioneer manual p.31: "[UTILITY] settings and other settings stored on a USB device can be called out" with
+    // MY SETTINGS; both attenuators are UTILITY settings (p.32). Pioneer doesn't list what a stick carries, so it
+    // may change them, and doesn't say which sockets MASTER ATT reaches (T2). A change is stored when the rotary
+    // selector is pressed (p.31), and can be lost if the mixer goes off within 10 s of it (p.35); C3 switches the
+    // mixer off at its own switch.
     id: 'my-settings',
     code: 'F7',
     where: 'booth',
@@ -392,14 +428,18 @@ export const FIXES: Fix[] = [
     ],
     later: {
       when: 'At the changeover',
-      steps: [{ challenge: 'MASTER ATT and BOOTH ATT', response: 'as on the REC tape', note: IN_UTILITY }],
+      steps: [{ challenge: 'MASTER ATT and BOOTH ATT', response: 'as on the REC tape', note: ATT_NOTE }],
     },
-    why: 'MY SETTINGS loads a DJ’s own UTILITY settings, and both ATTs are UTILITY settings (Pioneer, pp. 31–32). A change to MASTER ATT during a set changes the room’s volume too.',
+    why: 'Pioneer says MY SETTINGS can call out UTILITY settings, and both ATTs are UTILITY settings (pp. 31–32). A change to MASTER ATT may change the room’s volume too: Pioneer does not say which sockets it reaches.',
     see: '#two-ceilings',
   },
   {
-    // dbx manual p.10: amps last on, first off, about 10 seconds apart. Howler MK1 manual: about 30 hours on its
-    // battery, and it saves the file before the battery runs flat. The XDJ-RX2 has no battery.
+    // dbx manual p.10: amps last on, and "ensure you're not passing audio to the mixer's outputs … before applying
+    // power to the amplifiers"; amps first off, then "wait about 10 seconds". HSE GS50 §22: "If a 30 mA RCD trips,
+    // it is an indication that there is a fault. Do not ignore it." INDG247 p.3: "Never bypass the RCD". On a
+    // generator a trip can also be an overload: two GX7s can draw about 26 A in full-power bursts (QSC p.11). Howler
+    // MK1 manual: about 30 hours on its battery, and it saves the file before the battery runs flat. The XDJ-RX2 has
+    // no battery, and a cut is no switch-off at its own switch (Pioneer p.35), so step 6 checks both ATTs.
     id: 'power-cut',
     code: 'F8',
     where: 'booth',
@@ -409,24 +449,28 @@ export const FIXES: Fix[] = [
     steps: [
       { challenge: 'Both amps', response: 'switched off' },
       { challenge: 'Howler', response: 'still recording, RECORD blinking', note: 'It runs on its own battery.' },
+      { if: 'If an RCD or breaker tripped', action: 'find the fault before you reset it.' },
     ],
     later: {
       when: 'When the power is back',
       steps: [
-        { challenge: 'Mixer and DriveRack', response: 'switched on' },
+        { challenge: 'XDJ-RX2 and DriveRack', response: 'switched on' },
         { challenge: 'MASTER LEVEL', response: 'fully up, on the REC mark' },
-        { challenge: 'MASTER ATT and BOOTH ATT', response: 'as on the REC tape', note: IN_UTILITY },
-        { challenge: 'Both amps', response: 'switched on last, about 10 seconds later' },
+        { challenge: 'MASTER ATT and BOOTH ATT', response: 'as on the REC tape', note: ATT_NOTE },
+        { challenge: 'Both amps', response: 'switched on last, with no track playing' },
       ],
     },
-    why: 'dbx says to switch the amps on last and off first (p. 10). The Howler records for about 30 hours on its battery, and saves its file before the battery runs flat.',
+    why: 'dbx says to switch the amps on last, with no audio playing, and off first (p. 10). The Howler MK1 records for about 30 hours on its battery, and saves its file before the battery runs flat.',
   },
 
   // ---- On the recordings, the next day ------------------------------------------------------------
   {
-    // Two ceilings: the Howler clips at the top of its file; a mixer that clips arrives turned down by MASTER ATT
-    // and the recording level, so its flat tops sit lower (the guide's 3.2, and the clip checker's rule). Audacity
-    // marks only the top (View > Show Clipping in Waveform).
+    // Two ceilings, as the guide's 4.4 has them: Howler publishes no input limit, so we assume the Howler clips at
+    // the top of its file; a mixer that clips arrives turned down by MASTER ATT and the recording level, so its flat
+    // tops sit lower (the guide's 3.2, and the clip checker's rule). The Howler clipping can hide the mixer clipping
+    // under it. After the XDJ's and the Howler's converters a clipped top ripples and leans (Esqueda, Bilbao and
+    // Välimäki, 2016). Many commercial tracks are clipped in mastering (Vickers, 2010), so crunch all through one
+    // track may have come in with the track.
     id: 'crunch',
     code: 'F9',
     where: 'recording',
@@ -436,10 +480,12 @@ export const FIXES: Fix[] = [
     steps: [
       {
         do: 'Zoom in on a loud part that crunches.',
+        note: 'In the file, flat tops can ripple or lean a little.',
         choose: [
           {
             finding: 'Flat tops at the top of the file',
-            action: 'The Howler clipped. Set the recording level again with S3 before the next event.',
+            action:
+              'The Howler clipped, and the mixer may have clipped too. Set the recording level again with S3 before the next event.',
             end: true,
           },
           { finding: 'Flat tops lower down', next: 2 },
@@ -453,23 +499,31 @@ export const FIXES: Fix[] = [
       {
         do: 'Find where it crunches in the set.',
         choose: [
-          {
-            finding: 'On the blends',
-            to: 'Tell that DJ:',
-            say: 'Keep the MASTER meters below red in a blend.',
-            end: true,
-          },
-          { finding: 'All through a track', to: 'Tell that DJ:', say: CHANNELS_ORANGE, end: true },
+          { finding: 'On the blends', to: 'Tell that DJ:', say: MASTER_METERS_WORDS, end: true },
+          { finding: 'All through one track', next: 3 },
+        ],
+      },
+      {
+        do: 'Zoom in on the same part of the track’s own file.',
+        choose: [
+          { finding: 'The same flat tops', action: 'The crunch came in with the track.', end: true },
+          { finding: 'No flat tops', to: 'Tell that DJ:', say: CHANNEL_METERS_WORDS, end: true },
         ],
       },
     ],
-    why: 'The Howler clips at the top of its file. Clipping from the mixer arrives turned down with the rest of the mix, and its flat tops sit lower.',
+    why: 'We assume the Howler clips at the top of its file: Howler publishes no input limit. Clipping from the mixer arrives turned down with the rest of the mix, and its flat tops sit lower.',
     see: '#two-ceilings',
   },
   {
-    // QSC GX manual p.2: never defeat the grounding-type plug; p.10: plugging everything into the same supply
-    // often helps with hum. Rane Note 110: an isolation transformer is the most reliable cure. dbx manual: the
-    // DriveRack's ground lift switch lifts only the pin 1 chassis ground of its XLR inputs.
+    // HSE INDG247 p.4: "don't remove protective earth connections"; GS50 §54: for mains hum, "do not remove
+    // protective earth connections"; GS50 §41: with Class I equipment the earth makes the fuse blow if a fault makes
+    // the case live; GS50 §22: 30 mA RCDs. QSC GX manual p.2: never defeat the grounding-type plug; p.10: one supply
+    // for everything often helps with hum. GS50 §47: keep the sound supply apart from the lighting. Rane Note 110:
+    // transformer isolation is the cure for an unbalanced link. This is a line-level audio transformer, a
+    // ground-loop isolator, never a mains isolating transformer (GS50 §39–40). The Howler's lead is one RCA lead
+    // under 3 m, with nothing in it but this transformer, or the fixed attenuator T2 may call for (S2). dbx manual
+    // p.7: the rear panel's PIN 1 LIFT switch "lifts the pin 1 chassis ground on both input XLR connectors", with the
+    // amps off or the outputs muted.
     id: 'hum',
     code: 'F10',
     where: 'recording',
@@ -477,21 +531,33 @@ export const FIXES: Fix[] = [
     short: 'Hum or buzz',
     objective: 'Stop the hum, with every earth still connected.',
     warning:
-      'Never disconnect a mains earth. Do not use a ground-lift adapter, and do not tape over or cut an earth pin. The earth stops a faulty case from giving someone a shock.',
+      'Never disconnect a mains earth. Do not use an earth-lift adapter, a two-core extension lead or a plug with its earth wire off. Do not tape over or cut an earth pin. If a fault makes a case live, the earth lets the fuse or RCD cut the power.',
     steps: [
-      { challenge: 'Isolation transformer', response: 'on the Howler’s lead' },
       {
-        if: 'If the hum is still there',
-        action: 'plug all the sound gear into one supply. If the load allows, use one power strip.',
+        challenge: 'Audio isolation transformer',
+        response: 'on the Howler’s lead',
+        note: 'It is a ground-loop isolator for RCA leads, never a mains isolating transformer. The lead stays under 3 m, with nothing else in it but the fixed attenuator from T2.',
       },
       { if: 'If it is only on one side or it crackles', action: 'swap the Howler’s lead.' },
-      { if: 'If the PA hums too', action: 'try the DriveRack’s GROUND LIFT switch, with its outputs muted.' },
+      {
+        if: 'If the hum is still there',
+        action:
+          'plug all the sound gear into one distribution board, away from the lighting. Each amp keeps its own socket.',
+      },
+      {
+        if: 'If the PA hums too',
+        action:
+          'press in the DriveRack’s PIN 1 LIFT switch, with its outputs muted. It lifts only pin 1 of its XLR inputs, never the mains earth (dbx p. 7).',
+      },
     ],
     why: 'Hum is usually an earth loop between pieces of gear. The transformer breaks it in the audio lead, and every earth stays connected.',
   },
   {
-    // Rane Note 110 and verify-gear-facts K12: a stereo jack-to-twin-RCA lead in one socket records one channel
-    // twice, one copy reversed, which cancels on a phone speaker. MASTER 2 is RCA, like the Howler.
+    // Pioneer Quick Start Guide p.20: MASTER 2 is RCA, "for an unbalanced input (such as RCA)", and an unbalanced
+    // output can't reverse a side. Recording one side twice, one copy reversed, needs a balanced output wired into a
+    // stereo input: a jack-to-RCA lead in a BOOTH socket, or an XLR-to-RCA adapter on MASTER 1 (Pioneer warns of
+    // noise there, p.20). On a phone speaker the two copies cancel. Only the audio isolation transformer from F10, or
+    // the fixed attenuator T2 may call for, goes in the lead (S2).
     id: 'hollow',
     code: 'F11',
     where: 'recording',
@@ -501,19 +567,21 @@ export const FIXES: Fix[] = [
     steps: [
       {
         challenge: 'The Howler’s lead, from MASTER 2',
-        response: 'one plain stereo RCA lead',
+        response: 'one stereo RCA lead, under 3 m',
+        note: 'Nothing goes in it except an audio isolation transformer if F10 found hum, or the fixed attenuator from T2.',
         choose: [
           { finding: 'A plug half out', action: 'Push all four plugs fully in.', end: true },
           {
             finding: 'A splitter or an adapter',
-            action: 'Use one plain RCA lead from MASTER 2 instead.',
+            action:
+              'Take it out, and use one RCA lead from MASTER 2. The audio isolation transformer and the fixed attenuator can stay.',
             end: true,
           },
           { finding: 'Neither', action: 'Swap the lead.', end: true },
         ],
       },
     ],
-    why: 'A splitter can record one side twice, with one copy reversed. On a phone speaker the two copies cancel.',
+    why: 'An adapter on BOOTH or MASTER 1 can record one side twice, one copy reversed, which sounds hollow. On MASTER 2, a loose or broken RCA lead loses a side.',
     see: '#signal',
   },
 ];

@@ -37,7 +37,7 @@ export const GUIDE: GuidePart[] = [
       { id: 'trim', number: '2.1', title: 'Set TRIM in your headphones', short: 'Set TRIM' },
       { id: 'meters', number: '2.2', title: 'Read the right meter', short: 'The meters' },
       { id: 'knobs', number: '2.3', title: 'Whose knobs are whose', short: 'Whose knobs' },
-      { id: 'blends', number: '2.4', title: 'Keep the MASTER meters below red in a blend', short: 'Blends' },
+      { id: 'blends', number: '2.4', title: 'Keep the MASTER meters’ top orange dark in a blend', short: 'Blends' },
       { id: 'check', number: '2.5', title: 'Meter check' },
       { id: 'myths', number: '2.6', title: 'What people say about the red', short: 'What people say' },
     ],
@@ -63,7 +63,12 @@ export const GUIDE: GuidePart[] = [
     sections: [
       { id: 'worse', number: '4.1', title: 'Why the recording sounds worse', short: 'Why it sounds worse' },
       { id: 'undo', number: '4.2', title: 'Why clipping cannot be undone', short: 'Why clipping stays' },
-      { id: 'quiet', number: '4.3', title: 'Why a quiet recording loses nothing', short: 'Why quiet is fine' },
+      {
+        id: 'quiet',
+        number: '4.3',
+        title: 'Why a quiet recording loses nothing you can hear',
+        short: 'Why quiet is fine',
+      },
       {
         id: 'red-top',
         number: '4.4',

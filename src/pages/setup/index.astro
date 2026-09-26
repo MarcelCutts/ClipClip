@@ -2,10 +2,14 @@
 /**
  * Setting up, at every event, for whoever builds the rig, working alone with the kit in front of
  * them. S1 is the whole job in order (checklists.ts). The cards after it follow S1's order: S2 the
- * wiring, as a table built from the guide's signal drawing (lib/rig.ts); T2, the one-off test of
- * whether MASTER ATT reaches MASTER 2; S3 the recording level (lib/record/flow.ts); S4 the DriveRack
- * and amps; S5 the DriveRack's setup wizard, once. Each card says when it's done: every event, or
- * once. Why it works is in the guide.
+ * wiring, as a table built from the guide's signal drawing (lib/rig.ts); T2 and T3, the one-off
+ * tests of what MASTER ATT turns down and whether MASTER LEVEL fully up adds gain; S3 the recording
+ * level (T2, T3 and S3 are in lib/record/flow.ts); S4 the DriveRack and amps, with the RIG marks;
+ * S5 the DriveRack's setup wizard, once. Each card says when it's done: every event, or once. Why
+ * it works is in the guide.
+ *
+ * Page numbers are the printed ones. Pioneer's and QSC's PDFs number their pages the same way, so
+ * #page=N lands on page N. dbx's PDF has two unnumbered pages first: printed page N is #page=N+2.
  *
  * The anchors other pages use stay put: #setup is the checklist's, the guide links to #record-level
  * and #test-att, and the old /crew/ page forwards to #wiring and #record-level.
@@ -16,10 +20,21 @@ import Procedure from '../../components/Procedure.astro';
 import Term from '../../components/Term.astro';
 import Checklist from '../../islands/Checklist.svelte';
 import Base from '../../layouts/Base.astro';
-import { CHECKLISTS, OPEN_UTILITY } from '../../lib/checklists';
+import { CHECKLISTS } from '../../lib/checklists';
 import { FIXES } from '../../lib/fixes';
-import { ATT_SETTINGS, CONSEQUENCE, SAVE_NOTE, STEPS } from '../../lib/record/flow';
+import {
+  CONSEQUENCE,
+  SAVE_NOTE,
+  STEPS,
+  type Step,
+  T2_FINDINGS,
+  T2_INTRO,
+  T2_STEPS,
+  T3_INTRO,
+  T3_STEPS,
+} from '../../lib/record/flow';
 import { edgesFor, NODES, type NodeId } from '../../lib/rig';
+import { CREW_RULES } from '../../lib/rules';
 import { section } from '../../lib/sections';
 import { SOURCES } from '../../lib/sources';
 import { MONITOR_TAG, REC_TAG, RIG_TAG, type ShortTag } from '../../lib/tags';
@@ -38,9 +53,16 @@ const DBX_TUNINGS = doc('DriveRack PA2 speaker and amplifier tunings');
 const QSC = doc('GX3, GX5 and GX7 user manual');
 const HOWLER = doc('Recorder+Streamer MK1 manual');
 const RANE = doc('Sound System Interconnection (RaneNote 110)');
+const VIRTUAL_DJ = doc('XDJ-RX2 mixer layout');
+
+/** Audacity's manual, for the two things S3's peak check leans on: Amplify, and Show Clipping. */
+const AUDACITY = 'https://manual.audacityteam.org/man';
+
+/** HSE's guidance behind S1's generator line: earthed by a competent person, sockets on 30 mA RCDs. */
+const HSE_GS50 = 'https://www.hse.gov.uk/pubns/gs50.pdf';
 
 /** A no-break space, between a number and its unit. */
-const nb = ' ';
+const nb = '\u00a0';
 const MINUS = '−';
 
 /** When a card is done, on the right of its title strip. */
@@ -51,12 +73,31 @@ const ONCE = 'Once';
 const EARTH_WARNING = FIXES.find((f) => f.id === 'hum')?.warning;
 if (!EARTH_WARNING) throw new Error('The hum drill (F10) has no earth warning for S2 to repeat');
 
-// ---- S2: the rig as a table -----------------------------------------------------------------
+/** The crew's line for a louder room, word for word from their box (rules.ts), for S4's last step. */
+const LOUDER_ROOM = CREW_RULES.find((r) => r.drill === 'not-loud')?.note;
+if (!LOUDER_ROOM) throw new Error('The crew box has no line for a louder room (rules.ts)');
+
+// ---- Links to printed pages --------------------------------------------------------------------
 
 interface Cite {
   label: string;
   url: string;
 }
+
+/** A page of Pioneer's Operating Instructions or Quick Start Guide: the PDF numbers them as printed. */
+const oiPage = (page: number) => `${MANUAL}#page=${page}`;
+const qsgPage = (page: number) => `${QUICK_START}#page=${page}`;
+/** A page of dbx's manual. Its PDF has two unnumbered pages first: printed page n is PDF page n + 2. */
+const dbxPage = (page: number) => `${DBX}#page=${page + 2}`;
+/** A page of QSC's GX manual: the PDF numbers them as printed. */
+const qscPage = (page: number) => `${QSC}#page=${page}`;
+
+const OI = (page: number): Cite => ({ label: `XDJ manual p.${nb}${page}`, url: oiPage(page) });
+const QSG = (page: number): Cite => ({ label: `XDJ quick start p.${nb}${page}`, url: qsgPage(page) });
+const DBXP = (page: number): Cite => ({ label: `dbx manual p.${nb}${page}`, url: dbxPage(page) });
+const QSCP = (page: number): Cite => ({ label: `QSC GX manual p.${nb}${page}`, url: qscPage(page) });
+
+// ---- S2: the rig as a table ---------------------------------------------------------------------
 
 interface RigRow {
   /** The part, as the guide's drawing names it. */
@@ -76,9 +117,6 @@ interface RigRow {
   sources: Cite[];
 }
 
-const OI = (page: number): Cite => ({ label: `XDJ manual p.${nb}${page}`, url: `${MANUAL}#page=${page}` });
-const QSG = (page: number): Cite => ({ label: `XDJ quick start p.${nb}${page}`, url: `${QUICK_START}#page=${page}` });
-
 /** The tape each taped part carries (rig.ts marks which are taped; tags.ts has what's printed on them). */
 const TAPE: Partial<Record<NodeId, ShortTag>> = { masterLevel: REC_TAG, booth: MONITOR_TAG, amps: RIG_TAG };
 
@@ -93,21 +131,26 @@ const RIG_ROWS: RigRow[] = [
   {
     node: 'driverack',
     lead: `XLR, L and R`,
-    set: `input switch on +4${nb}dBu`,
+    set: `input switch on +4${nb}dBu, PIN 1 LIFT out`,
     see: { code: 'S4', id: 'driverack' },
-    sources: [QSG(20), { label: `dbx manual p.${nb}5`, url: `${DBX}#page=5` }],
+    sources: [QSG(20), DBXP(7)],
   },
   {
+    // dbx p. 53, a 2-way system: the lows go out of the LOW outputs to the subs, the highs out of the
+    // HIGH outputs to the full-range mains, and the MID outputs are off.
     node: 'amps',
     withSub: true,
-    set: 'FULL RANGE, gain for the room',
+    lead: 'LOW and HIGH, L and R',
+    leadNote: 'LOW to the subs’ amp, HIGH to the top speakers’ amp.',
+    set: 'FULL RANGE',
+    setNote: 'Gain knobs at or below the RIG marks.',
     see: { code: 'S4', id: 'driverack' },
-    sources: [{ label: 'QSC GX manual', url: QSC }],
+    sources: [DBXP(53), QSCP(6)],
   },
   {
     node: 'howler',
     lead: 'RCA, L and R',
-    leadNote: `One stereo RCA lead, under 3${nb}m, with no adapters.`,
+    leadNote: `One stereo RCA lead, under 3${nb}m. Nothing goes in it except an audio isolation transformer if F10 finds hum, or the fixed attenuator if T2 calls for it.`,
     set: 'WAV',
     see: { code: 'S3', id: 'record-level', for: 'its recording level' },
     sources: [QSG(20), { label: 'RaneNote 110', url: RANE }, { label: 'Howler manual', url: HOWLER }],
@@ -156,53 +199,94 @@ const rigRows = RIG_ROWS.map((r, i) => {
 
 const signal = section('signal');
 
-// ---- T2: whether MASTER ATT reaches MASTER 2 -------------------------------------------------
+// ---- S4 and S5: the DriveRack and the amps ---------------------------------------------------------
 
-// Pioneer's fix for distortion is MASTER ATT (manual p.34; UTILITY table p.32), but the manual only says it
-// "sets the master output attenuator". The table prints +12 dB; the Quick Start Guide (p.17) has −12 dB.
-const attDb = (v: number) => (v === 0 ? `0${nb}dB` : `${MINUS}${Math.abs(v)}${nb}dB`);
-const [attFull, , attLowest] = ATT_SETTINGS;
-const T2_STEPS = [
-  { challenge: 'Loud track', response: 'recording on the Howler' },
-  {
-    challenge: 'MASTER ATT, halfway through',
-    response: attDb(attLowest),
-    note: `It is in UTILITY. ${OPEN_UTILITY} Its settings are ${ATT_SETTINGS.map(attDb).join(', ').replace(/, ([^,]+)$/, ' and $1')}. The Operating Instructions misprint the last as +12${nb}dB, and the Quick Start Guide has it right.`,
-  },
-  { challenge: 'MASTER ATT', response: `back to ${attDb(attFull)}` },
-];
-
-// ---- S4 and S5: the DriveRack and the amps ----------------------------------------------------
-
-const S4_STEPS = [
+// dbx's manual: the input switch, out for +4 dBu (p. 7); on −10 dBV the input clips about 10 dB early
+// (p. 5, the INPUT meter table). PIN 1 LIFT, printed so on the back, lifts the pin 1 chassis ground of
+// both input XLRs and is best left out (p. 7). The STORE light shows an unstored change (p. 25). Amps
+// last on, with no audio at the mixer's outputs, and first off, then about 10 seconds before the rest
+// (p. 10). The wizard's GX7 tuning sets the limiters (p. 17), and "based on where you have set your
+// amplifier attenuators" (p. 44), which dbx does not give: hence the RIG marks, found by the amps' own
+// CLIP lights (QSC p. 5). QSC prints no dB per click, so the knobs move by the figures on their scale.
+const S4_STEPS: Step[] = [
   {
     challenge: 'Input switch, on the back of the DriveRack',
     response: `+4${nb}dBu`,
-    note: `MASTER 1 runs at about +6${nb}dBu, Pioneer’s standard level. On ${MINUS}10${nb}dBV the DriveRack’s input clips about 10${nb}dB early. dbx advises flipping the switch only with the amps off or its outputs muted.`,
+    note: `Out is +4${nb}dBu, and pushed in is ${MINUS}10${nb}dBV (dbx p.${nb}7). Pioneer gives MASTER${nb}1 a standard output level of +6${nb}dBu and a rated output of +24${nb}dBu (Quick Start Guide, p.${nb}20). On ${MINUS}10${nb}dBV the DriveRack’s input clips about 10${nb}dB early (dbx p.${nb}5).`,
+  },
+  {
+    challenge: 'PIN 1 LIFT switch, beside it',
+    response: 'out',
+    note: `It lifts pin${nb}1, the screen, on both XLR inputs, and never the mains earth. dbx advises leaving it out unless the PA hums (p.${nb}7). If the PA hums, go to F10.`,
   },
   {
     challenge: 'Both GX7 amps, on the back',
     response: 'FULL RANGE',
     note: 'The DriveRack already splits the subs from the top speakers.',
   },
-  { challenge: 'DriveRack setup wizard', response: 'done once (S5)' },
+  {
+    challenge: 'DriveRack preset',
+    response: 'ours, STORE light off',
+    note: `If the STORE light is on, recall our preset. A lit STORE light means a setting has changed since S5 stored it (dbx p.${nb}25).`,
+  },
+  { challenge: 'Amp gain knobs', response: 'fully down' },
   {
     challenge: 'Both GX7 amps',
-    response: 'switched on last',
-    note: `dbx says to switch the amps on after everything else, and off first, about 10${nb}seconds apart.`,
+    response: 'switched on last, with no track playing',
+    note: `dbx: the amps go on last and off first. After switching them off, wait about 10${nb}seconds before the rest (p.${nb}10).`,
   },
-  { challenge: 'DriveRack input CLIP lights', response: 'dark on the loudest blend' },
-  { challenge: 'Amp gain knobs, on the loudest blend', response: 'as loud as the room needs, CLIP lights dark' },
+  {
+    challenge: 'DriveRack input CLIP lights',
+    response: 'dark on the loudest blend',
+    note: 'The loudest blend is the one from S3: both channel meters at +6, kicks lined up. If they light, go to F6.',
+  },
+  {
+    before: 'This step plays the loudest blend through the PA as loud as the amps go. Do it with the room empty and earplugs in.',
+    challenge: 'RIG marks, on the RIG tape',
+    response: 'at the highest click with both CLIP lights dark on the loudest blend',
+    note: 'All four gain knobs go up together, to the same figure on each scale. The marks go at the last setting before either CLIP light flashes.',
+  },
+  {
+    challenge: 'Amp gain knobs',
+    response: 'at or below the RIG marks, loud enough for the room',
+    note: LOUDER_ROOM,
+  },
 ];
 
-const S5_STEPS = [
-  { challenge: 'Top speakers', response: 'Yamaha S/C115V' },
+// dbx's manual, a 2-way system with passive mains and subs (p. 53): STEREO input for a left and right
+// pair, PASSIVE mains. The EV subs are not in the PA2's own list (dbx's tunings list); the PA2 app can
+// look online first (p. 17). Picking the amps sets the output gains and limiter thresholds (p. 17). The
+// limiters, one per output band, each ON or OFF (p. 43). Presets: user presets are 1 to 75, and the
+// factory ones cannot be overwritten; an unstored change is lost when another preset is recalled (p. 25);
+// STORE saves one (p. 26). dbx does not say whether the wizard asks for the subs' amp once the subs are
+// NOT LISTED.
+const S5_STEPS: Step[] = [
+  { challenge: 'Input', response: 'STEREO', note: `MASTER${nb}1 comes in as a left and right pair (dbx p.${nb}53).` },
+  {
+    challenge: 'Top speakers',
+    response: 'Yamaha S/C115V, PASSIVE',
+    note: `dbx: PASSIVE for main speakers that are not bi-amped, used with subs (p.${nb}53).`,
+  },
+  {
+    challenge: 'Subs',
+    response: 'NOT LISTED',
+    note: `The EV EKX-18S is not in the PA2’s own list. The PA2 control app can look in dbx’s online list first (p.${nb}17).`,
+  },
   {
     challenge: 'Amps',
     response: 'QSC GX7',
-    note: 'With these two picked, the wizard sets the limiters for the GX7s.',
+    note: `Picking the amps sets the limiter thresholds (dbx p.${nb}17). dbx does not say which gain knob setting they assume. S4’s RIG marks go by the amps’ CLIP lights instead. If the wizard asks for the subs’ amp too, it is a QSC GX7.`,
   },
-  { challenge: 'Subs', response: '“not listed”', note: 'The EV EKX-18S subs are not in its list.' },
+  {
+    challenge: 'HIGH and LOW output limiters',
+    response: 'ON',
+    note: `They are under the LIMITER button (dbx p.${nb}43).`,
+  },
+  {
+    challenge: 'Preset',
+    response: 'stored, STORE light off',
+    note: `STORE saves it as a user preset, 1 to 75: the factory ones cannot be overwritten (dbx pp.${nb}25–26). A change that is not stored is lost when another preset is recalled (p.${nb}25).`,
+  },
 ];
 
 // The index names each card by its code, as the cards do, in the order S1 uses them.
@@ -210,6 +294,7 @@ const contents: ContentsEntry[] = [
   { id: CHECKLISTS.setup.anchor, number: CHECKLISTS.setup.code, label: CHECKLISTS.setup.title },
   { id: 'wiring', number: 'S2', label: 'Wiring' },
   { id: 'test-att', number: 'T2', label: 'MASTER ATT test' },
+  { id: 'test-master-level', number: 'T3', label: 'MASTER LEVEL test' },
   { id: 'record-level', number: 'S3', label: 'Recording level' },
   { id: 'driverack', number: 'S4', label: 'DriveRack and amps' },
   { id: 'wizard', number: 'S5', label: 'Setup wizard' },
@@ -233,7 +318,8 @@ const contents: ContentsEntry[] = [
     <div class="job">
       <Checklist list="setup" headingLevel={2} client:visible />
       <p class="source after">
-        QSC’s <a href={QSC} rel="external">GX manual</a> for what the amps draw, and Howler’s
+        HSE’s <a href={HSE_GS50} rel="external">GS50</a> for the generator and its RCDs, QSC’s
+        <a href={qscPage(11)} rel="external">GX manual, p.{nb}11</a>, for what the amps draw, and Howler’s
         <a href={HOWLER} rel="external">MK1 manual</a> for the battery.
       </p>
     </div>
@@ -364,19 +450,52 @@ const contents: ContentsEntry[] = [
       <Procedure
         id="test-att"
         number="T2"
-        title={`Whether MASTER${nb}ATT reaches MASTER${nb}2`}
+        title={`What MASTER${nb}ATT turns down`}
         kind={ONCE}
         level={2}
-        caution="Pioneer’s manual says only that MASTER ATT “sets the master output attenuator”. It does not say whether that includes MASTER 2, the Howler’s socket."
-        steps={T2_STEPS}
+        caution={T2_INTRO}
+        steps={[...T2_STEPS]}
       >
-        <p class="expected">
-          <strong>Expected.</strong> The second half of the file is quieter. If it is not, MASTER ATT does not reach
-          {`MASTER${nb}2`}. In S3, leave it at {attDb(attFull)} and skip its two steps.
-        </p>
+        <div class="findings">
+          <p><strong>What each result means.</strong></p>
+          <dl>
+            {
+              T2_FINDINGS.map((f) => (
+                <div>
+                  <dt>{f.look}</dt>
+                  {f.readings.map((r) => (
+                    <dd>
+                      <strong>{r.seen}:</strong> {r.means}
+                    </dd>
+                  ))}
+                </div>
+              ))
+            }
+          </dl>
+        </div>
         <p class="source">
-          Pioneer’s Operating Instructions (<a href={`${MANUAL}#page=32`} rel="external">p.{nb}32</a>) and Quick Start
-          Guide (<a href={`${QUICK_START}#page=17`} rel="external">p.{nb}17</a>).
+          Pioneer’s Operating Instructions (<a href={oiPage(31)} rel="external">p.{nb}31</a> for UTILITY,
+          <a href={oiPage(32)} rel="external">p.{nb}32</a> for MASTER ATT) and Quick Start Guide (<a
+            href={qsgPage(17)}
+            rel="external">p.{nb}17</a
+          >), and dbx’s DriveRack PA2 manual (<a href={dbxPage(5)} rel="external">p.{nb}5</a>) for the INPUT meters.
+        </p>
+      </Procedure>
+    </div>
+
+    <div class="job">
+      <Procedure
+        id="test-master-level"
+        number="T3"
+        title={`Whether MASTER${nb}LEVEL fully up adds gain`}
+        kind={ONCE}
+        level={2}
+        caution={T3_INTRO}
+        steps={[...T3_STEPS]}
+      >
+        <p class="source">
+          Pioneer’s Operating Instructions (<a href={oiPage(27)} rel="external">p.{nb}27</a> for MASTER LEVEL’s scale,
+          <a href={oiPage(28)} rel="external">p.{nb}28</a> for THRU).
         </p>
       </Procedure>
     </div>
@@ -393,10 +512,13 @@ const contents: ContentsEntry[] = [
         note={SAVE_NOTE}
       >
         <p class="source">
-          Pioneer’s Operating Instructions (<a href={`${MANUAL}#page=27`} rel="external">p.{nb}27</a> for MASTER LEVEL,
-          <a href={`${MANUAL}#page=31`} rel="external">p.{nb}31</a> for UTILITY and
-          <a href={`${MANUAL}#page=32`} rel="external">p.{nb}32</a> for MASTER ATT), and Howler’s
-          <a href={HOWLER} rel="external">MK1 manual</a> for the LEVEL light.
+          Pioneer’s Operating Instructions (<a href={oiPage(27)} rel="external">p.{nb}27</a> for MASTER LEVEL,
+          <a href={oiPage(31)} rel="external">p.{nb}31</a> for UTILITY, <a href={oiPage(32)} rel="external"
+            >p.{nb}32</a
+          > for MASTER ATT and <a href={oiPage(35)} rel="external">p.{nb}35</a> for when a change is kept), Howler’s
+          <a href={HOWLER} rel="external">MK1 manual</a> for the LEVEL light, and Audacity’s manual for
+          <a href={`${AUDACITY}/amplify.html`} rel="external">Amplify</a> and
+          <a href={`${AUDACITY}/view_menu.html`} rel="external">Show Clipping</a>.
         </p>
       </Procedure>
     </div>
@@ -404,9 +526,14 @@ const contents: ContentsEntry[] = [
     <div class="job">
       <Procedure id="driverack" number="S4" title="DriveRack and amps" kind={EVERY_EVENT} level={2} steps={S4_STEPS}>
         <p class="source">
-          dbx’s DriveRack PA2 manual (<a href={`${DBX}#page=5`} rel="external">p.{nb}5</a> for the input switch,
-          <a href={`${DBX}#page=10`} rel="external">p.{nb}10</a> for the order) and QSC’s
-          <a href={QSC} rel="external">GX manual</a> for FULL RANGE, the gain knobs and the CLIP lights.
+          dbx’s DriveRack PA2 manual (<a href={dbxPage(5)} rel="external">p.{nb}5</a> for the INPUT meters and CLIP
+          lights, <a href={dbxPage(7)} rel="external">p.{nb}7</a> for the input switch and PIN 1 LIFT,
+          <a href={dbxPage(10)} rel="external">p.{nb}10</a> for the order,
+          <a href={dbxPage(25)} rel="external">p.{nb}25</a> for the STORE light), Pioneer’s Quick Start Guide (<a
+            href={qsgPage(20)}
+            rel="external">p.{nb}20</a
+          >) for MASTER 1’s levels, and QSC’s GX manual (<a href={qscPage(5)} rel="external">p.{nb}5</a> for the gain
+          knobs and CLIP lights, <a href={qscPage(6)} rel="external">p.{nb}6</a> for FULL RANGE).
         </p>
       </Procedure>
     </div>
@@ -414,16 +541,22 @@ const contents: ContentsEntry[] = [
     <div class="job">
       <Procedure id="wizard" number="S5" title="DriveRack setup wizard" kind={ONCE} level={2} steps={S5_STEPS}>
         <p class="source">
-          dbx’s <a href={DBX_TUNINGS} rel="external">list of tunings</a>, which names the Yamaha top speakers and the QSC
-          amps but no EV subs.
+          dbx’s DriveRack PA2 manual (<a href={dbxPage(17)} rel="external">p.{nb}17</a> for the tunings,
+          <a href={dbxPage(25)} rel="external">p.{nb}25</a> and <a href={dbxPage(26)} rel="external">p.{nb}26</a> for
+          presets, <a href={dbxPage(43)} rel="external">p.{nb}43</a> for the limiters,
+          <a href={dbxPage(53)} rel="external">p.{nb}53</a> for STEREO and PASSIVE), and its
+          <a href={DBX_TUNINGS} rel="external">list of tunings</a>, which names the Yamaha top speakers and the QSC amps
+          but no EV subs.
         </p>
       </Procedure>
     </div>
 
     <p class="job check">
-      <strong>Check it yourself.</strong> If a channel meter rises when you turn up LOW, it reads after the EQ, as the
-      guide’s drawing assumes. If a channel pushed into the red records with flat tops at any height while MASTER LEVEL
-      is down, red <Term of="clipping" then=".">clips</Term>
+      <strong>Check it yourself.</strong> If a channel meter stays put when you pull its fader down, it reads before the
+      fader, as <a href={VIRTUAL_DJ} rel="external">VirtualDJ’s manual</a> for the unit says. If it rises when you turn
+      up LOW, it reads after the EQ. The guide’s drawing assumes both, and Pioneer says neither. If a channel pushed
+      into the red records with flat tops at any height while MASTER LEVEL is down, red
+      <Term of="clipping" then=".">clips</Term>
     </p>
   </div>
 </Base>
@@ -635,8 +768,26 @@ const contents: ContentsEntry[] = [
     }
   }
 
-  .expected {
+  /* T2's results: what to look at, then what each thing it can do means. */
+  .findings {
+    display: grid;
+    gap: 0.5rem;
     line-height: 1.5;
+  }
+
+  .findings dl {
+    display: grid;
+    gap: 0.65rem;
+    margin: 0;
+  }
+
+  .findings dt {
+    font-weight: 700;
+  }
+
+  .findings dd {
+    margin: 0;
+    font-size: var(--text-sm);
   }
 
   .next,

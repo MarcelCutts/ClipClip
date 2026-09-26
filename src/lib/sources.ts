@@ -24,13 +24,13 @@ export const SOURCES: SourceGroup[] = [
         title: 'XDJ-RX2 Operating Instructions',
         publisher: 'Pioneer DJ',
         url: 'https://downloads.support.alphatheta.com/manuals/all-in-one-dj-systems/XDJ-RX2/XDJ-RX2_DRI1479A_manual.pdf',
-        note: 'Setting TRIM and MASTER LEVEL (p. 31), the CLIP light (p. 27), HEADPHONES LEVEL (p. 28), the UTILITY attenuators and MY SETTINGS (pp. 31–32).',
+        note: 'The BOOTH terminals (p. 10), the CLIP light and the printed scales (p. 27), HEADPHONES LEVEL (p. 28), setting TRIM and MASTER LEVEL (p. 31), the UTILITY attenuators and MY SETTINGS (pp. 31–32), the fix for distorted sound (p. 34), settings that are not stored (p. 35).',
       },
       {
         title: 'XDJ-RX2 Quick Start Guide and specifications',
         publisher: 'Pioneer DJ',
         url: 'https://downloads.support.alphatheta.com/manuals/all-in-one-dj-systems/XDJ-RX2/XDJ-RX2_DRH1447A_quickstart_manual.pdf',
-        note: 'Setting TRIM and MASTER LEVEL, the fix for distorted sound, output levels, noise figures.',
+        note: 'Setting TRIM and MASTER LEVEL (p. 15), the fix for distorted sound (p. 17), output levels and noise figures (p. 20).',
       },
       {
         title: 'XDJ-RX2 FAQ: setting TRIM and MASTER LEVEL',
@@ -43,6 +43,12 @@ export const SOURCES: SourceGroup[] = [
         publisher: 'AlphaTheta (Pioneer DJ) Help Center',
         url: 'https://support.alphatheta.com/en-US/articles/4408442652825',
         note: 'Tip hot, ring cold, sleeve ground.',
+      },
+      {
+        title: 'DJM-750MK2 FAQ: the level indicators, and output without distortion',
+        publisher: 'AlphaTheta (Pioneer DJ) Help Center',
+        url: 'https://support.alphatheta.com/en-US/articles/4408734012953',
+        note: 'For comparison: another Pioneer mixer’s room above its meter, 21 dB.',
       },
       {
         title: 'Recorder+Streamer MK1 manual',
@@ -86,16 +92,40 @@ export const SOURCES: SourceGroup[] = [
         note: 'Wiring a balanced output into an unbalanced input.',
       },
       {
+        title: 'Electrical safety at places of entertainment (GS50)',
+        publisher: 'HSE',
+        url: 'https://www.hse.gov.uk/pubns/gs50.pdf',
+        note: 'A generator earthed by a competent person, sockets with 30 mA RCDs, enough power for the load.',
+      },
+      {
+        title: 'Electrical safety for entertainers (INDG247)',
+        publisher: 'HSE',
+        url: 'https://www.hse.gov.uk/pubns/indg247.pdf',
+        note: 'Cables, reels and distribution for temporary power.',
+      },
+      {
+        title: 'Announcing Howler recorder+streamer MK2: Record and livestream at the same time',
+        publisher: 'Howler Audio',
+        url: 'https://howler-audio.com/blogs/news/announcing-howler-recorder-streamer-mk2-a-new-iteration-built-on-your-feedback',
+        note: 'That the MK1’s file dates are not set correctly, so split files go in order by name.',
+      },
+      {
+        title: 'Audacity manual: Amplify and the View menu',
+        publisher: 'Audacity',
+        url: 'https://manual.audacityteam.org/man/amplify.html',
+        note: 'Reading a file’s peak, and Show Clipping, which is off until you turn it on.',
+      },
+      {
         title: 'XDJ-RX2 mixer layout',
         publisher: 'VirtualDJ',
         url: 'https://virtualdj.com/manuals/hardware/pioneer/xdjrx2/layout/mixer.html',
-        note: 'Channel meters show each channel before its fader.',
+        note: 'That the channel meters show each channel before its fader. Pioneer does not say.',
       },
       {
         title: 'XDJ-RX2 recording levels',
         publisher: 'Pioneer DJ Community',
         url: 'https://community.pioneerdj.com/hc/en-us/community/posts/22976408344345-XDJ-RX2-Recording-levels',
-        note: 'Recordings jumping during blends; an official comment on channel levels and EQ.',
+        note: 'An official reply on how two tracks sum in a blend. The thread is about the unit’s own USB recorder, which this rig does not use.',
       },
     ],
   },
@@ -118,13 +148,13 @@ export const SOURCES: SourceGroup[] = [
         title: 'EBU R 128',
         publisher: 'EBU',
         url: 'https://tech.ebu.ch/docs/r/r128.pdf',
-        note: 'The −1 dB true-peak ceiling for finished files.',
+        note: 'The −1 dB true-peak ceiling in production, and why data-reduced files may need a lower one.',
       },
       {
         title: 'Adding coherent and incoherent sound levels',
         publisher: 'sengpielaudio',
         url: 'https://sengpielaudio.com/calculator-coherentsources.htm',
-        note: 'Why lined-up kicks add 6 dB.',
+        note: 'Why lined-up kicks can add up to 6 dB.',
       },
       {
         title: 'RX 11 De-clip',
@@ -152,6 +182,7 @@ export const SOURCES: SourceGroup[] = [
         title: 'Will SoundCloud play my track at the level it’s mastered?',
         publisher: 'SoundCloud Help',
         url: 'https://help.soundcloud.com/hc/en-us/articles/360053660014-Will-SoundCloud-play-my-track-at-the-level-it-s-mastered',
+        note: 'Loudness normalisation as tracks play, and the true-peak limits it asks of masters: −1 dB, or −2 dB for loud ones.',
       },
       {
         title: 'A club designer sounds off',
@@ -160,7 +191,8 @@ export const SOURCES: SourceGroup[] = [
         note: 'Monitoring, ear fatigue and why DJs push levels.',
       },
       {
-        title: 'Noise induced hearing loss in dance music disc jockeys',
+        title:
+          'Noise induced hearing loss in dance music disc jockeys and an examination of sound levels in nightclubs',
         publisher: 'Bray et al., Journal of Laryngology and Otology, 2004',
         url: 'https://pubmed.ncbi.nlm.nih.gov/14979949/',
       },

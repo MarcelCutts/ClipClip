@@ -6,7 +6,7 @@ How the site looks and why. If you change the look, change this file too.
 
 - **Subject:** keeping DJ set recordings clean on our rig: a Pioneer XDJ-RX2 feeding a Howler recorder from MASTER 2, with the PA running through a dbx DriveRack PA2 and two QSC GX7 amps, and booth monitors on BOOTH.
 - **Audience:** DJs of every level who play our events, and the crew who set up the booth. They're often the same people. Most will open a link from a group chat, on a phone.
-- **The site's job:** change what people do in the booth. DJs keep the channel meters out of the red. Crew set the record level once and tape it, and make the room loud at the amps. Everyone understands why, so the rules don't feel arbitrary.
+- **The site's job:** change what people do in the booth. DJs set each track's loudest part to the first orange light and keep the MASTER meters' top orange dark. Crew set the recording level once and tape it, and set the room's volume at the amps, no higher than the RIG marks. Everyone understands why, so the rules don't feel arbitrary.
 
 ## Structure
 
@@ -78,7 +78,7 @@ A tab strip that sticks to the top of the screen (the guide's below 80rem, the n
 - **Procedure** (`Procedure.astro`): a checklist card with a black title strip, then challenge/response steps with notes, and a `.source` line for the manufacturer's page. A real consequence is said in a plain sentence before the steps (`caution`) or before its own step (`before`), with no label. "Warning." is only for injury: the mains earth and hearing.
 - **Tabs** (`Tabs.astro`): one design wherever tabs appear. Equal-width tabs, at least 3rem tall, hang from a 2px ink rule: the code in bold (1, C1, F) over a short label in `--ink-2` that may wrap to two lines. The one you're in is filled with `--ink`, lettered in `--paper`, in both themes; every tab shows the focus ring. The drills' tab carries a small `--warning` lamp before F and is otherwise like the rest. Each tab is named code first ("1: Why it matters"). The guide's strip (parts 1 to 4: Why, Playing, Rig, How) gives way to the index rail on wide screens; the night page's (C1 Doors, C2 Changeover, F Something's wrong, C3 End) stays at every width.
 - **Index** (`Contents.astro`): a row per part with its thumb tab, drawn as the notch it cuts in a handbook's edge (open on the page's side, filled for the part you're in, never a closed box), its number, title and reading time, which drops under the title when there's no room. The guide's last row, F Something's wrong, goes to the night page and has the drills' lamp. The rail on wide screens, below anything that sticks above it.
-- **Hero** (`Hero.astro`): the title, the lede and the meter in its bezel, lit to the second orange. An "Aim" bracket spans 0 and +3, and the zones are named under the scale in plain words (green, room to spare; orange, the loudest parts; red, may distort). It's the page's one animation.
+- **Hero** (`Hero.astro`): the title, the lede and the meter in its bezel, lit to the first orange (0), the aim for a track's loudest part. An "Aim" bracket marks the 0 light, and the zones are named under the scale in plain words (green, headroom; orange, the loudest parts; red, may distort). It's the page's one animation.
 - **What people say** (`Myths.astro`): short pairs. The belief, quoted in regular italic `--ink-2`; what's true, in one or two sentences at regular weight, ending on what to do instead; and the maker's page where there is one. No labels.
 - **Panel**: the hardware box, only ever for real gear: meters, faders, scopes, the Howler. Flat, `--radius-panel` (6px), a 1px outline, no shadow. One surface per panel; inner boxes only for a real screen or meter well. Controls use `--radius-control` (4px). No pills.
 - **Quiz card** (`MeterCheck.svelte`, `quiz/*`): the meter check's questions and "How sure are you?" are printed cards, not panels. A 2px ink frame, a `--strip` title, answers as ruled rows with a real radio, the chosen answer in `--action`, and right or wrong marked with a tick or a cross and words, never colour alone. "How sure are you?" is a three-step printed scale, so it can't pass for a fourth answer. Keys are printed (`quiz/Key.svelte`). Any gear in the question (a meter, the Howler, the BOOTH MONITOR knob) sits on a small black plate.
@@ -113,7 +113,7 @@ The register is a reference guide's: an equipment manual, a quick reference hand
 **Words:**
 - One word per meaning. Hardware names are as printed: TRIM, MASTER LEVEL, BOOTH MONITOR, the MASTER meters (at first mention on a page, "the pair in the middle").
 - "Recording level", not "record level": to a DJ a record is a track.
-- "The room's volume" is only the PA's loudness. "Headroom" is only level. Say "SD card" and "checklist card", "top speakers", and "ATT setting".
+- "The room's volume" is only the PA's loudness. "Headroom" is only level. Say "microSD card" and "checklist card", "top speakers", and "ATT setting".
 - UK English, and "orange" for the LEDs. "Crunch" is introduced once as distortion.
 - No idioms ("on cue", "a quiet word", "for good", "ease back"), and no negative contractions: write do not, cannot, is not.
 - Numbers: "6 dB" for an amount, "+6" for a meter reading, "−1 dB true peak", "p. 27". Every number has its basis, and there's no time budget a list can't meet.
@@ -129,7 +129,7 @@ The register is a reference guide's: an equipment manual, a quick reference hand
 
 ## Motion and sound
 
-One orchestrated moment: on load, the hero meter's lights climb to the second orange and stop, short of the red. Everything else moves only in response to the reader, and `prefers-reduced-motion` turns motion off. Nothing plays until the reader presses a button; sound starts quietly, stops when the tab is hidden, and clean and clipped versions are loudness-matched before any comparison.
+One orchestrated moment: on load, the hero meter's lights climb to the first orange and stop, well short of the red. Everything else moves only in response to the reader, and `prefers-reduced-motion` turns motion off. Nothing plays until the reader presses a button; sound starts quietly, stops when the tab is hidden, and clean and clipped versions are loudness-matched before any comparison.
 
 ## Background reading
 

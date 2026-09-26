@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ATT_NOTE,
+  CHANNEL_METERS_WORDS,
   CHECKLIST_ORDER,
   CHECKLISTS,
   type ChecklistId,
@@ -11,9 +13,11 @@ import {
   IN_UTILITY,
   isChecklistId,
   LEVEL_FALLBACK,
+  MASTER_METERS_WORDS,
   NEXT_DJ_WORDS,
   OPEN_UTILITY,
   progressText,
+  STORE_CHANGE,
   serialiseTicks,
   storageKey,
 } from './checklists';
@@ -98,30 +102,61 @@ describe('checklist shape', () => {
 });
 
 describe('S1: the whole job in order, every event', () => {
-  it('runs power, leads, the Howler and T2 before the recording level, and the amps after it', () => {
+  it('makes the supply safe first, puts the leads in before the power, and switches the amps on last', () => {
     expect(CHECKLISTS.setup.items.map((i) => i.id)).toEqual([
-      'supply',
+      'generator',
       'leads',
-      'isolation',
+      'supply',
       'howler',
-      'att-test',
+      'tests',
       'record-level',
       'amps',
       'tags',
       'test-recording',
     ]);
-    expect(lineOf('setup', 'supply')).toBe('Sound gear on one supply, amps switched off');
-    expect(lineOf('setup', 'att-test')).toBe('MASTER ATT test (T2) done once');
+    // HSE GS50: a generator earthed by a competent person, sockets on 30 mA RCDs, and a trip means a fault.
+    expect(itemOf('setup', 'generator')).toMatchObject({
+      check: 'Generator',
+      target: 'earthed by a competent person, sockets on 30 mA RCDs',
+      note: 'If an RCD trips, find the fault before you reset it.',
+    });
+    expect(lineOf('setup', 'supply')).toBe('Sound gear on one distribution board, amps switched off');
+    expect(lineOf('setup', 'tests')).toBe('Tests T2 and T3 done once for this rig');
     expect(itemOf('setup', 'record-level')).toMatchObject({
       check: 'Howler LEVEL light',
       target: 'blinking green on the loudest blend',
       note: 'If it blinks red, go to S3.',
     });
-    expect(lineOf('setup', 'amps')).toBe('DriveRack and amps as in S4, amps switched on last');
+    // dbx p.10: amps on last, with no audio passing to the mixer's outputs.
+    expect(itemOf('setup', 'amps')).toMatchObject({
+      check: 'DriveRack and amps',
+      target: 'as in S4, amps switched on last',
+      note: 'If a track is playing, stop it before the amps go on.',
+    });
+  });
+
+  it('gives the amps’ draw in amps, as QSC does, and never puts both on one 13 A strip', () => {
+    const { note } = itemOf('setup', 'supply');
+    // QSC p.11, halved for 230 V: about 13.4 A for the pair at peak programme levels, 26.5 A in full-power bursts.
+    expect(note).toMatch(/^Both GX7 amps draw about 13 A together at peak levels, and 26 A in short bursts/);
+    expect(note).toMatch(/Each amp has its own socket: a 13 A strip cannot take both\.$/);
+    expect(allCopy.join(' ')).not.toMatch(/\bkW\b|one power strip|if the load allows/i);
+  });
+
+  it('fits the audio isolation transformer only when F10 finds hum, so S1 has no line for it', () => {
+    expect(allCopy.join(' ')).not.toMatch(/transformer/i);
+    expect(drillText(itemOf('setup', 'test-recording').drill ?? [])).toMatch(/If it hums, go to F10\./);
   });
 
   it('puts both ATT settings on the REC tape, where the night’s lists check them', () => {
-    expect(itemOf('setup', 'tags').note).toBe('The REC tape also carries both ATT settings, MASTER ATT and BOOTH ATT.');
+    // The first mention of MASTER ATT on /setup/, so it carries Pioneer's name once (A13), as the night's C1 does.
+    expect(itemOf('setup', 'tags').note).toBe(
+      'The REC tape also carries both ATT settings, MASTER ATT (MASTER ATTENUATOR in UTILITY) and BOOTH ATT.',
+    );
+    const setupNotes = CHECKLISTS.setup.items.flatMap((i) => [i.check, i.target, i.note ?? '']);
+    expect(setupNotes.filter((text) => /MASTER ATT\b/.test(text))[0]).toContain(
+      'MASTER ATT (MASTER ATTENUATOR in UTILITY)',
+    );
     for (const id of ['doors', 'changeover'] as const) {
       expect(CHECKLISTS[id].items.map((i) => `${i.check} ${i.target}`)).toContain(
         'MASTER ATT and BOOTH ATT as on the REC tape',
@@ -148,47 +183,108 @@ describe('the night’s lists', () => {
       'booth-card',
     ]);
     expect(lineOf('doors', 'howler')).toBe('Howler recording on WAV, on charge');
-    // Howler MK1 manual: RECORD stops blinking when the card is full or faulty.
+    // Howler MK1 manual: the BATTERY light is red while charging; RECORD stops blinking when the microSD card is full
+    // or faulty; the card must be FAT32, and A2 cards and SanDisk's Ultra and Pro cards do not work.
     expect(itemOf('doors', 'howler').note).toBe(
-      'If RECORD stops blinking soon after you press it, put in another SD card.',
+      'Its BATTERY light is red while it charges. If RECORD stops blinking soon after you press it, put in another FAT32 microSD card. For the MK1, Howler says A2 cards and SanDisk’s Ultra and Pro cards “do not work”.',
     );
     expect(lineOf('doors', 'start')).toBe('Recording start time noted');
-    expect(lineOf('doors', 'amps')).toBe('Both amps on, gain knobs on the RIG marks');
+    // The room's volume comes from the amps, never above the RIG marks (S4); dbx p.10 for the order.
+    expect(itemOf('doors', 'amps')).toMatchObject({
+      check: 'Both amps',
+      target: 'on, gain knobs at or below the RIG marks',
+      note: 'If they are off, switch them on after everything else, with no track playing.',
+    });
   });
 
   it('note the time at every changeover, where the next day’s work cuts the sets', () => {
     expect(CHECKLISTS.changeover.items.map((i) => i.id)).toEqual(['light', 'time', 'rec', 'settings', 'next-dj']);
     expect(lineOf('changeover', 'time')).toBe('Changeover time noted');
     // Howler MK1 manual: a WAV file holds about 3.5 hours, then carries on in a new one with a gap.
-    expect(itemOf('changeover', 'time').note).toMatch(/^If the recording started over 3 hours ago, press RECORD/);
-    expect(itemOf('changeover', 'time').note).toMatch(/about 3\.5 hours, with up to a second missing\.$/);
+    const restart = sentences(itemOf('changeover', 'time').note ?? '');
+    expect(restart[0]).toBe('The Howler MK1’s WAV files end at about 3.5 hours, with up to a second missing.');
+    expect(restart.at(-1)).toMatch(/^If the recording started over 3 hours ago, press RECORD to stop it/);
     expect(itemOf('files', 'cut').note).toBe('C1 has the start time, and C2 each changeover.');
+  });
+
+  it('warn before the restart that a low battery starts nothing new off charge', () => {
+    // Howler MK1 manual: with around an hour left the BATTERY indicator blinks blue and red, and "You are unable
+    // to start new recordings until you connect a charger." The warning comes before the step it applies to.
+    const note = sentences(itemOf('changeover', 'time').note ?? '');
+    const warning = note.findIndex((s) => /only on charge/.test(s));
+    expect(note[warning - 1]).toBe('Its BATTERY light blinks blue and red with about an hour left.');
+    expect(warning).toBeLessThan(note.findIndex((s) => /press RECORD/.test(s)));
+  });
+
+  it('name the Howler’s light every time: the BATTERY light is red all the time it charges', () => {
+    for (const [list, item] of [
+      ['setup', 'howler'],
+      ['doors', 'howler'],
+    ] as const) {
+      expect(itemOf(list, item).note, `${list} ${item}`).toMatch(/Its BATTERY light is red while it charges\./);
+    }
+    expect(allCopy.join(' ')).not.toMatch(/Howler(?:’s)? (?:red )?light\b|red light on the Howler/);
+    // The MK1's figures are said as the MK1's: the MK2 differs.
+    expect(itemOf('setup', 'howler').note).toMatch(/^The Howler MK1 records for about 30 hours on its battery\./);
   });
 
   it('give the next DJ the booth card’s words, as the DJ box has them', () => {
     expect(itemOf('changeover', 'next-dj').note).toBe(`Say: “${NEXT_DJ_WORDS}”`);
     expect(NEXT_DJ_WORDS).toContain(`on the ${DJ_RULES[0]?.response}`);
+    expect(NEXT_DJ_WORDS).toContain('on the first orange (0) at the loudest part');
+    expect(NEXT_DJ_WORDS.startsWith(CHANNEL_METERS_WORDS)).toBe(true);
     expect(DJ_RULES.map((r) => r.note).join(' ')).toContain(NEXT_DJ_WORDS.split('. ')[1]);
+    // The MASTER line as the crew say it, from the box's "top orange dark".
+    expect(DJ_RULES[1]?.response).toBe('top orange dark');
+    expect(MASTER_METERS_WORDS).toBe('Keep the top orange on the MASTER meters dark.');
   });
 
-  it('say how to open UTILITY wherever a list sends the crew into it, as information', () => {
+  it('say how to open UTILITY, and how a change is kept, wherever a list sends the crew into it', () => {
     const into = lists.flatMap((l) => l.items.filter((i) => /UTILITY/.test(i.note ?? '')));
-    expect(into.map((i) => i.id)).toEqual(['att', 'settings']);
-    expect(itemOf('doors', 'att').note).toBe(IN_UTILITY);
-    expect(itemOf('changeover', 'settings').note).toBe(`A DJ’s MY SETTINGS can change them. ${OPEN_UTILITY}`);
+    expect(into.map((i) => i.id)).toEqual(['tags', 'att', 'settings', 'xdj-off']);
     // Pioneer: "Press the [MENU (UTILITY)] button for over 1 second" (Operating Instructions p.31).
     expect(OPEN_UTILITY).toBe('UTILITY opens when you hold MENU (UTILITY) for over a second.');
     expect(IN_UTILITY).toBe('They are in UTILITY. It opens when you hold MENU (UTILITY) for over a second.');
+    // Pioneer p.31, step 3: "Press the rotary selector. The changed settings are stored."
+    expect(STORE_CHANGE).toBe(
+      'After a change, Pioneer says: “Press the rotary selector. The changed settings are stored.” (p. 31)',
+    );
+    expect(ATT_NOTE).toBe(`${IN_UTILITY} ${STORE_CHANGE}`);
+    expect(itemOf('doors', 'att').note).toBe(
+      `MASTER ATT (MASTER ATTENUATOR in UTILITY) and BOOTH ATT are UTILITY settings. ${OPEN_UTILITY} ${STORE_CHANGE}`,
+    );
+    // Pioneer says MY SETTINGS can call out UTILITY settings (p.31), not which ones a stick carries: "may".
+    expect(itemOf('changeover', 'settings').note).toBe(
+      `A DJ’s MY SETTINGS may change them. ${OPEN_UTILITY} ${STORE_CHANGE}`,
+    );
   });
 
-  it('shut down in dbx’s order, and keep the SD card for the next day', () => {
+  it('give MASTER ATT its full name once on the night page, at its first mention in the cards', () => {
+    const night = (['doors', 'changeover', 'after', 'files'] as const).flatMap((id) =>
+      CHECKLISTS[id].items.flatMap((i) => [i.check, i.target, i.before ?? '', i.note ?? '']),
+    );
+    const named = night.filter((text) => text.includes('MASTER ATTENUATOR'));
+    expect(named).toEqual([itemOf('doors', 'att').note]);
+    expect(named[0]).toContain('MASTER ATT (MASTER ATTENUATOR in UTILITY)');
+  });
+
+  it('shut down in dbx’s order, the XDJ-RX2 at its own switch, and keep the microSD card for the next day', () => {
     expect(CHECKLISTS.after.items.map((i) => `${i.check} ${i.target}`)).toEqual([
       'Howler recording stopped with RECORD',
       'Both amps switched off',
-      'The rest of the rig switched off, about 10 seconds later',
+      'XDJ-RX2 switched off at its own switch, about 10 seconds later',
+      'The rest of the rig switched off',
       'Howler on charge',
-      'SD card kept safe for the next day',
+      'microSD card kept safe for the next day',
     ]);
+    // Pioneer p.35: a change can be lost if the unit goes off straight after it, or not at its own switch.
+    expect(itemOf('after', 'xdj-off').note).toBe(
+      'At the wall, or within 10 seconds of a UTILITY change, switching off can lose the change (Pioneer, p. 35).',
+    );
+    // dbx p.10: the PA2 has no power switch.
+    expect(itemOf('after', 'rest-off').note).toBe(
+      'The DriveRack has no power switch: it goes off at its socket (dbx p. 10).',
+    );
   });
 });
 
@@ -217,57 +313,93 @@ describe('a red LEVEL light', () => {
     }
   });
 
-  it('words the MASTER LEVEL fallback once, from its parts', () => {
+  it('words the MASTER LEVEL fallback once, from its parts, with only what is published', () => {
     const { challenge, response, how, text, consequence } = LEVEL_FALLBACK;
     expect(response).toBe('down a little at a time until green');
     expect(how.startsWith(response.replace(/^down /, ''))).toBe(true);
     expect(text).toContain(`${challenge} down ${how}.`);
     expect(text).toMatch(/Then re-mark the REC tape\.$/);
-    expect(consequence).toBe('From then on, the MASTER meters read low. A blend can crunch before they show red.');
+    // The MASTER meters read after MASTER LEVEL (Pioneer p.31). Where the mixer clips inside is not published, so
+    // no card says a blend can crunch before they show red.
+    expect(consequence).toBe('From then on, the MASTER meters read low.');
+    expect(allCopy.join(' ')).not.toMatch(/crunch before|hide a blend|hides a blend/i);
   });
 });
 
 describe('C4: the next day’s work on the recordings', () => {
-  it('copies, joins, cuts, checks and normalises, and clears the SD card last', () => {
+  it('copies, joins, cuts, checks and normalises, and deletes the files on the microSD card last', () => {
     expect(CHECKLISTS.files.items.map((i) => i.id)).toEqual([
       'copies',
       'play',
       'join',
       'cut',
       'flat-tops',
+      'peak',
       'normalise',
       'clear',
     ]);
+    expect(lineOf('files', 'copies')).toBe('microSD card files copied to two places, one kept as it is');
   });
 
-  it('says what clearing the SD card costs before the line, not in a note', () => {
-    const clear = itemOf('files', 'clear');
-    expect(clear).toEqual({
-      id: 'clear',
-      check: 'SD card',
-      target: 'cleared',
-      before: 'Clearing the SD card deletes the original recordings. Clear it only after both copies play to the end.',
+  it('joins split files by name: the Howler MK1’s file dates are unreliable', () => {
+    // Howler's MK2 announcement: "file timestamps are now set correctly".
+    expect(itemOf('files', 'join')).toMatchObject({
+      check: 'Split files',
+      target: 'joined in file name order',
+      note: 'The Howler MK1’s file dates are unreliable: Howler fixed them in the MK2.',
     });
+  });
+
+  it('says what deleting the recordings costs before the line, and clears the card by deleting', () => {
+    const clear = itemOf('files', 'clear');
+    expect(clear).toMatchObject({
+      id: 'clear',
+      check: 'microSD card',
+      target: 'files deleted',
+      before:
+        'Deleting the files on the microSD card deletes the original recordings. Delete them only after both copies play to the end.',
+    });
+    // Howler MK1 manual: the card must be FAT32 ("MS-DOS (FAT)" on a Mac); Windows can't make FAT32 over 32 GB.
+    expect(clear.note).toBe(
+      'If you format it instead, choose FAT32: on a Mac, MS-DOS (FAT). On Windows, a card over 32 GB needs extra software for FAT32.',
+    );
     // The only line with a consequence before it, and the last.
     expect(lists.flatMap((l) => l.items).filter((i) => i.before)).toEqual([clear]);
     expect(CHECKLISTS.files.items.at(-1)).toBe(clear);
   });
 
-  it('looks for mixer clipping below full scale, and sends crunch to F9', () => {
+  it('looks for mixer clipping below full scale, flat or not quite, and sends crunch to F9', () => {
     const flat = itemOf('files', 'flat-tops');
     expect(`${flat.check} ${flat.target}`).toBe('Loudest blends, zoomed in no flat tops, at any height');
+    // Audacity manual, View menu: Show Clipping in Waveform is off by default, and marks samples at 0 dB.
     expect(flat.note).toBe(
-      'Audacity’s Show Clipping in Waveform marks only the top of the file. Mixer clipping sits lower.',
+      'In the file, flat tops can ripple or lean a little. Audacity’s Show Clipping in Waveform is off by default, and marks only the top of the file. Mixer clipping sits lower.',
     );
     expect(flat.drill).toEqual({ if: 'If you see flat tops or hear crunch', id: 'crunch', code: 'F9' });
   });
 
-  it('gives one healthy range for a set’s loudest peak, the model’s', () => {
-    const normalise = itemOf('files', 'normalise');
-    expect(normalise.target).toBe('normalised to −1 dB true peak');
+  it('gives one healthy range for a set’s loudest peak, the model’s, and how to read it', () => {
+    const peak = itemOf('files', 'peak');
     expect(TARGET.band).toEqual({ top: -6, bottom: -18 });
-    expect(normalise.note).toMatch(/^Before this step, its loudest peak should be between −18 and −6 dBFS\./);
-    expect(normalise.note).toMatch(/If it is higher, set the recording level again with S3 before the next event\.$/);
+    expect(lineOf('files', 'peak')).toBe('Each set’s loudest peak between −18 and −6 dBFS');
+    // Audacity manual, Amplify: the negative of the Amplification it offers is the selection's peak.
+    expect(peak.note).toMatch(/^Audacity’s Amplify, in the Effect menu, reads it with the whole set selected\./);
+    expect(peak.note).toMatch(
+      /If the peak is higher than −6 dBFS, set the recording level again with S3 before the next event\.$/,
+    );
+  });
+
+  it('normalises to −2 dB on the samples, and says why, with SoundCloud’s words', () => {
+    const normalise = itemOf('files', 'normalise');
+    expect(normalise.target).toBe('normalised to −2 dB');
+    // Audacity sets the sample peak; SoundCloud asks loud masters for −2 dB true peak.
+    expect(sentences(normalise.note ?? '')).toEqual([
+      // Audacity's own name for the effect, as it prints it.
+      'Audacity’s Normalize, in the Effect menu, sets the sample peak.',
+      'At −2 dB it leaves room for the peaks between samples.',
+      'SoundCloud asks a master louder than −14 LUFS to stay “below −2 dB TP (True Peak) max”.',
+    ]);
+    expect(allCopy.join(' ')).not.toMatch(/−1 dB true peak/);
   });
 });
 
@@ -314,11 +446,13 @@ describe('copy', () => {
     }
   });
 
-  it('uses the site’s words: MASTER meters, recording level, SD card, no USB backup', () => {
+  it('uses the site’s words: MASTER meters, recording level, microSD card, no USB backup', () => {
     const text = allCopy.join(' ');
     expect(text).not.toMatch(/middle meters?|record level|Howler card|memory card|MASTER REC|USB backup|USB stick/i);
     expect(text).not.toMatch(/\bBoth ATTs\b|\bthe tape\b/);
     expect(text).toMatch(/MASTER meters/);
+    // Howler's manual calls it a microSD card, and the MK1 is fussy about which ones work.
+    expect(text).not.toMatch(/(?<!micro)SD card/);
   });
 
   it('says no please, never shouts, and uses no idioms or negative contractions', () => {

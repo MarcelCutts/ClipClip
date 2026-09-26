@@ -33,6 +33,11 @@ const XDJ_MANUAL =
   'https://downloads.support.alphatheta.com/manuals/all-in-one-dj-systems/XDJ-RX2/XDJ-RX2_DRI1479A_manual.pdf';
 const XDJ_QUICK_START =
   'https://downloads.support.alphatheta.com/manuals/all-in-one-dj-systems/XDJ-RX2/XDJ-RX2_DRH1447A_quickstart_manual.pdf';
+// An official reply from Pioneer DJ's support team. The thread is about the unit's own USB
+// recorder; the sentence quoted from it, on how two tracks sum, holds for any output.
+const PIONEER_COMMUNITY_LEVELS =
+  'https://community.pioneerdj.com/hc/en-us/community/posts/22976408344345-XDJ-RX2-Recording-levels';
+const VIRTUALDJ_LAYOUT = 'https://virtualdj.com/manuals/hardware/pioneer/xdjrx2/layout/mixer.html';
 
 /** A section's heading: its number and title, from the one list. */
 const h = (id: string) => `${section(id).number} ${section(id).title}`;
@@ -66,7 +71,7 @@ const contents: ContentsEntry[] = [
 
 <Base
   title="Out of the red: keep your set recording clean"
-  description="Every set here is recorded. Keep the channel meters on the first or second orange and the MASTER meters below red, and ask the crew for a louder room."
+  description="Every set here is recorded. Keep the channel meters on the first orange at a track’s loudest part and the MASTER meters’ top orange dark, and ask the crew for a louder room."
 >
   <Hero>
     <p class="lede">
@@ -110,21 +115,30 @@ const contents: ContentsEntry[] = [
           { challenge: 'Channel fader', response: 'down' },
           { challenge: 'TRIM, HI, MID and LOW', response: '12 o’clock' },
           { challenge: 'Track', response: 'in your headphones, loudest part playing' },
-          { challenge: 'TRIM', response: 'first or second orange' },
+          { challenge: 'TRIM', response: 'first orange (0)' },
           { challenge: 'Channel fader', response: 'up' },
         ]}
       >
         <p class="source">
-          The <span class="nobr">XDJ-RX2</span> manual gives the same step: turn TRIM “to confirm that the orange indicator
-          lights up at the highest volume for the track” (<a href={`${XDJ_MANUAL}#page=31`} rel="external">p.&nbsp;31</a
+          The <span class="nobr">XDJ-RX2</span> manual says to turn TRIM “to confirm that the orange indicator lights up at
+          the highest volume for the track” (<a href={`${XDJ_MANUAL}#page=31`} rel="external">p.&nbsp;31</a>). Where it
+          gives a number, for the MASTER meters, it is “around [0&nbsp;dB] at the peak level” (<a
+            href={`${XDJ_MANUAL}#page=34`}
+            rel="external">p.&nbsp;34</a
           >).
         </p>
       </Procedure>
       <p>
         Tracks arrive at different levels. When you play from USB, the <span class="nobr">XDJ-RX2</span> does not match
-        them. The knob’s position does not show the level. Set TRIM by the meter.
+        them. The knob’s position does not show the level. Set TRIM by the meter, for every track.
       </p>
-      <p>If a track is a big moment, you can set it a little higher. As soon as it is playing, turn its TRIM back down.</p>
+      <p>
+        A TRIM set lower is safe. The room’s volume comes from the amps, and the recording can be turned up afterwards.
+      </p>
+      <p>
+        If a track is a big moment, you can set it to the second orange at most. As soon as it is playing, turn its TRIM
+        back down.
+      </p>
 
       <h3 id="meters">{h('meters')}</h3>
       <MeterAnatomy />
@@ -132,8 +146,8 @@ const contents: ContentsEntry[] = [
 
       <h3 id="knobs">{h('knobs')}</h3>
       <p>
-        The controls after the MASTER meters set the room’s volume and the recording level. The crew set them and tape
-        them. Everything else is yours.
+        MASTER LEVEL, MASTER ATT (MASTER ATTENUATOR in UTILITY) and the amps set the room’s volume and the recording
+        level. The crew set them and tape them. Everything else is yours.
       </p>
       <div class="whose">
         <div>
@@ -165,18 +179,24 @@ const contents: ContentsEntry[] = [
         <strong>Warning.</strong> A night at club volume can damage your hearing. Keep BOOTH MONITOR and HEADPHONES LEVEL
         no louder than you need. Wear earplugs: flat-response ones keep the mix clear.
       </p>
-      <p>If you load MY SETTINGS from a USB stick, tell the crew. It can change MASTER ATT and BOOTH ATT.</p>
+      <p>If you load MY SETTINGS from a USB stick, tell the crew. It may change MASTER ATT and BOOTH ATT.</p>
       <p>The drawing in <a href="#signal">{section('signal').number}</a> shows where each knob sends the sound.</p>
 
       <h3 id="blends">{h('blends')}</h3>
       <p>
         Two tracks that each peak on orange can reach red together. When their kicks line up, as they do in a good
-        blend, the peaks add. Two equal peaks that land together are twice as high: 6&nbsp;dB more, two lights up the
-        meter.
+        blend, the peaks add. Two equal peaks that land together can reach twice the height: up to 6&nbsp;dB more, two
+        lights up the meter. Pioneer’s support team says audio “will either sum or cancel out, depending on the phasing” (<a
+          href={PIONEER_COMMUNITY_LEVELS}
+          rel="external">Pioneer DJ Community</a
+        >). Plan for all 6&nbsp;dB.
       </p>
-      <p>A track that peaks on the first or second orange light leaves headroom for the two lights a blend adds.</p>
+      <p>
+        A track that peaks on the first orange light leaves headroom for the two lights a blend adds. With the kicks
+        lined up, the MASTER meters read up to +6, and the top orange, +9, stays dark.
+      </p>
       <Procedure
-        title="MASTER meters: red"
+        title="MASTER meters: top orange lit"
         kind="Fix"
         level={4}
         steps={[
@@ -218,8 +238,7 @@ const contents: ContentsEntry[] = [
       <div class="wide lab"><SignalPath client:visible /></div>
       <p>
         MASTER LEVEL stays fully up and taped. It sets MASTER 1 and MASTER 2 together: if you turn it, the room’s volume
-        and the recording level both change. The MASTER meters read after it. If it is turned down, they read low and
-        can hide a blend that is too loud.
+        and the recording level both change.
       </p>
 
       <h3 id="two-ceilings">{h('two-ceilings')}</h3>
@@ -260,13 +279,13 @@ const contents: ContentsEntry[] = [
       <h3 id="worse">{h('worse')}</h3>
       <ul class="reasons">
         <li>
-          Hearing changes with volume. At club volume, bass sounds nearly as loud as the mids. At home volume, bass fades
-          much faster than everything else. The crunch sits higher up, where hearing stays sharp.
+          Hearing changes with volume. The louder the sound, the closer bass comes to the mids. At home volume, bass
+          fades much faster than everything else. The crunch sits higher up, where hearing stays sharp.
         </li>
         <li>Loud bass hides the sounds just above it, including some of its own distortion. Quiet bass hides much less.</li>
         <li>
-          Big speakers at full volume make far more distortion of their own than any mixer, especially in the sub-bass.
-          In the room, that hides the mixer’s crunch.
+          Big speakers at full volume add distortion of their own, far more than a mixer below its red, most of all in the
+          sub-bass. We think that helps cover the mixer’s crunch in the room.
         </li>
         <li>Phones and laptops lose the deep bass but keep its crunch.</li>
       </ul>
@@ -289,15 +308,16 @@ const contents: ContentsEntry[] = [
           of="bitDepth">24 bits</Term
         > span about 144&nbsp;dB, more than any real electronics can deliver. The hiss in a DJ recording comes from the
         gear and the tracks. Pioneer gives the <span class="nobr">XDJ-RX2</span> a signal-to-noise ratio of 112&nbsp;dB
-        (<a href={XDJ_QUICK_START} rel="external">Quick Start Guide</a>). Howler publishes no noise figure.
+        playing from USB (<a href={`${XDJ_QUICK_START}#page=20`} rel="external">Quick Start Guide, p.&nbsp;20</a>).
+        Howler publishes no noise figure.
       </p>
       <p>
         A recording that peaks around {normalPeak}&nbsp;<Term of="dbfs">dBFS</Term> leaves 2 of its 24 bits unused. If
         it is turned up afterwards, its hiss stays far below anything you would hear under a kick drum.
       </p>
       <p>
-        If you turn a file up, stop at −1&nbsp;dB true peak. Waves can swing slightly higher between samples. A file that
-        touches the very top can clip again when it is made into an MP3.
+        If you turn a file up, stop at −2&nbsp;dB in Audacity’s Normalize. It measures the samples, and a wave can swing
+        slightly higher between them. A file that touches the very top can clip again when it is made into an MP3.
       </p>
 
       <h3 id="red-top">{h('red-top')}</h3>
@@ -320,11 +340,33 @@ const contents: ContentsEntry[] = [
           <dd><span class="who">We assume:</span> any blinking is too late for the recording.</dd>
         </div>
         <div>
-          <dt>Channel meters and the EQ</dt>
-          <dd><span class="who">Pioneer:</span> does not say whether a channel meter reads before or after the EQ.</dd>
+          <dt>Channel meters, the EQ and the fader</dt>
           <dd>
-            <span class="who">We assume:</span> after the EQ and before the fader, so an EQ boost shows on the meter. The
-            drawing in {section('signal').number} shows it that way.
+            <span class="who">Pioneer:</span> does not say whether a channel meter reads before or after the EQ or the
+            fader.
+          </dd>
+          <dd>
+            <span class="who">VirtualDJ:</span> its manual for the unit says they show “the pre-fader signal” (<a
+              href={VIRTUALDJ_LAYOUT}
+              rel="external">mixer layout</a
+            >).
+          </dd>
+          <dd>
+            <span class="who">We assume:</span> after the EQ and before the fader. An EQ boost shows on the meter, and
+            moving the fader does not. The drawing in {section('signal').number} shows it that way.
+          </dd>
+        </div>
+        <div>
+          <dt>MASTER meters</dt>
+          <dd>
+            <span class="who">Pioneer:</span> has you set MASTER LEVEL by them (<a href={`${XDJ_MANUAL}#page=31`} rel="external"
+              >p.&nbsp;31</a
+            >), and does not say whether they read before or after MASTER ATT.
+          </dd>
+          <dd>
+            <span class="who">We assume:</span> after MASTER LEVEL. Before or after MASTER ATT, nothing, until test <a
+              href={href('/setup/#test-att')}>T2</a
+            > has checked it.
           </dd>
         </div>
         <div>
@@ -351,7 +393,7 @@ const contents: ContentsEntry[] = [
             <span class="who">Pioneer:</span> it “sets the master output attenuator” (<a
               href={`${XDJ_MANUAL}#page=32`}
               rel="external">p.&nbsp;32</a
-            >), and does not say whether that includes MASTER 2, which feeds the Howler.
+            >), and does not say whether that includes MASTER 1, which feeds the PA, or MASTER 2, which feeds the Howler.
           </dd>
           <dd>
             <span class="who">We assume:</span> nothing, until test <a href={href('/setup/#test-att')}>T2</a> has
@@ -374,7 +416,7 @@ const contents: ContentsEntry[] = [
         </div>
       </dl>
       <p id="model">
-        In the demos, clean and clipped versions play at the same loudness. The louder one nearly always sounds better at
+        In the demos, clean and clipped versions play at the same measured loudness. The louder one nearly always sounds better at
         first. The waveforms are zoomed in to a few hundredths of a second.
       </p>
       <p>

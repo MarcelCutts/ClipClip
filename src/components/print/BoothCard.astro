@@ -18,9 +18,10 @@
  */
 import QRCode from 'qrcode';
 import { GUIDE_PATH } from '../../lib/messages';
+import { TARGET_PEAK_DB } from '../../lib/model';
 import { DJ_RULES } from '../../lib/rules';
 import { href } from '../../lib/url';
-import { METER_SEGMENTS, scaleLabel } from '../../lib/xdj';
+import { CEILING_DB, METER_SEGMENTS, scaleLabel } from '../../lib/xdj';
 
 interface Props {
   /** When the card's words last changed: "26 September 2026". */
@@ -76,19 +77,28 @@ const ZONE = 3.7;
 const rowOf = (db: number) => rows.find((r) => r.db === db)!;
 // Brackets down the right-hand side, each spanning the LEDs from one level to another, named one
 // line per entry, in the guide's words. The target is a position, not a colour: orange runs from 0
-// to +9 and a blend adds up to two more lights, so the channels aim for the first two orange lights
-// and the top two stay free for blends. Red is where Pioneer says the sound may distort.
+// to +9. A channel aims for the first orange (0), a blend of two lined-up tracks can add up to two
+// more lights (+3 and +6), the top orange (+9) is where a fader comes down, and red is where Pioneer
+// says the sound may distort. The levels come from model.ts and xdj.ts, as on every meter on the site.
 const zone = (from: number, to: number, name: string[]) => ({
   y1: rowOf(from).y - 0.35,
   y2: rowOf(to).y + ledH + 0.35,
   name,
 });
-const zones = [zone(12, 12, ['May distort']), zone(9, 6, ['Blend room']), zone(3, 0, ['Aim'])];
+const { aim, blend, top: faderDown } = TARGET_PEAK_DB;
+/** The light above the aim: where a blend's extra starts to show. */
+const blendFrom = METER_SEGMENTS.find((s) => s.db > aim)!.db;
+const zones = [
+  zone(CEILING_DB, CEILING_DB, ['May distort']),
+  zone(faderDown, faderDown, ['Fader down']),
+  zone(blend, blendFrom, ['Blend room']),
+  zone(aim, aim, ['Aim']),
+];
 const bx = frame.w + 1.8;
 const lineGap = 3.8;
 /** Room for the widest zone name ("May distort") to the right of its bracket. */
 const labelsW = 24;
-const meterLabel = `The meters on the XDJ-RX2: CH1, MASTER and CH2. Aim for the first two orange lights, ${scaleLabel(0)} and ${scaleLabel(3)}. ${scaleLabel(6)} and ${scaleLabel(9)} are room for a blend, where two tracks add up. The red light at ${scaleLabel(12)} may distort.`;
+const meterLabel = `The meters on the XDJ-RX2: CH1, MASTER and CH2. Aim for the first orange light, ${scaleLabel(aim)}, at a track’s loudest part. ${scaleLabel(blendFrom)} and ${scaleLabel(blend)} are room for a blend, where two tracks add up. At ${scaleLabel(faderDown)}, pull a channel fader down. The red light at ${scaleLabel(CEILING_DB)} may distort.`;
 ---
 
 <div class="card-frame">

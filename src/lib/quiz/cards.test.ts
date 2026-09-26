@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { KICKS_TOGETHER_DB, TARGET_PEAK_DB } from '../model';
+import { DJ_RULES } from '../rules';
 import { section } from '../sections';
 import { MASTER_TAG, MONITOR_TAG, REC_TAG, SHORT_TAGS } from '../tags';
-import { CEILING_DB, litCount, zoneFor } from '../xdj';
+import { litCount, METER_SEGMENTS, zoneFor } from '../xdj';
 import {
   type Answer,
   CARDS,
@@ -134,30 +135,44 @@ describe('card copy follows the house style', () => {
 });
 
 describe('where a channel peaks', () => {
-  it('asks for the first or second orange, in the box’s words', () => {
-    expect(correctChoice(card('peak')).label).toBe('The first or second orange');
-    expect(correctChoice(card('peak')).feedback).toBe('That leaves room for the two lights a blend adds.');
+  /** The orange lights' marks, bottom up: 0, +3, +6, +9. */
+  const orange = METER_SEGMENTS.filter((s) => s.zone === 'orange').map((s) => s.db);
+  const plainSpaces = (text?: string) => text?.replaceAll('\u00a0', ' ');
+
+  it('asks for the first orange, in the box’s words, with its note as a trap', () => {
+    const [channelMeters] = DJ_RULES;
+    expect(correctChoice(card('peak')).label).toBe('The first orange (0)');
+    expect(channelMeters?.response).toMatch(/^first orange \(0\)/);
+    expect(orange[0]).toBe(TARGET_PEAK_DB.aim);
+    expect(choice('peak', 'second')?.label).toBe('The second orange, on every kick');
+    expect(channelMeters?.note).toMatch(/second orange lights on every kick/);
   });
 
-  it('answers the top orange with what a blend adds, and red with Pioneer’s page', () => {
-    // From the top orange (+9) two lights (6 dB) lands past the red (+12).
-    expect(TARGET_PEAK_DB.top + KICKS_TOGETHER_DB).toBeGreaterThan(CEILING_DB);
-    expect(TARGET_PEAK_DB.second + KICKS_TOGETHER_DB).toBeLessThan(CEILING_DB);
-    expect(choice('peak', 'top')?.feedback.replaceAll(' ', ' ')).toBe(
-      'A blend can add 6 dB, two lights. From the top orange, that is past the red.',
+  it('answers with what a blend can add against the top orange, and red with Pioneer’s page', () => {
+    // A blend can add up to two lights (6 dB). From the first orange it stays under the top orange
+    // (+9), which the MASTER meters keep dark; from the second orange (+3) it reaches it.
+    expect(TARGET_PEAK_DB.aim + KICKS_TOGETHER_DB).toBeLessThan(TARGET_PEAK_DB.top);
+    expect(orange[1]! + KICKS_TOGETHER_DB).toBeGreaterThanOrEqual(TARGET_PEAK_DB.top);
+    expect(orange.at(-1)).toBe(TARGET_PEAK_DB.top);
+    expect(plainSpaces(correctChoice(card('peak')).feedback)).toBe(
+      'A blend can add up to 6 dB, two lights. From the first orange, the top orange on the MASTER meters stays dark.',
     );
-    expect(choice('peak', 'red')?.feedback).toMatch(/or the sound may be distorted \(p\. 31\)\.$/);
+    expect(plainSpaces(choice('peak', 'second')?.feedback)).toBe(
+      'A blend can add up to 6 dB, two lights. From the second orange, that lights the top orange on the MASTER meters.',
+    );
+    expect(choice('peak', 'red')?.feedback).toMatch(/or the sound may be distorted \(p\.\s31\)\.$/);
   });
 });
 
 describe('which meters show a blend', () => {
   const scene = card('meters').scene;
 
-  it('shows the house rule working: channels on the first orange, the blend two lights up, out of the red', () => {
+  it('shows the house rule working: channels on the first orange, the blend two lights up, the top orange dark', () => {
     if (scene?.kind !== 'meters') throw new Error('No meters');
     expect(litCount(scene.ch1)).toBe(8);
     expect(scene.master).toBe(scene.ch1 + KICKS_TOGETHER_DB);
     expect(zoneFor(scene.master)).toBe('orange');
+    expect(scene.master).toBeLessThan(TARGET_PEAK_DB.top);
   });
 
   it('names the pair in the middle as the box does', () => {
@@ -206,7 +221,7 @@ describe('answering', () => {
     expect(isCorrect(peak, 'first')).toBe(true);
     expect(verdict(peak, 'first')).toBe('Right.');
     expect(verdict(peak, 'red')).toBe('Not quite.');
-    expect(feedbackFor(peak, 'top')).toMatch(/^Not quite\. A blend can add/);
+    expect(feedbackFor(peak, 'second')).toMatch(/^Not quite\. A blend can add up to/);
     expect(feedbackFor(peak, 'first')).toMatch(/^Right\. /);
   });
 
@@ -233,7 +248,7 @@ describe('the summary', () => {
     expect(scoreLine(summary)).toBe('You got 2 of 4.');
     expect(summary.sureButWrong).toEqual(['meters']);
     expect(sureLine(summary)).toBe('You were certain of one wrong answer.');
-    picks[0] = ['top', 'certain'];
+    picks[0] = ['second', 'certain'];
     expect(sureLine(summarise(CARDS, answerAll(picks)))).toBe('You were certain of two wrong answers.');
   });
 

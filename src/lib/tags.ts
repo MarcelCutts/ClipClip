@@ -4,7 +4,8 @@
  *
  * One wiring: MASTER LEVEL sets MASTER 1 (the PA) and MASTER 2 (the Howler) together, so it stays
  * fully up and carries REC. BOOTH MONITOR sets only the booth monitors, so it's the DJ's: MONITOR.
- * The room's volume comes from the amps' gain knobs, taped RIG.
+ * The room's volume comes from the amps' gain knobs, no higher than the RIG marks: the lines S4 draws
+ * on the RIG tape at each knob's highest click with both amps' CLIP lights dark on the loudest blend.
  *
  * A short tag is a word and whose it is, in one form for all three: "crew" or "yours". The long tag
  * under MASTER LEVEL leads with what to do, as a label a hand already on the knob reads first.
@@ -20,6 +21,8 @@ export interface ShortTag {
   where: string;
   /** Settings the crew write on the tape by hand, printed as labelled blanks. */
   blanks?: readonly string[];
+  /** A rule printed small under the word, for a tape that marks a limit. */
+  rule?: string;
 }
 
 /**
@@ -29,7 +32,8 @@ export interface ShortTag {
 export const REC_TAG: ShortTag = {
   name: 'REC',
   owner: 'crew',
-  where: 'Next to MASTER LEVEL. Write the MASTER ATT and BOOTH ATT settings in its blanks.',
+  where:
+    'Next to MASTER LEVEL. Write the MASTER ATT (MASTER ATTENUATOR in UTILITY) and BOOTH ATT settings in its blanks.',
   blanks: ['MASTER ATT', 'BOOTH ATT'],
 };
 
@@ -40,11 +44,16 @@ export const MONITOR_TAG: ShortTag = {
   where: 'Next to BOOTH MONITOR, the DJ’s own knob for the booth monitors.',
 };
 
-/** On the amps: the room's volume, turned up by the crew when a DJ asks. */
+/**
+ * On the amps: the room's volume, turned up by the crew when a DJ asks, no higher than the RIG marks.
+ * The marks are the lines drawn across each gain knob onto this tape in S4, so the tape says what
+ * they are for.
+ */
 export const RIG_TAG: ShortTag = {
   name: 'RIG',
   owner: 'crew',
-  where: 'On both amps, next to the gain knobs, after they are set for the room.',
+  rule: 'No higher than the marks',
+  where: 'On both amps, beside the gain knobs, where S4 draws the RIG marks.',
 };
 
 export const SHORT_TAGS: readonly ShortTag[] = [REC_TAG, MONITOR_TAG, RIG_TAG];

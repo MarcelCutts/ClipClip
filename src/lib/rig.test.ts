@@ -257,15 +257,24 @@ describe('words', () => {
       link: `See ${makers.number}`,
       href: `#${makers.id}`,
     });
-    // Stated there, not here: no "not published" or "we assume" in the drawing's words.
-    for (const s of all) expect(s, s).not.toMatch(/publish|we assume|does not say/i);
+    // Stated there, not here: no "not published" or "we assume" in the drawing's words. The one
+    // exception is MASTER ATT's reach, which changes what the crew expect when they switch it.
+    const inline = [COPY.master1.text, COPY.master2.text];
+    for (const s of all.filter((x) => !inline.includes(x))) expect(s, s).not.toMatch(/publish|we assume|does not say/i);
   });
 
   it('names the attenuators in UTILITY where they set an output’s level', () => {
     expect(COPY.boothOut.text).toBe('BOOTH ATT, in UTILITY, also sets their level.');
-    expect(COPY.master1.text).toBe('MASTER ATT, in UTILITY, also sets its level.');
-    // Pioneer names no sockets for MASTER ATT, so the drawing sends crew to the test for MASTER 2.
-    expect(COPY.master2.text).toBe('MASTER ATT may lower it too (test T2).');
+  });
+
+  it('never states that MASTER ATT lowers MASTER 1 or MASTER 2: Pioneer does not say, and T2 finds out', () => {
+    // Pioneer: MASTER ATT "sets the master output attenuator" (manual p. 32), naming no socket.
+    for (const id of ['master1', 'master2'] as const) {
+      expect(COPY[id].text).toBe('MASTER ATT may lower it too. Pioneer does not say (test T2).');
+    }
+    // The drawing wires only what is published: MASTER LEVEL feeds both sockets.
+    expect(controlsFor('master1')).toContain('masterLevel');
+    expect(edgesFor().some((e) => /att/i.test(e.from) || /att/i.test(e.to))).toBe(false);
   });
 
   it('agrees with the graph', () => {

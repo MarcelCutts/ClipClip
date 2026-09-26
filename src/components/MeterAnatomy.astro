@@ -2,22 +2,24 @@
 /**
  * Figure: the XDJ-RX2's meters, drawn as a manual draws them. A line drawing of the meter bridge
  * on the page (CH1, the middle pair with CLIP above it, CH2, and the printed scale), lit the way a
- * well-set blend looks: each deck on the first or second orange, the mix a light or two higher,
- * red and CLIP dark. Numbered callouts point at the parts and key into the list beside it, and a
- * bracket marks where to aim.
+ * well-set blend looks at its loudest: each deck on the first orange, the kicks lined up, the mix
+ * two lights higher, and the top orange, red and CLIP dark. Numbered callouts point at the parts
+ * and key into the list beside it, and a bracket marks where to aim.
  *
  * Like every meter on the site it doesn't rely on colour: a printed break where the colour changes,
  * a bold 0, the red light outlined, and the list in words. Server-rendered, at the reading
  * column's width: nothing in it needs more.
  */
 import { TARGET_PEAK_DB } from '../lib/model';
-import { METER_SEGMENTS, scaleLabel, zoneFor } from '../lib/xdj';
+import { section } from '../lib/sections';
+import { litCount, METER_SEGMENTS, scaleLabel } from '../lib/xdj';
 
-// The blend in the picture: deck 1 on the second orange, deck 2 on the first, the mix one light
-// above deck 1.
-const CH1 = TARGET_PEAK_DB.second;
-const CH2 = TARGET_PEAK_DB.first;
-const MIX = TARGET_PEAK_DB.second + 3;
+// The blend in the picture: both decks on the aim, the mix where lined-up kicks put it (model.ts).
+const CH1 = TARGET_PEAK_DB.aim;
+const CH2 = TARGET_PEAK_DB.aim;
+const MIX = TARGET_PEAK_DB.blend;
+const higher = litCount(MIX) - litCount(TARGET_PEAK_DB.aim);
+const lightsHigher = `${['no', 'one', 'two', 'three', 'four'][higher] ?? higher} light${higher === 1 ? '' : 's'} higher`;
 
 const XDJ_MANUAL =
   'https://downloads.support.alphatheta.com/manuals/all-in-one-dj-systems/XDJ-RX2/XDJ-RX2_DRI1479A_manual.pdf';
@@ -43,13 +45,14 @@ const lightRows = Array.from({ length: lastLightRow - FIRST_LIGHT_ROW + 1 }, (_,
 const rowOf = (db: number) => rows.find((s) => s.db === db)?.row ?? FIRST_LIGHT_ROW;
 const lit = (db: number, level: number) => db <= level;
 
-const aim = `grid-row: ${rowOf(TARGET_PEAK_DB.second)} / ${rowOf(TARGET_PEAK_DB.first) + 1}`;
-const label = `The XDJ-RX2’s meters mid-blend. CH1 peaks at ${scaleLabel(CH1)}, the second orange light. CH2 peaks at ${scaleLabel(CH2)}, the first orange light. The MASTER meters show the mix at ${scaleLabel(MIX)}, ${zoneFor(MIX)}, with red and CLIP dark. A bracket marks the aim, ${scaleLabel(TARGET_PEAK_DB.first)} and ${scaleLabel(TARGET_PEAK_DB.second)}.`;
+const aim = `grid-row: ${rowOf(TARGET_PEAK_DB.aim)} / ${rowOf(TARGET_PEAK_DB.aim) + 1}`;
+const label = `The XDJ-RX2’s meters mid-blend, with the kicks lined up. CH1 and CH2 each peak at ${scaleLabel(CH1)}, the first orange light. The MASTER meters show the mix at ${scaleLabel(MIX)}, ${lightsHigher}, with the top orange, red and CLIP dark. A bracket marks the aim, ${scaleLabel(TARGET_PEAK_DB.aim)}.`;
 ---
 
 <figure class="anatomy">
   <figcaption class="takeaway">
-    In a well-set blend, each deck peaks on the first or second orange light and the mix stays below red.
+    In a well-set blend, each deck peaks on the first orange light. The mix reads up to {lightsHigher}, and the top
+    orange stays dark.
   </figcaption>
   <div class="layout">
     <div
@@ -87,15 +90,17 @@ const label = `The XDJ-RX2’s meters mid-blend. CH1 peaks at ${scaleLabel(CH1)}
       <li>
         <span class="call" aria-hidden="true">1</span>
         <p>
-          <strong>Channel meters, CH1 and CH2.</strong> Each shows one deck, before its fader: moving the fader does not
-          move the meter. Set TRIM by these.
+          <strong>Channel meters, CH1 and CH2.</strong> Each shows one deck. Set TRIM by these. VirtualDJ’s manual for
+          the unit says they read before the fader: moving the fader does not move the meter (<a href="#red-top"
+            >{section('red-top').number}</a
+          >).
         </p>
       </li>
       <li>
         <span class="call" aria-hidden="true">2</span>
         <p>
-          <strong>MASTER meters.</strong> The mix going out to the speakers and the recording. Keep them below red in a
-          blend.
+          <strong>MASTER meters.</strong> The mix going out to the speakers and the recording. In a blend they read up to
+          {lightsHigher} than the channels. Keep the top orange dark.
         </p>
       </li>
       <li>
@@ -226,7 +231,7 @@ const label = `The XDJ-RX2’s meters mid-blend. CH1 peaks at ${scaleLabel(CH1)}
     color: var(--ink);
   }
 
-  /* The aim: a bracket beside CH1's two orange lights, 0 and +3, with our note on it. */
+  /* The aim: a bracket beside CH1's first orange light, 0, with our note on it. */
   .aim {
     grid-column: aim;
     display: flex;

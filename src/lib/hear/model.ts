@@ -4,7 +4,9 @@
  * Each round plays the same loop of track A twice: once clean, once pushed past the mixer's
  * ceiling and hard-clipped there, the way a digital mixer clips (no oversampling). The clipped
  * copy is then turned down until both are equally loud (BS.1770 K-weighted loudness), because
- * a louder copy nearly always sounds "better" and would give the answer away.
+ * a louder copy nearly always sounds "better" and would give the answer away. The match is
+ * measured on the full range: a speaker that drops the bass leaves round 1's clipped copy about
+ * 1.5 LU louder, and the copy recommends headphones there (copy.ts, DEVICE_TIPS).
  *
  * Levels: sample value 1.0 is the mixer's ceiling (the red LED, see xdj.ts). The clean loop
  * peaks exactly there, so "pushed 12 dB past the ceiling" means its peaks would have reached

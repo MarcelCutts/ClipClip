@@ -56,13 +56,29 @@ describe('booth card', () => {
   });
 
   it('marks the target on the meter drawing by position, not just colour, in the guide’s words', () => {
-    expect(text).toMatch(/Aim/);
-    expect(text).toMatch(/Blend room/);
-    expect(text).toMatch(/May distort/);
+    // Top down, one name per bracket: +12 May distort, +9 Fader down, +6 and +3 Blend room, 0 Aim.
+    const names = ['May distort', 'Fader down', 'Blend room', 'Aim'];
+    const at = names.map((n) => text.indexOf(` ${n} `));
+    for (const [i, n] of names.entries()) expect(at[i], n).toBeGreaterThan(-1);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
     expect(text).not.toMatch(/Too hot|Loudest bits/);
-    expect(meterLabel).toContain('Aim for the first two orange lights, 0 and +3.');
-    expect(meterLabel).toContain('+6 and +9 are room for a blend');
+    expect(meterLabel).toContain('Aim for the first orange light, 0, at a track’s loudest part.');
+    expect(meterLabel).toContain('+3 and +6 are room for a blend');
+    expect(meterLabel).toContain('At +9, pull a channel fader down.');
     expect(meterLabel).toContain('The red light at +12 may distort.');
+  });
+
+  it('brackets one light for the aim, two for a blend, and one each for the top orange and the red', () => {
+    // Each bracket is a path "M… y1 h0.8 V y2 h-0.8": its height says how many lights it spans.
+    const spans = [...html.matchAll(/class="bracket" d="M[\d.]+ ([\d.]+)h0\.8V([\d.]+)h-0\.8"/g)].map(
+      ([, y1, y2]) => Number(y2) - Number(y1),
+    );
+    expect(spans).toHaveLength(4);
+    const [red, fader, blend, aim] = spans as [number, number, number, number];
+    expect(fader).toBeCloseTo(red);
+    expect(aim).toBeCloseTo(red);
+    // Two lights: one more light's pitch than a single one.
+    expect(blend).toBeGreaterThan(aim + 3);
   });
 
   it('prints the scale as the panel does, with a plus sign above 0', () => {

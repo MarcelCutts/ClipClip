@@ -52,7 +52,7 @@ function learnAt(id: string): Card['learn'] {
   return { path: `/#${id}`, text: `${number} ${title}` };
 }
 
-/** What two equal kicks landing together add: "6 dB, two lights". */
+/** The most two equal kicks landing together can add: "6 dB, two lights". */
 const BLEND_ADDS = `${formatDb(KICKS_TOGETHER_DB, { signed: false })}, two lights`;
 
 /** The same two facts on both volume cards, in the same words. */
@@ -62,6 +62,9 @@ const MASTER_LEVEL = `MASTER LEVEL is taped fully up, marked ${REC_TAG.name}. It
 export const CARDS: readonly Card[] = [
   {
     id: 'peak',
+    // The DJ box's first line: the first orange (0) at the loudest part. Its note is the second
+    // distractor: the second orange lit on every kick. A blend can add up to two lights, and the
+    // MASTER meters keep the top orange dark (model.ts, TARGET_PEAK_DB).
     question: 'Where should the loudest part of a track peak on its channel meter?',
     choices: [
       {
@@ -71,15 +74,15 @@ export const CARDS: readonly Card[] = [
         feedback: 'Pioneer says to keep the red light dark, or the sound may be distorted (p. 31).',
       },
       {
-        id: 'top',
-        label: 'The top orange, just under the red',
-        feedback: `A blend can add ${BLEND_ADDS}. From the top orange, that is past the red.`,
+        id: 'second',
+        label: 'The second orange, on every kick',
+        feedback: `A blend can add up to ${BLEND_ADDS}. From the second orange, that lights the top orange on the MASTER meters.`,
       },
       {
         id: 'first',
-        label: 'The first or second orange',
+        label: 'The first orange (0)',
         correct: true,
-        feedback: 'That leaves room for the two lights a blend adds.',
+        feedback: `A blend can add up to ${BLEND_ADDS}. From the first orange, the top orange on the MASTER meters stays dark.`,
       },
     ],
     learn: learnAt('trim'),
@@ -90,21 +93,21 @@ export const CARDS: readonly Card[] = [
     // The house rule working: both channels on the first orange, the blend two lights higher.
     scene: {
       kind: 'meters',
-      ch1: TARGET_PEAK_DB.first,
-      master: TARGET_PEAK_DB.first + KICKS_TOGETHER_DB,
-      ch2: TARGET_PEAK_DB.first,
+      ch1: TARGET_PEAK_DB.aim,
+      master: TARGET_PEAK_DB.blend,
+      ch2: TARGET_PEAK_DB.aim,
     },
     choices: [
       {
         id: 'channels',
         label: 'The channel meters (CH1 and CH2)',
-        feedback: 'The channel meters show each track before its fader. Only the MASTER meters show the mix.',
+        feedback: 'The channel meters show one track each. Only the MASTER meters show the mix.',
       },
       {
         id: 'master',
         label: 'The MASTER meters (the pair in the middle)',
         correct: true,
-        feedback: 'The MASTER meters show the mix. The channel meters show each track before its fader.',
+        feedback: 'The MASTER meters show the mix. The channel meters show one track each.',
       },
     ],
     learn: learnAt('meters'),

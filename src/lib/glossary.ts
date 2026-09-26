@@ -32,7 +32,7 @@ export const GLOSSARY = {
   },
   channelMeter: {
     term: 'Channel meter',
-    gloss: 'The meter on each channel, showing that deck before its fader (Pioneer: channel level indicator).',
+    gloss: 'The meter on each channel, showing that deck’s level (Pioneer: channel level indicator).',
   },
   clipping: {
     term: 'Clipping',
@@ -48,7 +48,7 @@ export const GLOSSARY = {
   },
   dbfs: {
     term: 'dBFS',
-    gloss: 'Level below a recording’s digital ceiling. 0 is the top; everything else is minus.',
+    gloss: 'Level compared with a recording’s digital ceiling. In the Howler’s files, 0 is the top.',
   },
   dbu: {
     term: 'dBu',
@@ -72,7 +72,7 @@ export const GLOSSARY = {
   },
   howler: {
     term: 'Howler',
-    gloss: 'The small box that records every set to an SD card.',
+    gloss: 'The small box that records every set to a microSD card.',
   },
   limiter: {
     term: 'Limiter',

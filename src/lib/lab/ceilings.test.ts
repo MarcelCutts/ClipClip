@@ -127,10 +127,21 @@ describe('reading the lab', () => {
   it('grades crunch by how far past a ceiling the peaks go', () => {
     const overBy = (db: number) => crunchFor(addedDistortion(track.samples, 12 + db, -12));
     expect(overBy(0)).toBe('clean');
-    expect(overBy(1)).toBe('some');
+    expect(overBy(1)).toBe('tips');
+    expect(overBy(2)).toBe('some');
     expect(overBy(3)).toBe('some');
     expect(overBy(4)).toBe('heavy');
     expect(overBy(6)).toBe('heavy');
+  });
+
+  it('calls the first dB over what the blend lab calls its red: only the tips cut', () => {
+    // The blend lab's red that only just lights cuts under 0.5 % and is too little to hear there
+    // (blend/model.ts). One dB over here cuts less than that; its Top orange pad, which can be heard, over 2 %.
+    const cut = (over: number) => addedDistortion(track.samples, 12 + over, -12);
+    expect(cut(1)).toBeLessThan(0.005);
+    expect(crunchFor(0.005)).toBe('tips');
+    expect(cut(3)).toBeGreaterThan(0.02);
+    expect(crunchFor(0.02)).toBe('some');
   });
 });
 

@@ -108,6 +108,15 @@ const titleId = id ? `${id}-title` : undefined;
     line-height: 1.5;
   }
 
+  /* A sentence said before a step sits above it; the step's number stays on the step's own line. */
+  .step > .before {
+    grid-column: 2;
+  }
+
+  .step:has(> .before)::before {
+    grid-row: 2;
+  }
+
   .steps {
     display: grid;
     gap: 0.15rem;

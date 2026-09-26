@@ -171,8 +171,10 @@ describe('the steps', () => {
     expect(copy.STEPS[2].body).toMatch(/LEVEL light is green/);
   });
 
-  it('never calls the top orange light fine', () => {
-    for (const s of Object.values(copy.STEPS)) expect(s.body).not.toMatch(/fine/);
+  it('never calls the top orange light fine, or holds it up as the channel’s level', () => {
+    for (const s of Object.values(copy.STEPS)) expect(s.body).not.toMatch(/fine|out of the red/);
+    // Step 3 opens on the top orange: its words are about the mixer’s ceiling, not the channel.
+    expect(copy.STEPS[3].body).toMatch(/^The mixer is clean\./);
   });
 
   it('counts the steps in words', () => {
@@ -218,12 +220,29 @@ describe('feedback', () => {
     for (let channels = -6; channels <= 11; channels++) {
       const r = at(channels, STEP_SETUP[2].start.knob);
       expect(goalMet(2, r), `channels ${channels}`).toBe(true);
-      const text = copy.successFeedback(2, r)!.lines.join(' ');
-      expect(text, `channels ${channels}`).toMatch(/A blend can add two more lights/);
-      // A blend lands KICKS_TOGETHER_DB higher: from +6 up it reaches the red light.
-      if (channels + KICKS_TOGETHER_DB >= 12) expect(text).toMatch(/reach the red\. Keep CH1 on the first/);
-      else expect(text).toMatch(/stay out of the\u00a0red\.$/);
+      const text = copy
+        .successFeedback(2, r)!
+        .lines.join(' ')
+        .replace(/\u00a0/g, ' ');
+      expect(text, `channels ${channels}`).toMatch(/A blend can add up to two more lights/);
+      // A blend lands up to KICKS_TOGETHER_DB higher: from +6 it can reach the red light, and from
+      // +3 the MASTER meters' top orange, which the DJ box keeps dark.
+      if (channels + KICKS_TOGETHER_DB >= 12) expect(text).toMatch(/reach the red\. Keep CH1 on the first orange/);
+      else if (channels + KICKS_TOGETHER_DB >= 9)
+        expect(text).toMatch(/reach the top orange on the MASTER meters\. Keep CH1 on the first orange/);
+      else expect(text).toMatch(/leave the top orange on the MASTER meters dark\.$/);
     }
+  });
+
+  it('names the tips cut on the first dB over, and crunch only from the second', () => {
+    expect(copy.CRUNCH_WORDS).toEqual({
+      clean: 'Clean',
+      tips: 'Tips cut',
+      some: 'Some crunch',
+      heavy: 'Heavy crunch',
+    });
+    expect(at(13, -12).crunch).toBe('tips');
+    expect(at(14, -12).crunch).toBe('some');
   });
 
   it('says a recording close to the top leaves no headroom for a blend, and ends the lab after step 3', () => {

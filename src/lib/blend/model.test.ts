@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { peak } from '../dsp/analysis';
 import { dbToGain } from '../dsp/db';
 import { loudnessLufs } from '../dsp/loudness';
-import { TARGET_PEAK_DB } from '../model';
+import { KICKS_TOGETHER_DB, TARGET_PEAK_DB } from '../model';
 import { CEILING_DB, meterDbToSample, sampleToMeterDb } from '../xdj';
 import {
   ANALYSIS_RATE,
@@ -28,6 +28,7 @@ import {
   START,
   sameSettings,
   TRIM,
+  topLit,
   tracksAt,
 } from './model';
 
@@ -37,8 +38,10 @@ const withDeck = (s: BlendSettings, deck: 'deck1' | 'deck2', change: Partial<Ble
   next[deck] = { ...next[deck], ...change };
   return next;
 };
-/** The challenge as the reader first meets it: deck 2 brought fully up from the start, both on +6. */
+/** The challenge as the reader first meets it: deck 2 brought fully up from the start, both on +3. */
 const challenge = withDeck(START, 'deck2', { fader: FADER.max });
+/** Both decks on the third orange (+6), blended: the mix only just reaches the red. */
+const sixes = withDeck(withDeck(challenge, 'deck1', { trim: 6 }), 'deck2', { trim: 6 });
 
 /** How much of the loop the ceilings cut away: RMS of the removed part against the uncut blend, in %. */
 function cutPercent(s: BlendSettings, sampleRate: number): number {
@@ -103,10 +106,12 @@ describe('controls', () => {
     expect([...LOW_STEPS].sort((a, b) => a - b)).toEqual(LOW_STEPS);
   });
 
-  it('starts TRIM on the upper orange light', () => {
-    expect(TRIM.initial).toBe(6);
-    expect(START.deck1.trim).toBe(6);
-    expect(START.deck2.trim).toBe(6);
+  it('starts TRIM on the second orange, the highest start from which a blend lights the top orange', () => {
+    expect(TRIM.initial).toBe(3);
+    expect(TRIM.initial + KICKS_TOGETHER_DB).toBe(TARGET_PEAK_DB.top);
+    expect(TRIM.initial).toBeGreaterThan(TARGET_PEAK_DB.aim);
+    expect(START.deck1.trim).toBe(TRIM.initial);
+    expect(START.deck2.trim).toBe(TRIM.initial);
   });
 });
 
@@ -129,24 +134,32 @@ describe('meters', () => {
 
   it('moves the channel meter with LOW, since the kick is the peak', () => {
     const cut = analyseBlend(settingsOf('swap'));
-    expect(cut.channel[0]).toBeCloseTo(0.6, 1);
+    expect(cut.channel[0]).toBeCloseTo(-2.4, 1);
     const boost = analyseBlend(settingsOf('boost'));
-    expect(boost.channel[1]).toBeGreaterThan(10.5);
-    expect(boost.channel[1]).toBeLessThan(CEILING_DB);
+    expect(boost.channel[1]).toBeGreaterThan(7.5);
+    expect(boost.channel[1]).toBeLessThan(TARGET_PEAK_DB.top);
   });
 
   it('shows deck 1 alone on the master meter while deck 2’s fader is down', () => {
     const r = analyseBlend(START);
-    expect(r.mix).toBeCloseTo(6, 6);
+    expect(r.mix).toBeCloseTo(3, 6);
     expect(r.clip).toBe('off');
   });
 });
 
 describe('blends add up', () => {
-  it('stacks two +6 tracks to the red when the kicks line up (+6.0 dB)', () => {
+  it('stacks two +3 tracks onto the top orange when the kicks line up (+6.0 dB)', () => {
     const r = analyseBlend(challenge);
+    expect(r.mix - 3).toBeCloseTo(6.0, 1);
+    expect(r.mix).toBeGreaterThan(TARGET_PEAK_DB.top);
+    expect(displayDb(r.mix)).toBe(TARGET_PEAK_DB.top);
+    expect(topLit(r)).toBe(true);
+    expect(r.clip).toBe('off');
+  });
+
+  it('stacks two +6 tracks to the red', () => {
+    const r = analyseBlend(sixes);
     expect(r.mix - 6).toBeCloseTo(6.0, 1);
-    expect(r.mix).toBeGreaterThan(CEILING_DB);
     expect(displayDb(r.mix)).toBe(CEILING_DB);
     expect(r.clip).toBe('fast');
   });
@@ -165,23 +178,33 @@ describe('blends add up', () => {
 
   it('adds about +1.9 dB with deck 1’s LOW cut', () => {
     const r = analyseBlend(settingsOf('swap'));
-    expect(r.mix - 6).toBeCloseTo(1.9, 1);
+    expect(r.mix - 3).toBeCloseTo(1.9, 1);
     expect(r.clip).toBe('off');
   });
 
-  it('adds less with deck 1’s fader eased, and far less with the kicks apart', () => {
+  it('adds less with deck 1’s fader one mark down, and far less with the kicks apart', () => {
     const eased = analyseBlend(settingsOf('ease'));
-    expect(eased.mix).toBeGreaterThan(9);
-    expect(eased.mix).toBeLessThan(10);
+    expect(eased.mix).toBeGreaterThan(7);
+    expect(eased.mix).toBeLessThan(8);
     const apart = analyseBlend({ ...challenge, aligned: false });
-    expect(apart.mix - 6).toBeGreaterThan(1.5);
-    expect(apart.mix - 6).toBeLessThan(3.5);
+    expect(apart.mix - 3).toBeGreaterThan(1.5);
+    expect(apart.mix - 3).toBeLessThan(3.5);
   });
 
-  it('goes well past the red with a LOW boost', () => {
+  it('lights the top orange and CLIP, just under the red, with a LOW boost from the start', () => {
     const r = analyseBlend(settingsOf('boost'));
-    expect(r.mix).toBeGreaterThan(14);
-    expect(r.clip).toBe('fast');
+    expect(r.mix).toBeGreaterThan(CEILING_DB - 1);
+    expect(displayDb(r.mix)).toBeLessThan(CEILING_DB);
+    expect(r.clip).toBe('slow');
+  });
+
+  it('keeps the top orange dark with a LOW boost on one deck from the first orange', () => {
+    const r = analyseBlend({
+      deck1: { trim: TARGET_PEAK_DB.aim, low: 0, fader: 10 },
+      deck2: { trim: TARGET_PEAK_DB.aim, low: 6, fader: 10 },
+      aligned: true,
+    });
+    expect(topLit(r)).toBe(false);
   });
 
   it('keeps a first-orange blend in the orange with room to spare', () => {
@@ -202,7 +225,7 @@ describe('blends add up', () => {
   it('draws the view post-fader: a closed fader is a flat line', () => {
     const r = analyseBlend(START);
     expect(peak(r.view.deck2)).toBe(0);
-    expect(peak(r.view.deck1)).toBeGreaterThan(0.4);
+    expect(peak(r.view.deck1)).toBeCloseTo(meterDbToSample(START.deck1.trim), 2);
   });
 });
 
@@ -215,12 +238,17 @@ describe('the ceiling', () => {
     expect(clipState(Number.NEGATIVE_INFINITY)).toBe('off');
   });
 
-  it('never rounds a level across a colour boundary', () => {
+  it('never rounds a level up to a light that is still dark', () => {
     expect(displayDb(11.98)).toBe(11);
     expect(displayDb(12.02)).toBe(12);
     expect(displayDb(-0.3)).toBe(-1);
     expect(displayDb(-0.6)).toBe(-1);
     expect(displayDb(7.87)).toBe(8);
+    // The top orange, which the MASTER meters keep dark: +8.6 does not light it.
+    expect(displayDb(8.6)).toBe(8);
+    expect(displayDb(9.02)).toBe(9);
+    // Rounding noise on a mark still lights it.
+    expect(displayDb(6 - 1e-9)).toBe(6);
     expect(Object.is(displayDb(-0.2 + 0.2), 0)).toBe(true);
     expect(displayDb(Number.NEGATIVE_INFINITY)).toBe(Number.NEGATIVE_INFINITY);
   });
@@ -237,24 +265,25 @@ describe('the ceiling', () => {
     // What leaves the fader tops out at the fader's gain times the ceiling, not above it.
     expect(peak(r.view.deck1)).toBeCloseTo(faderGain(6), 4);
     expect(sampleToMeterDb(peak(renderMix(hot, tracksAt(ANALYSIS_RATE))))).toBeCloseTo(CEILING_DB + faderDb(6), 4);
-    // Below the red nothing changes: a +6 track passes its channel untouched.
+    // Below the red nothing changes: a +3 track passes its channel untouched.
     const clean = analyseBlend(START);
-    expect(peak(clean.view.deck1)).toBeCloseTo(meterDbToSample(6), 4);
+    expect(peak(clean.view.deck1)).toBeCloseTo(meterDbToSample(3), 4);
   });
 
   it('cuts the output flat at ±1 (meter +12)', () => {
-    const out = renderMix(settingsOf('boost'), tracksAt(ANALYSIS_RATE));
+    const out = renderMix(settingsOf('hot'), tracksAt(ANALYSIS_RATE));
     expect(peak(out)).toBe(1);
     const clean = renderMix(settingsOf('orange'), tracksAt(ANALYSIS_RATE));
     expect(sampleToMeterDb(peak(clean))).toBeCloseTo(analyseBlend(settingsOf('orange')).mix, 4);
   });
 
-  it('cuts enough off the red pads to hear, at 44.1 and 48 kHz', () => {
+  it('cuts enough off the red pad to hear, at 44.1 and 48 kHz, and nothing off the rest', () => {
     for (const sr of [44_100, 48_000]) {
       expect(cutPercent(settingsOf('hot'), sr)).toBeGreaterThan(2);
-      expect(cutPercent(settingsOf('boost'), sr)).toBeGreaterThan(2);
-      // Clean: only float rounding between the render and the uncut sum.
-      for (const id of ['swap', 'ease', 'orange'] as const) expect(cutPercent(settingsOf(id), sr)).toBeLessThan(1e-3);
+      // Clean: only float rounding between the render and the uncut sum. Boost the LOW lights
+      // CLIP just under the red, so nothing is cut yet.
+      for (const id of ['boost', 'swap', 'ease', 'orange'] as const)
+        expect(cutPercent(settingsOf(id), sr)).toBeLessThan(1e-3);
     }
   });
 });
@@ -262,18 +291,19 @@ describe('the ceiling', () => {
 describe('only just in the red', () => {
   it('covers every level shown as +12, and nothing past it', () => {
     expect(BARELY_OVER_DB).toBe(0.5);
-    expect(barelyOver(analyseBlend(challenge))).toBe(true);
+    expect(barelyOver(analyseBlend(sixes))).toBe(true);
     // Deck 1 alone right on the red: the mix and its channel both touch the ceiling.
     const alone = withDeck(START, 'deck1', { trim: 12 });
     expect(analyseBlend(alone).mix).toBeCloseTo(CEILING_DB, 6);
     expect(barelyOver(analyseBlend(alone))).toBe(true);
     // One more dB on deck 2: +12.5, shown as "1 dB over the red".
-    const over = withDeck(challenge, 'deck2', { trim: 7 });
+    const over = withDeck(sixes, 'deck2', { trim: 7 });
     expect(displayDb(analyseBlend(over).mix)).toBe(13);
     expect(barelyOver(analyseBlend(over))).toBe(false);
     for (const id of ['hot', 'boost', 'swap', 'ease', 'orange'] as const)
       expect(barelyOver(analyseBlend(settingsOf(id)))).toBe(false);
     expect(barelyOver(analyseBlend(START))).toBe(false);
+    expect(barelyOver(analyseBlend(challenge))).toBe(false);
   });
 
   it('counts a channel just in the red, even with the middle meters clear', () => {
@@ -288,9 +318,9 @@ describe('only just in the red', () => {
 
   it('really is too little to hear: under 0.5% cut, at 44.1 and 48 kHz', () => {
     const states: BlendSettings[] = [
-      challenge,
+      sixes,
       withDeck(START, 'deck1', { trim: 12 }),
-      withDeck(challenge, 'deck2', { low: 1 }),
+      withDeck(sixes, 'deck2', { low: 1 }),
       withDeck(START, 'deck1', { trim: 12, fader: 6 }),
       // A channel and the mix both just past the red.
       {
@@ -316,20 +346,26 @@ describe('presets', () => {
 
   it('match the spec', () => {
     expect(settingsOf('swap').deck1.low).toBe(-26);
-    expect(faderDb(settingsOf('ease').deck1.fader)).toBeCloseTo(-6, 6);
+    // One printed mark: the DJ box's "pull a channel fader down a little".
+    expect(faderDb(settingsOf('ease').deck1.fader)).toBeCloseTo(-3, 6);
     expect(settingsOf('boost').deck2.low).toBe(6);
-    expect(settingsOf('orange').deck1.trim).toBe(0);
-    expect(settingsOf('orange').deck2.trim).toBe(0);
+    expect(settingsOf('orange').deck1.trim).toBe(TARGET_PEAK_DB.aim);
+    expect(settingsOf('orange').deck2.trim).toBe(TARGET_PEAK_DB.aim);
+    expect(settingsOf('hot').deck1.trim).toBe(TARGET_PEAK_DB.top);
+    // Every other pad starts from the lab's own levels, one change away from the challenge.
+    for (const id of ['boost', 'ease', 'swap'] as const) {
+      expect(settingsOf(id).deck1.trim).toBe(TRIM.initial);
+      expect(settingsOf(id).deck2.trim).toBe(TRIM.initial);
+    }
   });
 
-  it('come in two sets: ways into the red, then ways out of it', () => {
+  it('come in two sets: blends that light the top orange, then ways to keep it dark', () => {
     expect(presetsIn('push').map((p) => p.label)).toEqual(['Top orange', 'Boost the LOW']);
     expect(presetsIn('out').map((p) => p.label)).toEqual(['Pull a fader down', 'Swap the bass', 'First orange']);
     expect(presetsIn('push').length + presetsIn('out').length).toBe(PRESETS.length);
-    for (const p of presetsIn('push')) {
-      const r = analyseBlend(p.settings);
-      expect(challengeStatus(p.settings, r)).toBe('red');
-    }
+    expect(challengeStatus(settingsOf('hot'), analyseBlend(settingsOf('hot')))).toBe('red');
+    expect(challengeStatus(settingsOf('boost'), analyseBlend(settingsOf('boost')))).toBe('clip');
+    for (const p of presetsIn('push')) expect(topLit(analyseBlend(p.settings))).toBe(true);
     for (const p of presetsIn('out')) {
       const r = analyseBlend(p.settings);
       expect(challengeStatus(p.settings, r)).toBe('done');
@@ -345,25 +381,27 @@ describe('presets', () => {
 describe('fader steps', () => {
   it('move one printed mark a press', () => {
     expect(FADER.step).toBe(1);
-    // From the red, one press down on deck 1 lights CLIP and a second clears the challenge.
+    // From the top orange, one press down on deck 1 clears the challenge: "a little".
+    expect(challengeStatus(challenge, analyseBlend(challenge))).toBe('top');
     const one = withDeck(challenge, 'deck1', { fader: FADER.max - FADER.step });
-    expect(challengeStatus(one, analyseBlend(one))).toBe('clip');
-    const two = withDeck(challenge, 'deck1', { fader: FADER.max - 2 * FADER.step });
-    expect(challengeStatus(two, analyseBlend(two))).toBe('done');
+    expect(challengeStatus(one, analyseBlend(one))).toBe('done');
+    // From the red, one press lights CLIP and a second leaves the top orange lit.
+    const red = withDeck(sixes, 'deck1', { fader: FADER.max - FADER.step });
+    expect(challengeStatus(red, analyseBlend(red))).toBe('clip');
   });
 });
 
-describe('challenge: bring deck 2 all the way up without the red', () => {
+describe('challenge: bring deck 2 all the way up without lighting the top orange', () => {
   it('waits until deck 2 is fully up', () => {
     expect(challengeStatus(START, analyseBlend(START))).toBe('waiting');
     const nine = withDeck(START, 'deck2', { fader: 9.5 });
     expect(challengeStatus(nine, analyseBlend(nine))).toBe('waiting');
   });
 
-  it('fails in the red, and while CLIP blinks', () => {
-    for (const red of [challenge, settingsOf('hot'), settingsOf('boost')])
-      expect(challengeStatus(red, analyseBlend(red))).toBe('red');
-    const close = withDeck(challenge, 'deck1', { fader: 9 });
+  it('fails on the top orange, in the red, and while CLIP blinks', () => {
+    expect(challengeStatus(challenge, analyseBlend(challenge))).toBe('top');
+    for (const red of [sixes, settingsOf('hot')]) expect(challengeStatus(red, analyseBlend(red))).toBe('red');
+    const close = withDeck(sixes, 'deck1', { fader: 9 });
     expect(analyseBlend(close).clip).toBe('slow');
     expect(challengeStatus(close, analyseBlend(close))).toBe('clip');
   });
@@ -376,14 +414,14 @@ describe('challenge: bring deck 2 all the way up without the red', () => {
   });
 
   it('does not count a channel meter in the red, even with the middle meters clear', () => {
-    // Deck 1 trimmed into the red, then eased to about −12 dB: MASTER is orange, CH1 is red.
+    // Deck 1 trimmed into the red, then pulled to −12 dB: MASTER is under the top orange, CH1 is red.
     const s: BlendSettings = {
       deck1: { trim: 12, low: 0, fader: 6 },
-      deck2: { trim: 6, low: 0, fader: 10 },
+      deck2: { trim: TRIM.initial, low: 0, fader: 10 },
       aligned: true,
     };
     const r = analyseBlend(s);
-    expect(displayDb(r.mix)).toBeLessThan(CEILING_DB);
+    expect(topLit(r)).toBe(false);
     expect(r.clip).toBe('off');
     expect(hotDecks(r)).toEqual([1]);
     expect(challengeStatus(s, r)).toBe('hot1');

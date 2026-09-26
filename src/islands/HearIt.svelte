@@ -2,9 +2,10 @@
   /**
    * W5 "Can you hear it?": a blind listening test, the guide's proof in Part 1. Three rounds of
    * the same loop, clean against clipped (pushed 12, 6, then 3 dB past the mixer's red), with the
-   * clipped copy always turned down to the same loudness, so volume never gives it away. Pick the
-   * clipped one, say how sure you are, then see both waveforms. A device switch changes the words,
-   * never the sound.
+   * clipped copy always turned down to the same measured loudness, so volume does not give it away.
+   * Speakers that drop the bass upset the match a little in round 1, and the device tips say so.
+   * Pick the clipped one, say how sure you are, then see both waveforms. A device switch changes
+   * the words, never the sound.
    *
    * One surface: the panel, divided by printed lines. The only boxes in it are the two screens.
    * What you listen on is a slide switch (a setting); the answers are pads.

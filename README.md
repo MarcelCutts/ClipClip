@@ -127,5 +127,7 @@ docs/DESIGN.md  the design system
 
 A few answers change the advice, and only the kit can give them:
 
-- Does MASTER ATT reach MASTER 2? Pioneer doesn't say. The setup page's test T2 checks it. If it doesn't, the recording is turned down with MASTER LEVEL instead, and the MASTER meters read low.
+- Does MASTER ATT reach MASTER 2, MASTER 1, and the MASTER meters? Pioneer doesn't say which sockets it acts on. The setup page's test T2 checks all three.
+- Do the channel meters read after the EQ, and before the fader? Pioneer doesn't say; only VirtualDJ's layout page does. The setup page's "Check it yourself" tests the fader.
+- Where are the amps' RIG marks? dbx sets the DriveRack's limiters "based on where you have set your amplifier attenuators", but doesn't say what its wizard assumes for the GX7s. So the marks are found on the kit, at the highest click where both amps' CLIP lights stay dark on the loudest blend.
 - Where does the mixer's ceiling land in the Howler's file? Record a test that goes into the red on purpose (setup S3) and run `pnpm clipcheck` on it: the level its flat tops pile up at is the mixer's ceiling as the Howler sees it, which the demos currently assume (`HOWLER_BELOW_RED_DB` in `src/lib/model.ts`).

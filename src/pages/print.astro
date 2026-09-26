@@ -29,8 +29,11 @@ const messages = chatMessages((path) => new URL(href(path), site).toString());
  */
 const REVISED = '26 September 2026';
 
-/** The setup list is the longest, so its card sets the lines smaller, in two columns. */
-const SETUP_CARD = { list: 'setup', scale: 0.88, columns: 2, revised: REVISED } as const;
+/**
+ * The setup list is the longest, so its card sets the lines smaller, in two columns: 0.82 prints
+ * them at about 10.3 pt, over the 10 pt floor, and leaves C2 and S1 room to share their A4 sheet.
+ */
+const SETUP_CARD = { list: 'setup', scale: 0.82, columns: 2, revised: REVISED } as const;
 
 const shortTags = SHORT_TAGS;
 const masterTag = MASTER_TAG;
@@ -89,7 +92,7 @@ const trim = section('trim');
           shortTags.map((tag) => (
             <li>
               <div data-paper class="paper cuts">
-                <KnobTag name={tag.name} owner={tag.owner} blanks={tag.blanks} />
+                <KnobTag name={tag.name} owner={tag.owner} blanks={tag.blanks} rule={tag.rule} />
               </div>
               <p>{tag.where}</p>
             </li>
@@ -102,7 +105,10 @@ const trim = section('trim');
           <p>{masterTag.where}</p>
         </li>
       </ul>
-      <p>Then draw a line across each knob and onto the panel. If a knob turns, its line breaks.</p>
+      <p>
+        Then draw a line across each knob and onto the panel. If a knob turns, its line breaks. On the amps, each line is
+        that knob’s RIG mark: the knob can sit below it, and goes no higher.
+      </p>
     </section>
 
     <section class="block flow">
@@ -164,7 +170,9 @@ const trim = section('trim');
     <section class="sheet">
       <p class="sheet-head">Out of the red: tape tags for 19&nbsp;mm console tape. Cut on the dashed lines.</p>
       <div class="cuts tag-cuts short">
-        {shortTags.map((tag) => copies(6).map(() => <KnobTag name={tag.name} owner={tag.owner} blanks={tag.blanks} />))}
+        {shortTags.map((tag) =>
+          copies(6).map(() => <KnobTag name={tag.name} owner={tag.owner} blanks={tag.blanks} rule={tag.rule} />),
+        )}
       </div>
       <div class="cuts tag-cuts long">
         {copies(4).map(() => <KnobTag name={masterTag.name} lines={masterTag.lines} width={masterTag.width} />)}
@@ -179,10 +187,7 @@ const trim = section('trim');
       </div>
     </section>
     <section class="sheet">
-      <p class="sheet-head">
-        Out of the red: crew card C2, for every night, and S1, for setting up at every event. Cut round the cards and
-        tabs.
-      </p>
+      <p class="sheet-head">Out of the red: crew cards C2, for every night, and S1, for setting up. Cut round the cards and tabs.</p>
       <div class="crew-cards">
         <ChecklistCard list="changeover" revised={REVISED} />
         <ChecklistCard {...SETUP_CARD} />

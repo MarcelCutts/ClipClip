@@ -26,14 +26,14 @@ describe('copy', () => {
       'FINAL_LINE',
     ])
       expect(copy, name).not.toHaveProperty(name);
-    expect(copy.ROUND_INTROS[0]).toMatch(/Both play at the same loudness\.$/);
+    expect(copy.ROUND_INTROS[0]).toMatch(/Both play at the same measured loudness\.$/);
     expect(copy.scopeTitle(true)).toBe('Clipped, turned down to match');
     expect(copy.scopeTitle(false)).toBe('Clean');
   });
 
   it('says how far each round pushes the clipped one, and never which one it is', () => {
     expect(copy.ROUND_INTROS).toEqual([
-      `Play A and B. One was pushed 12${NBSP}dB past the red and clipped. Both play at the same loudness.`,
+      `Play A and B. One was pushed 12${NBSP}dB past the red and clipped. Both play at the same measured loudness.`,
       `The clipped one was pushed 6${NBSP}dB past the red.`,
       `The clipped one was pushed 3${NBSP}dB past the red.`,
     ]);
@@ -95,6 +95,15 @@ describe('copy', () => {
 
   it('tells you what to listen for on every device, the action first', () => {
     for (const d of DEVICES) expect(copy.DEVICE_TIPS[d]).toMatch(/^Listen for crunch/);
+  });
+
+  it('recommends headphones where small speakers upset the loudness match, without saying which side is louder', () => {
+    // Without the bass, round 1's clipped copy measures about 1.5 LU louder (fact-check, science B5).
+    for (const d of ['phone', 'laptop'] as const) {
+      expect(copy.DEVICE_TIPS[d]).toMatch(/differ a little in loudness\. Headphones keep them matched\.$/);
+      expect(copy.DEVICE_TIPS[d]).not.toMatch(/clipped|clean|louder/i);
+    }
+    expect(copy.DEVICE_TIPS.headphones).not.toMatch(/headphones|loudness/i);
   });
 
   it('has a tip and an explanation for every device', () => {

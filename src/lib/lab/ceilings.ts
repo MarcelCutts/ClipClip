@@ -11,7 +11,8 @@
  * 0 dBFS is ceiling 2, so a recording peak in dBFS is how far below ceiling 2 the feed peaks.
  *
  * The recording level stands for whatever sets the level into the Howler. On this rig that is
- * MASTER LEVEL, taped fully up, and MASTER ATT in UTILITY; the lab folds them into one knob.
+ * MASTER LEVEL, taped fully up, and MASTER ATT in UTILITY if it reaches MASTER 2, which Pioneer
+ * does not say (test T2 on /setup/ finds out). The lab folds them into one knob.
  */
 
 import { clip, peak, peakIndex, scaled } from '../dsp/analysis';
@@ -87,17 +88,21 @@ export function labSignal(sampleRate = 48_000): LabSignal {
 /** Where a stage stands against its ceiling: room to spare, touching it, or cutting peaks off. */
 export type Stage = 'clear' | 'at' | 'over';
 
-export type Crunch = 'clean' | 'some' | 'heavy';
+export type Crunch = 'clean' | 'tips' | 'some' | 'heavy';
 
 /**
  * Crunch thresholds on the added-distortion ratio. On the lab's loop, 1 dB over a ceiling adds
- * 0.4 %, 3 dB adds 3 %, 4 dB adds 6 % and 6 dB adds 15 %. So "Clean" means nothing was cut,
- * "Some crunch" is up to about 3 dB over, and "Heavy crunch" is 4 dB over or more.
+ * 0.4 %, 2 dB adds 1.2 %, 3 dB adds 3 %, 4 dB adds 6 % and 6 dB adds 15 %. So "Clean" means
+ * nothing was cut, and "Tips cut" is the first dB over: it cuts less than the blend lab's red
+ * that only just lights (under 0.5 %, blend/model.ts BARELY_OVER_DB), which that lab calls too
+ * little to hear. "Some crunch" is 2 to 3 dB over, near the blend lab's Top orange pad, which cuts
+ * over 2 % and can be heard, and "Heavy crunch" is 4 dB over or more.
  */
-export const CRUNCH_LIMITS = { some: 0.001, heavy: 0.05 } as const;
+export const CRUNCH_LIMITS = { tips: 0.001, some: 0.01, heavy: 0.05 } as const;
 
 export function crunchFor(distortion: number): Crunch {
-  if (distortion < CRUNCH_LIMITS.some) return 'clean';
+  if (distortion < CRUNCH_LIMITS.tips) return 'clean';
+  if (distortion < CRUNCH_LIMITS.some) return 'tips';
   if (distortion < CRUNCH_LIMITS.heavy) return 'some';
   return 'heavy';
 }

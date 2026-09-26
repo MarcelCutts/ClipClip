@@ -8,7 +8,7 @@
  * describe lined-up kicks only.
  */
 import { formatDb, speakDb } from '../dsp/db';
-import { KICKS_TOGETHER_DB } from '../model';
+import { KICKS_TOGETHER_DB, TARGET_PEAK_DB } from '../model';
 import { CEILING_DB, describeLevel, type Zone, zoneFor } from '../xdj';
 import {
   type BlendAnalysis,
@@ -22,6 +22,7 @@ import {
   type PresetGroup,
   preset,
   TRIM,
+  topLit,
 } from './model';
 
 export interface Segment {
@@ -35,13 +36,17 @@ const t = (text: string): Segment => ({ text });
 const value = (db: number): Segment => ({ text: formatDb(db), kind: 'value' });
 const num = (db: number): Segment => ({ text: formatDb(db), kind: 'num' });
 
-/** What two equal kicks landing together add: "6 dB". */
+/** The most two equal kicks landing together can add: "6 dB". */
 const BLEND_ADDS = formatDb(KICKS_TOGETHER_DB, { signed: false });
 
-/** Colour words for a displayed level, like the meter would show it. */
+/**
+ * Colour words for a displayed level, like the meter would show it. The top orange gets its own
+ * words: the DJ box keeps it dark on the MASTER meters.
+ */
 export function zonePhrase(db: number): string {
   if (db > CEILING_DB) return `${formatDb(db - CEILING_DB, { signed: false })} over the red`;
   if (db === CEILING_DB) return 'in the red';
+  if (db >= TARGET_PEAK_DB.top) return 'on the top orange';
   if (db >= 0) return 'in the orange';
   return 'in the green';
 }
@@ -123,42 +128,50 @@ export function explainBlend(s: BlendSettings, r: BlendAnalysis): string {
   if (!open2) return 'Bring deck 2’s fader up. Watch the MASTER meters.';
   if (!open1) return 'Bring deck 1’s fader up. Watch the MASTER meters.';
 
+  // The top orange lights before CLIP and the red, so this covers all three.
   const red = displayDb(r.mix) >= CEILING_DB;
-  const hot = red || r.clip !== 'off';
+  const over = topLit(r);
   const boosted = s.deck1.low > 0 || s.deck2.low > 0;
   const swapped = s.deck1.low <= -10 || s.deck2.low <= -10;
   const lowered = [s.deck1.fader, s.deck2.fader].filter((f) => f < FADER.max).length;
-  const still = red ? 'into the red' : 'close to the red';
+  const still = red ? 'The kicks still stack into the red.' : 'The kicks still light the top orange.';
 
-  if (hot) {
+  if (over) {
     if (boosted) return 'The LOW boost makes one kick louder before the two stack.';
-    if (lowered === 2) return `Both faders are down a little. The kicks still stack ${still}.`;
+    if (lowered === 2) return `Both faders are down a little. ${still}`;
     if (lowered === 1 && s.deck2.fader < FADER.max) return 'The kicks stack higher as deck 2 comes in.';
-    if (lowered === 1) return `Deck 1 is only a little lower. The kicks still stack ${still}.`;
-    return `When the kicks land together, their peaks add. Two equal kicks make a peak ${BLEND_ADDS} higher, two lights up the meter.`;
+    if (lowered === 1) return `Deck 1 is only a little lower. ${still}`;
+    return `When the kicks land together, their peaks add. Two equal kicks can make a peak up to ${BLEND_ADDS} higher, two lights up the meter.`;
   }
   if (swapped) return 'Only one bassline plays at full. The kicks barely stack.';
   if (lowered === 1) return `Deck ${s.deck1.fader < FADER.max ? 1 : 2} sits lower in the mix. Its kicks add less.`;
   if (lowered === 2) return 'Both decks sit lower in the mix. The blend peaks lower.';
-  if (s.deck1.trim <= 0 && s.deck2.trim <= 0)
-    return `Tracks that peak on the first orange light sit ${formatDb(CEILING_DB, { signed: false })} under the red. That leaves room for the ${BLEND_ADDS} a blend adds.`;
+  if (s.deck1.trim === TARGET_PEAK_DB.aim && s.deck2.trim === TARGET_PEAK_DB.aim)
+    return `Tracks that peak on the first orange leave room for what a blend adds, up to ${BLEND_ADDS}.`;
   if (s.deck1.trim < TRIM.initial || s.deck2.trim < TRIM.initial)
     return 'Lower TRIMs leave room for what the blend adds.';
   return 'When kicks land together, their peaks add. Watch the MASTER meters.';
 }
 
-export const CHALLENGE_PROMPT = 'Bring deck 2 all the way up without the MASTER meters going red.';
+/** The DJ box's line for the MASTER meters, as the lab's task (rules.ts: "top orange dark"). */
+export const CHALLENGE_PROMPT = 'Bring deck 2 all the way up without lighting the top orange on the MASTER meters.';
 
-export type LampTone = 'todo' | 'near' | 'red' | 'done';
+export type LampTone = 'todo' | 'near' | 'orange' | 'red' | 'done';
 
-/** How the challenge is going, in a word or two: the legend printed by the lamp beside the prompt. */
+/**
+ * How the challenge is going, in a word or two: the legend printed by the lamp beside the prompt.
+ * The lamp lights in the colour the MASTER meters show at their highest: orange for the top orange
+ * (CLIP lights only above it), red for the red.
+ */
 export function statusLamp(status: ChallengeStatus): { label: string; tone: LampTone } {
   switch (status) {
     case 'done':
       return { label: 'Done', tone: 'done' };
     case 'red':
       return { label: 'In the red', tone: 'red' };
+    case 'top':
     case 'clip':
+      return { label: 'Top orange', tone: 'orange' };
     case 'hot1':
     case 'hot2':
       return { label: 'Nearly', tone: 'near' };
@@ -203,11 +216,11 @@ export const guessNote = (guess: number, open: boolean): string =>
 export const guessReveal = (guess: number, actual: number): string =>
   `You guessed ${formatDb(guess)}. MASTER ${actual > CEILING_DB ? 'would peak' : 'peaked'} at ${formatDb(actual)}.`;
 
-/** The two sets of pads, named for what they are: blends that go red, and fixes for them. */
-export const PRESET_GROUPS: Record<PresetGroup, string> = { push: 'Blends that hit the red', out: 'Fixes' };
+/** The two sets of pads, named for what they are: blends that light the top orange, and fixes for them. */
+export const PRESET_GROUPS: Record<PresetGroup, string> = { push: 'Blends that light the top orange', out: 'Fixes' };
 
-/** Where the fixes wait until the reader has hit the red. */
-export const WAYS_OUT_WAIT = 'They appear after you hit the red.';
+/** Where the fixes wait until the reader has lit the top orange. */
+export const WAYS_OUT_WAIT = 'They appear after you light the top orange.';
 export const WAYS_OUT_SHOW = 'Show them now';
 
 export const WAVEFORM_TOGGLE = 'Show the waveform';
@@ -225,13 +238,15 @@ export function challengeMessage(status: ChallengeStatus): string | null {
       return 'The MASTER meters are in the red. Keep deck 2 up and bring the mix down another way.';
     case 'clip':
       return 'The red light is dark and CLIP is lit. The mix is about to distort.';
+    case 'top':
+      return 'The MASTER meters light the top orange. Keep deck 2 up and bring the mix down another way.';
     case 'hot1':
     case 'hot2':
       return `The MASTER meters are clear, but deck ${status === 'hot1' ? 1 : 2}’s channel meter is in the red. That deck distorts before its fader.`;
     case 'cut':
       return 'Deck 1 is almost silent. Keep deck 1 in the mix.';
     case 'done':
-      return 'Deck 2 is all the way up, and the red light stays dark.';
+      return 'Deck 2 is all the way up, and the top orange stays dark.';
   }
 }
 
@@ -244,7 +259,11 @@ export function verdictLine(r: BlendAnalysis, status: ChallengeStatus): string {
   const message = challengeMessage(status);
   if (message) return message;
   const zone = zoneFor(displayDb(r.mix));
-  const meters = zone ? `The MASTER meters are in the ${zone}.` : 'The MASTER meters are dark.';
+  const meters = !zone
+    ? 'The MASTER meters are dark.'
+    : zone === 'orange' && topLit(r)
+      ? 'The MASTER meters light the top orange.'
+      : `The MASTER meters are in the ${zone}.`;
   const clip = r.clip === 'off' ? '' : ' CLIP is lit.';
   const hot = hotDecks(r);
   const channels =
@@ -258,11 +277,13 @@ export function verdictLine(r: BlendAnalysis, status: ChallengeStatus): string {
 
 /**
  * What a preset pad says when pressed. A pad jumps the whole mixer, so it always speaks, numbers
- * included: the reactive sentence, then only what that doesn't already say. It names the red
- * itself, so a red pad adds nothing, and a pad that solves the challenge says so briefly.
+ * included: the reactive sentence, then only what that doesn't already say. It names the red and
+ * the top orange itself, so those pads add nothing, and a pad that solves the challenge says so
+ * briefly.
  */
 export function presetLine(s: BlendSettings, r: BlendAnalysis, status: ChallengeStatus): string {
-  const verdict = status === 'done' ? 'Challenge done.' : status === 'red' ? null : challengeMessage(status);
+  const verdict =
+    status === 'done' ? 'Challenge done.' : status === 'red' || status === 'top' ? null : challengeMessage(status);
   return [plain(blendSentence(s, r)), verdict].filter(Boolean).join(' ');
 }
 
@@ -287,12 +308,14 @@ export const PLAYER_LABEL = 'Blend lab';
 export const MODEL_NOTES_TITLE = 'What the lab assumes';
 
 /**
- * Only the two assumptions that change what a DJ does on the unit. The rest are in the guide's
- * section on what the makers publish.
+ * The two assumptions that change what a DJ does on the unit, each opening with the action, and
+ * the one the labs make about the crossfader (Pioneer's THRU, manual p. 28), said once here. The
+ * rest are in the guide's section on what the makers publish.
  */
 export const MODEL_NOTES: readonly string[] = [
-  'On the unit, watch the MASTER meters as you pull a fader down. Pioneer does not publish the XDJ-RX2’s fader curve. The dB figures on these faders are a typical DJ mixer’s.',
+  'On the unit, watch the MASTER meters as you pull a fader down. Pioneer describes the XDJ-RX2’s three channel fader curves in words only, with no dB figures (pp. 27 and 32). The dB figures on these faders are a typical DJ mixer’s.',
   `If CLIP blinks, even slowly, pull a channel fader down a little. Pioneer does not say at what level CLIP starts to blink. In this lab it blinks slowly within ${formatDb(CLIP_SLOW_RANGE_DB, { decimals: 1, signed: false })} of the red light, and fast past it.`,
+  'The lab has no crossfader. It plays like the unit with CROSS FADER CURVE on THRU, Pioneer’s setting for not using it (p. 28).',
 ];
 
 /** Plain words for a fader position, for screen readers. Rounds the way the display does. */

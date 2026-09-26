@@ -3,9 +3,10 @@
 <!-- The share image (public/og.png, 1200×630): what a link to the site shows in a group chat, often as a
      ~300px thumbnail in a dark chat theme. It's the cockpit display (render.mjs asks for the dark theme, so
      tokens.css gives the night values), which reads in dark and light chats alike: the title big enough for
-     the thumbnail, the page's description, and the hero's meter as the home page draws it: lit to the second
-     orange with red dark, an "Aim" bracket over the 0 and +3 lights, a printed break where the colour
-     changes, a bold 0, and each colour's zone named under the scale. The CLIP lamp sits past the top light. -->
+     the thumbnail, the page's description, and the hero's meter as the home page draws it: lit to the first
+     orange with the rest of the orange and the red dark, an "Aim" bracket over the 0 light, a printed break
+     where the colour changes, a bold 0, and each colour's zone named under the scale. The CLIP lamp sits past
+     the top light. -->
 <link rel="stylesheet" href="/src/styles/tokens.css">
 <style>
 @font-face{font-family:B612;src:url(/node_modules/@fontsource/b612/files/b612-latin-400-normal.woff2) format("woff2");font-weight:400}
@@ -21,7 +22,7 @@ body{background:var(--paper);color:var(--ink);font-family:var(--font-body);-webk
 .meter{position:absolute;left:72px;right:72px;top:318px;display:grid;row-gap:10px}
 .row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr)) 6px repeat(4,minmax(0,1fr)) 6px minmax(0,1fr) minmax(0,1.3fr);column-gap:8px;padding-inline:14px}
 .aim{font-weight:700;font-size:24px;line-height:1;color:var(--ink)}
-.aim span{grid-column:9/11;display:grid;justify-items:center;row-gap:6px}
+.aim span{grid-column:9/10;display:grid;justify-items:center;row-gap:6px}
 .aim span::after{content:"";justify-self:stretch;height:11px;border:3px solid var(--ink);border-bottom:0}
 .leds{padding:10px 12px;border-radius:var(--radius-panel);background:var(--hw-sunk);border:2px solid var(--panel-edge)}
 .leds i{height:58px;border-radius:var(--radius-control);background:var(--led-g-off)}
@@ -43,7 +44,7 @@ body{background:var(--paper);color:var(--ink);font-family:var(--font-body);-webk
 <p class="lede">Every set here is recorded.<br>What to know by heart at the mixer.</p>
 <div class="meter">
 <div class="row aim"><span>Aim</span></div>
-<div class="row leds"><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><s></s><i class="a"></i><i class="a"></i><i class="ao"></i><i class="ao"></i><s></s><i class="r"></i><b>CLIP</b></div>
+<div class="row leds"><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><s></s><i class="a"></i><i class="ao"></i><i class="ao"></i><i class="ao"></i><s></s><i class="r"></i><b>CLIP</b></div>
 <div class="row scale"><span>−24</span><span>−18</span><span>−15</span><span>−12</span><span>−9</span><span>−6</span><span>−3</span><s></s><span class="zero">0</span><span>+3</span><span>+6</span><span>+9</span><s></s><span>+12</span><span></span></div>
 <div class="row zones">
 <u style="grid-column:1/8"></u><u style="grid-column:9/13"></u><u style="grid-column:14/15"></u>

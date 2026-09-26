@@ -5,15 +5,18 @@
  * highlight and sentence it shows comes from here, so the tests beside it are the fact check. The
  * setup page's wiring table reads the same nodes and edges.
  *
- * Facts, from the manuals in sources.ts:
- * - Signal order: TRIM, then EQ, then the channel fader, then the mix.
- * - Channel meters read before the fader; the MASTER meters read after MASTER LEVEL.
- *   Pioneer does not say whether the channel meters read after the EQ. The drawing assumes they
- *   do, and the guide's section on what the makers publish says so.
- * - MASTER LEVEL sets MASTER 1 and MASTER 2 together. BOOTH MONITOR sets BOOTH alone. The
- *   attenuators in UTILITY (ATT) turn those outputs down further. Pioneer says MASTER ATT "sets the
- *   master output attenuator" without naming the sockets, so the drawing does not show it, and the
- *   MASTER 2 caption says it may reach it (test T2).
+ * Facts, from the manuals in sources.ts, and the assumptions the drawing makes where they are silent:
+ * - Signal order: TRIM, then EQ, then the channel fader, then the mix. This is how DJ mixers are
+ *   built; Pioneer publishes no block diagram of the XDJ-RX2.
+ * - The MASTER meters read after MASTER LEVEL (Pioneer sets one by the other, manual p. 31). The
+ *   channel meters read before the fader: VirtualDJ's manual for the unit says so, Pioneer does
+ *   not. Pioneer does not say whether they read after the EQ either. The drawing assumes both, and
+ *   the guide's section on what the makers publish says so.
+ * - MASTER LEVEL sets MASTER 1 and MASTER 2 together (p. 27). BOOTH MONITOR sets BOOTH alone. The
+ *   attenuators in UTILITY (ATT) turn outputs down further. Pioneer says MASTER ATT "sets the master
+ *   output attenuator" (p. 32) without naming the sockets. It probably lowers MASTER 1, and with it
+ *   the room, but that is not published either. The drawing does not wire it, and the captions for
+ *   MASTER 1 and MASTER 2 say it may lower each, that Pioneer does not say, and which test checks.
  * - The DriveRack's limiters sit on its outputs, and the amps after it: both on the PA branch only.
  * - Pioneer does not publish where the XDJ clips inside, so the whole mixer counts as ceiling 1.
  *   The Howler's limit is not published either; its input is ceiling 2.
@@ -372,8 +375,10 @@ export const COPY: Readonly<Record<NodeId, Caption>> = {
   masterLevel: { title: 'What MASTER LEVEL touches' },
   masterMeter: { title: 'What the MASTER meters can see' },
   booth: { title: 'What BOOTH MONITOR touches', text: 'It’s the DJ’s knob.' },
-  master1: { title: 'What MASTER 1 feeds', text: 'MASTER ATT, in UTILITY, also sets its level.' },
-  master2: { title: 'What MASTER 2 feeds', text: 'MASTER ATT may lower it too (test T2).' },
+  // Pioneer names no socket for MASTER ATT (p. 32), so both captions hedge, say so and point to the
+  // test on /setup/ that finds out, which also watches the room for MASTER 1.
+  master1: { title: 'What MASTER 1 feeds', text: 'MASTER ATT may lower it too. Pioneer does not say (test T2).' },
+  master2: { title: 'What MASTER 2 feeds', text: 'MASTER ATT may lower it too. Pioneer does not say (test T2).' },
   boothOut: { title: 'What the BOOTH sockets feed', text: 'BOOTH ATT, in UTILITY, also sets their level.' },
   driverack: { title: 'What the DriveRack does', text: 'It tunes the PA.' },
   limiter: { title: 'What the limiter protects', text: 'It works only when switched on.' },

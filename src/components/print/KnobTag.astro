@@ -4,7 +4,8 @@
  * long unless it says more. Stencil type, black on white. Sizes are in print millimetres, scaled
  * through container units so the on-screen preview shrinks to fit. A long tag's lines are
  * sentences, so they print at 10 pt or more, in the text face. A tag can carry blanks for settings
- * the crew write in by hand, like the REC tape's two attenuators.
+ * the crew write in by hand, like the REC tape's two attenuators, or a short rule for a tape that
+ * marks a limit, like the RIG tape's "No higher than the marks".
  */
 interface Props {
   /** The big word, as it would be written on the tape: REC, MONITOR, RIG. */
@@ -15,15 +16,17 @@ interface Props {
   lines?: readonly string[];
   /** Settings to write in by hand, each printed as its name and a blank line. */
   blanks?: readonly string[] | undefined;
+  /** A short rule printed under the name, in the tape's capitals. */
+  rule?: string | undefined;
   /** Length in millimetres at print size. */
   width?: number;
 }
 
-const { name, owner, lines = [], blanks = [], width = 60 } = Astro.props;
+const { name, owner, lines = [], blanks = [], rule, width = 60 } = Astro.props;
 ---
 
 <div class="tag-frame" style={`--w: ${width}`}>
-  <p class:list={['tag', { long: lines.length > 0, 'with-blanks': blanks.length > 0 }]}>
+  <p class:list={['tag', { long: lines.length > 0, 'with-row': blanks.length > 0 || Boolean(rule) }]}>
     <span class="name">{name}</span>
     {
       owner && (
@@ -53,6 +56,14 @@ const { name, owner, lines = [], blanks = [], width = 60 } = Astro.props;
               <span class="rule" aria-hidden="true" />
             </span>
           ))}
+        </span>
+      )
+    }
+    {
+      rule && (
+        <span class="limit">
+          <span class="visually-hidden">. </span>
+          {rule}
         </span>
       )
     }
@@ -122,17 +133,19 @@ const { name, owner, lines = [], blanks = [], width = 60 } = Astro.props;
     letter-spacing: 0;
   }
 
-  /* With blanks the big word gives up some height, and the blanks take a row of their own. */
-  .with-blanks {
+  /* With blanks or a rule the big word gives up some height, and they take a row of their own. */
+  .with-row {
     row-gap: calc(var(--mm) * 1.6);
   }
 
-  .with-blanks .name {
+  .with-row .name {
     font-size: calc(var(--mm) * 8);
   }
 
-  /* About 8.5 pt: labels to write beside, not sentences. The blank is a ruled line to write on. */
-  .blanks {
+  /* About 8.5 pt: labels to write beside, and a rule to read at a glance, not sentences. The blank
+     is a ruled line to write on. */
+  .blanks,
+  .limit {
     display: flex;
     flex-basis: 100%;
     justify-content: center;
@@ -140,6 +153,11 @@ const { name, owner, lines = [], blanks = [], width = 60 } = Astro.props;
     font-size: calc(var(--mm) * 3);
     font-weight: 760;
     letter-spacing: 0.03em;
+  }
+
+  /* In the tape's stencil capitals, as a limit is stencilled on a flight case. */
+  .limit {
+    text-transform: uppercase;
   }
 
   .blank {

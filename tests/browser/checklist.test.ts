@@ -293,7 +293,7 @@ test('a line with two drills sets each one apart as its own sentence', async () 
 
 test('says what a line costs before it, at full strength, outside the row, and never as a note', async () => {
   const screen = await render(Checklist, { list: 'files' });
-  const before = screen.getByText(/^Clearing the SD card deletes the original recordings\./);
+  const before = screen.getByText(/^Deleting the files on the microSD card deletes the original recordings\./);
   await expect.element(before).toBeVisible();
   const line = before.element().closest('li')!;
   // It comes before the box, so it's read before the line is done.

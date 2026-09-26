@@ -62,7 +62,7 @@ const verdict = (s: BlendSettings) => {
 describe('reactive sentence', () => {
   it('says the headline case in the spec’s words', () => {
     expect(sentence(challenge)).toBe(
-      'Each deck peaks at +6 dB on its own. Together, the mix peaks at +12 dB, in the red.',
+      'Each deck peaks at +3 dB on its own. Together, the mix peaks at +9 dB, on the top orange.',
     );
   });
 
@@ -74,19 +74,19 @@ describe('reactive sentence', () => {
 
   it('starts with deck 2 cued and its fader down', () => {
     expect(sentence(START)).toBe(
-      'Each deck peaks at +6 dB on its own. Deck 2’s fader is down. The mix is deck 1 alone. It peaks at +6 dB, in the orange.',
+      'Each deck peaks at +3 dB on its own. Deck 2’s fader is down. The mix is deck 1 alone. It peaks at +3 dB, in the orange.',
     );
   });
 
   it('follows the channel meters when the decks differ', () => {
     expect(sentence(settingsOf('swap'))).toBe(
-      'On its own, deck 1 peaks at +1 dB and deck 2 at +6 dB. Together, the mix peaks at +8 dB, in the orange.',
+      'On its own, deck 1 peaks at −2 dB and deck 2 at +3 dB. Together, the mix peaks at +5 dB, in the orange.',
     );
   });
 
   it('names a lowered fader, since the channel meters won’t show it', () => {
     expect(sentence(settingsOf('ease'))).toBe(
-      'Each deck peaks at +6 dB on its own. Together, with deck 1’s fader at −6 dB, the mix peaks at +10 dB, in the orange.',
+      'Each deck peaks at +3 dB on its own. Together, with deck 1’s fader at −3 dB, the mix peaks at +8 dB, in the orange.',
     );
     const both = cloneSettings(challenge);
     both.deck1.fader = 8;
@@ -94,9 +94,9 @@ describe('reactive sentence', () => {
     expect(sentence(both)).toMatch(/Together, with both faders lowered, the mix peaks at \+\d+ dB, in the orange\.$/);
   });
 
-  it('says how far past the red a blend would go', () => {
+  it('names the top orange, which the MASTER meters keep dark', () => {
     expect(sentence(settingsOf('boost'))).toBe(
-      'On its own, deck 1 peaks at +6 dB and deck 2 at +11 dB. Together, the mix would peak at +15 dB, 3 dB over the red.',
+      'On its own, deck 1 peaks at +3 dB and deck 2 at +8 dB. Together, the mix peaks at +11 dB, on the top orange.',
     );
   });
 
@@ -108,8 +108,10 @@ describe('reactive sentence', () => {
 
   it('marks the numbers and the colour word for styling', () => {
     const segs = blendSentence(challenge, analyseBlend(challenge));
-    expect(segs.filter((x) => x.kind === 'value').map((x) => text(x.text))).toEqual(['+6 dB', '+12 dB']);
-    expect(segs.find((x) => x.kind === 'zone')).toMatchObject({ text: 'in the red', zone: 'red' });
+    expect(segs.filter((x) => x.kind === 'value').map((x) => text(x.text))).toEqual(['+3 dB', '+9 dB']);
+    expect(segs.find((x) => x.kind === 'zone')).toMatchObject({ text: 'on the top orange', zone: 'orange' });
+    const red = blendSentence(settingsOf('hot'), analyseBlend(settingsOf('hot')));
+    expect(red.find((x) => x.kind === 'zone')).toMatchObject({ zone: 'red' });
   });
 
   it('keeps each sentence short', () => {
@@ -122,7 +124,9 @@ describe('zone words', () => {
   it('match the meter', () => {
     expect(zonePhrase(-3)).toBe('in the green');
     expect(zonePhrase(0)).toBe('in the orange');
-    expect(zonePhrase(9)).toBe('in the orange');
+    expect(zonePhrase(8)).toBe('in the orange');
+    expect(zonePhrase(9)).toBe('on the top orange');
+    expect(zonePhrase(11)).toBe('on the top orange');
     expect(zonePhrase(12)).toBe('in the red');
     expect(text(zonePhrase(14))).toBe('2 dB over the red');
   });
@@ -131,26 +135,33 @@ describe('zone words', () => {
 describe('explanation line', () => {
   it('gives one reason per state', () => {
     expect(explain(START)).toBe('Bring deck 2’s fader up. Watch the MASTER meters.');
+    // Lined-up kicks can add up to 6 dB: the synth's share one kick, so here they add all 6.
     expect(text(explain(challenge))).toBe(
-      'When the kicks land together, their peaks add. Two equal kicks make a peak 6 dB higher, two lights up the meter.',
+      'When the kicks land together, their peaks add. Two equal kicks can make a peak up to 6 dB higher, two lights up the meter.',
     );
     expect(explain(settingsOf('hot'))).toMatch(/two lights up the meter/);
     expect(explain(settingsOf('swap'))).toBe('Only one bassline plays at full. The kicks barely stack.');
     expect(explain(settingsOf('ease'))).toBe('Deck 1 sits lower in the mix. Its kicks add less.');
     expect(explain(settingsOf('boost'))).toBe('The LOW boost makes one kick louder before the two stack.');
     expect(text(explain(settingsOf('orange')))).toBe(
-      'Tracks that peak on the first orange light sit 12 dB under the red. That leaves room for the 6 dB a blend adds.',
+      'Tracks that peak on the first orange leave room for what a blend adds, up to 6 dB.',
     );
+    const lower = cloneSettings(challenge);
+    lower.deck1.trim = 1;
+    expect(explain(lower)).toBe('Lower TRIMs leave room for what the blend adds.');
   });
 
   it('talks about deck 2 coming in while its fader is on the way up', () => {
-    const coming = cloneSettings(START);
+    // From the top orange light on both decks, deck 2 one mark short of the top.
+    const coming = cloneSettings(preset('hot').settings);
     coming.deck2.fader = 9;
     expect(explain(coming)).toBe('The kicks stack higher as deck 2 comes in.');
-    // Just under the red, with CLIP lit…
+    // Deck 1 one mark down: enough from the start, too little from hotter decks…
     const lowered = cloneSettings(challenge);
+    lowered.deck1.trim = 5;
+    lowered.deck2.trim = 5;
     lowered.deck1.fader = 9;
-    expect(explain(lowered)).toBe('Deck 1 is only a little lower. The kicks still stack close to the red.');
+    expect(explain(lowered)).toBe('Deck 1 is only a little lower. The kicks still light the top orange.');
     // …and from the top orange light, where one mark down isn't enough to leave the red.
     const hot = cloneSettings(preset('hot').settings);
     hot.deck1.fader = 9;
@@ -192,16 +203,18 @@ describe('a channel meter in the red', () => {
 });
 
 describe('status lamp', () => {
-  it('says Done or In the red, and a neutral word for the rest', () => {
+  it('says Done, In the red or Top orange, and a neutral word for the rest', () => {
     expect(statusLamp('done')).toEqual({ label: 'Done', tone: 'done' });
     expect(statusLamp('red')).toEqual({ label: 'In the red', tone: 'red' });
-    for (const s of ['clip', 'hot1', 'hot2'] as const) expect(statusLamp(s).label).toBe('Nearly');
+    // Lit in the colour the MASTER meters show at their highest: CLIP only lights above the top orange.
+    for (const s of ['top', 'clip'] as const) expect(statusLamp(s)).toEqual({ label: 'Top orange', tone: 'orange' });
+    for (const s of ['hot1', 'hot2'] as const) expect(statusLamp(s).label).toBe('Nearly');
     for (const s of ['waiting', 'apart', 'cut'] as const) expect(statusLamp(s).label).toBe('Not yet');
   });
 
   it('leaves the verdict word to the lamp, so the message beside it says why instead', () => {
-    for (const s of ['clip', 'hot1', 'hot2', 'done'] as const)
-      expect(challengeMessage(s)).not.toMatch(/^(Nearly|Done)\b/);
+    for (const s of ['clip', 'top', 'hot1', 'hot2', 'done'] as const)
+      expect(challengeMessage(s)).not.toMatch(/^(Nearly|Done|Top orange)\b/);
   });
 });
 
@@ -212,10 +225,10 @@ describe('the readout by the MASTER meters', () => {
   };
 
   it('says where the mix peaks and its colour, in the sentence’s words', () => {
-    expect(readout(challenge)).toEqual({ value: '+12 dB', zone: 'red', words: 'in the red' });
+    expect(readout(challenge)).toEqual({ value: '+9 dB', zone: 'orange', words: 'on the top orange' });
     expect(readout(settingsOf('hot'))).toEqual({ value: '+15 dB', zone: 'red', words: '3 dB over the red' });
-    expect(readout(settingsOf('swap'))).toEqual({ value: '+8 dB', zone: 'orange', words: 'in the orange' });
-    expect(readout(START)).toEqual({ value: '+6 dB', zone: 'orange', words: 'in the orange' });
+    expect(readout(settingsOf('swap'))).toEqual({ value: '+5 dB', zone: 'orange', words: 'in the orange' });
+    expect(readout(START)).toEqual({ value: '+3 dB', zone: 'orange', words: 'in the orange' });
     // The same number as the sentence gives the mix.
     for (const s of [START, challenge, ...PRESETS.map((p) => p.settings)]) {
       const values = blendSentence(s, analyseBlend(s)).filter((x) => x.kind === 'value');
@@ -245,8 +258,8 @@ describe('the guess', () => {
 
   it('puts the guess beside the peak the meters show', () => {
     const peak = displayDb(analyseBlend(challenge).mix);
-    expect(text(guessReveal(9, peak))).toBe('You guessed +9 dB. MASTER peaked at +12 dB.');
-    expect(text(guessReveal(12, peak))).toBe('You guessed +12 dB. MASTER peaked at +12 dB.');
+    expect(text(guessReveal(6, peak))).toBe('You guessed +6 dB. MASTER peaked at +9 dB.');
+    expect(text(guessReveal(9, peak))).toBe('You guessed +9 dB. MASTER peaked at +9 dB.');
     // Past the red the meter can't show it, so the words match the readout's "would peak".
     const past = displayDb(analyseBlend(settingsOf('hot')).mix);
     expect(text(guessReveal(12, past))).toBe('You guessed +12 dB. MASTER would peak at +15 dB.');
@@ -261,8 +274,8 @@ describe('the guess', () => {
 
 describe('preset sets', () => {
   it('have plain names, and the fixes say when they’ll show', () => {
-    expect(PRESET_GROUPS).toEqual({ push: 'Blends that hit the red', out: 'Fixes' });
-    expect(WAYS_OUT_WAIT).toBe('They appear after you hit the red.');
+    expect(PRESET_GROUPS).toEqual({ push: 'Blends that light the top orange', out: 'Fixes' });
+    expect(WAYS_OUT_WAIT).toBe('They appear after you light the top orange.');
     expect(WAYS_OUT_SHOW).toBe('Show them now');
     expect(WAVEFORM_TOGGLE).toBe('Show the waveform');
   });
@@ -277,10 +290,13 @@ describe('challenge copy', () => {
     expect(challengeMessage('waiting')).toBeNull();
     // Kicks that miss each other: the model has the case, the lab never plays it.
     expect(challengeMessage('apart')).toBeNull();
-    const statuses: ChallengeStatus[] = ['red', 'clip', 'hot1', 'hot2', 'cut', 'done'];
+    const statuses: ChallengeStatus[] = ['red', 'clip', 'top', 'hot1', 'hot2', 'cut', 'done'];
     for (const s of statuses) expect(challengeMessage(s)).toBeTruthy();
-    // The lamp already says Done, so the message states the result.
-    expect(challengeMessage('done')).toBe('Deck 2 is all the way up, and the red light stays dark.');
+    // The lamp already says Done, so the message states the result: the DJ box's line for MASTER.
+    expect(challengeMessage('done')).toBe('Deck 2 is all the way up, and the top orange stays dark.');
+    expect(challengeMessage('top')).toBe(
+      'The MASTER meters light the top orange. Keep deck 2 up and bring the mix down another way.',
+    );
   });
 
   it('says what CLIP means, and labels its threshold as the lab’s', () => {
@@ -290,25 +306,39 @@ describe('challenge copy', () => {
     );
   });
 
-  it('keeps only the two model notes that change what a DJ does, each opening with the action', () => {
+  it('keeps the two model notes that change what a DJ does, each opening with the action', () => {
     expect(MODEL_NOTES_TITLE).toBe('What the lab assumes');
-    expect(MODEL_NOTES).toHaveLength(2);
-    expect(MODEL_NOTES[0]).toMatch(
-      /^On the unit, watch the MASTER meters as you pull a fader down\. Pioneer does not publish/,
-    );
+    expect(MODEL_NOTES).toHaveLength(3);
+    expect(MODEL_NOTES[0]).toMatch(/^On the unit, watch the MASTER meters as you pull a fader down\. /);
     expect(MODEL_NOTES[1]).toMatch(/^If CLIP blinks/);
+  });
+
+  it('says Pioneer describes its three fader curves in words, with the pages', () => {
+    // Operating Instructions p. 27 (the three curves, in words) and p. 32 (CURVE1, CURVE2, CURVE3).
+    expect(MODEL_NOTES[0]).toContain(
+      'Pioneer describes the XDJ-RX2’s three channel fader curves in words only, with no dB figures (pp. 27 and 32).',
+    );
+    expect(MODEL_NOTES.join(' ')).not.toMatch(/does not publish the XDJ-RX2’s fader curve/);
+  });
+
+  it('says once that the lab plays as if the crossfader is on THRU', () => {
+    // Operating Instructions p. 28: "[THRU]: Select when not using the crossfader."
+    expect(MODEL_NOTES.filter((n) => /THRU/.test(n))).toEqual([
+      'The lab has no crossfader. It plays like the unit with CROSS FADER CURVE on THRU, Pioneer’s setting for not using it (p. 28).',
+    ]);
   });
 });
 
 describe('live region', () => {
   it('says the verdict in words, never numbers, so a step that changes nothing stays quiet', () => {
-    // Deck 2 coming up from the start: the mix climbs, the verdict doesn’t move until CLIP lights.
-    const lines = [0.5, 2, 4, 6, 8].map((fader) => verdict({ ...START, deck2: { ...START.deck2, fader } }));
+    // Deck 2 coming up from the start: the mix climbs, the verdict doesn’t move until the top.
+    const lines = [0.5, 2, 4, 6, 8, 9].map((fader) => verdict({ ...START, deck2: { ...START.deck2, fader } }));
     expect(new Set(lines)).toEqual(new Set(['The MASTER meters are in the orange.']));
-    expect(verdict({ ...START, deck2: { ...START.deck2, fader: 9 } })).toBe(
-      'The MASTER meters are in the orange. CLIP is lit.',
-    );
-    expect(verdict(challenge)).toBe(challengeMessage('red'));
+    expect(verdict(challenge)).toBe(challengeMessage('top'));
+    // On the way up with a boosted LOW, the top orange lights before deck 2 is fully up.
+    const boost = cloneSettings(preset('boost').settings);
+    boost.deck2.fader = 9;
+    expect(verdict(boost)).toBe('The MASTER meters light the top orange.');
     for (const s of [START, challenge, ...PRESETS.map((p) => p.settings)]) expect(verdict(s)).not.toMatch(/dB|[+−]\d/);
   });
 
@@ -360,7 +390,7 @@ describe('house style', () => {
     trimHint(1),
     MODEL_NOTES_TITLE,
     ...MODEL_NOTES,
-    ...(['red', 'clip', 'hot1', 'hot2', 'cut', 'done'] as const).map((s) => challengeMessage(s) ?? ''),
+    ...(['red', 'clip', 'top', 'hot1', 'hot2', 'cut', 'done'] as const).map((s) => challengeMessage(s) ?? ''),
   ];
   /** Every line the lab can show, the explanations and the reactive sentence included. */
   const everything = [
@@ -410,7 +440,8 @@ describe('house style', () => {
   });
 
   it('keeps the spec’s fixed lines', () => {
-    expect(CHALLENGE_PROMPT).toBe('Bring deck 2 all the way up without the MASTER meters going red.');
+    // The DJ box's line for the MASTER meters: "top orange dark" (rules.ts).
+    expect(CHALLENGE_PROMPT).toBe('Bring deck 2 all the way up without lighting the top orange on the MASTER meters.');
     expect(NO_SOUND).toBe(
       'This browser cannot play the sound. Everything else works. To hear it, try another browser.',
     );

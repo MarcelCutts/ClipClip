@@ -97,16 +97,17 @@ for (let i = 0; i < 2000; i++) pk = Math.max(pk, Math.abs(sig(i / 2000)));
 const ease = (x) => (x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x));
 const gain = (db) => 10 ** (db / 20);
 
-// push is dB against the mixer's ceiling (its red light). It starts at −9, the second orange light, where the DJ
-// rule puts the loudest parts, and TRIM takes it 4.5 dB past the ceiling. The tops are cut in the mixer, so they're
-// in the recording. Then the recording is turned down 9 dB afterwards, which puts the flat tops where the clean
-// peaks were: quieter, still flat. MASTER LEVEL stays taped fully up throughout, as it is on the night.
+// push is dB against the mixer's ceiling (its red light, +12 on the meter). It starts at −12, the first orange
+// light (0), where the DJ rule puts a track's loudest part (src/lib/model.ts, TARGET_PEAK_DB.aim), and TRIM takes it
+// 4.5 dB past the ceiling. The tops are cut in the mixer, so they're in the recording. Then the recording is turned
+// down 12 dB afterwards, which puts the flat tops where the clean peaks were: quieter, still flat. MASTER LEVEL stays
+// taped fully up throughout, as it is on the night.
 // The words say "past the ceiling", never "into the red": Pioneer only says red may distort.
 // Timeline (seconds): 0–2 clean, 2–4.5 TRIM up, 4.5–6 hold, 6–8.5 the recording turned down, then the tape goes on.
-const PUSH = { from: -9, to: 4.5 };
-const DOWN = -9;
+const PUSH = { from: -12, to: 4.5 };
+const DOWN = PUSH.from;
 const CARDS = [
-  { at: 0, head: 'A channel in the orange', cap: 'The peaks stay below the ceiling.' },
+  { at: 0, head: 'A channel on the first orange', cap: 'The peaks stay well below the ceiling.' },
   { at: 2, head: 'Past the ceiling', cap: 'If TRIM is too high, the mixer cuts the tops flat. That is the crunch.' },
   { at: 6, head: 'Turned down afterwards', cap: 'The crunch gets quieter. It does not go away.' },
 ];
