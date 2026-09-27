@@ -15,7 +15,9 @@ import Checklist from '../../islands/Checklist.svelte';
 import Base from '../../layouts/Base.astro';
 import { CHECKLISTS } from '../../lib/checklists';
 import { drillAnchor, FIXES } from '../../lib/fixes';
+import { REVISION } from '../../lib/revision';
 import { CREW_RULES } from '../../lib/rules';
+import { href } from '../../lib/url';
 
 const { doors, changeover, after, files } = CHECKLISTS;
 // Trouble comes during the sets, so the drills sit between the changeovers and the end of the night. The
@@ -50,6 +52,11 @@ const ROWS = 6;
 >
   <header class="head flow">
     <h1>Crew on the night</h1>
+    <p class="revision">
+      Cards printed now say “Revised {REVISION}”. If yours say anything else, print new ones from the
+      <a href={href('/print/')}>Print kit</a>. Save this page as a PDF on your phone before the night, in case the booth
+      has no signal.
+    </p>
   </header>
 
   <!-- Thumb tabs, as on the edge of a printed handbook: they stay at the top of the screen, and the one
@@ -133,6 +140,13 @@ const ROWS = 6;
   /* A tool page's name: enough to know where you are, and out of the way of the tabs. */
   .head {
     padding-block: clamp(1.25rem, 0.9rem + 1.5vw, 2.25rem) 0.9rem;
+  }
+
+  /* Which cards are current: small, under the title, never in the way of the checklists. */
+  .revision {
+    max-width: var(--measure);
+    font-size: var(--text-sm);
+    color: var(--ink-2);
   }
 
   h1 {

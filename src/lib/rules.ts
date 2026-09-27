@@ -51,8 +51,9 @@ const masterMeters: Rule = {
 /** The deal, as a DJ hears it: MASTER LEVEL is the crew's, and so is the room's volume. */
 const masterLevel: Rule = {
   challenge: 'MASTER LEVEL',
-  // The same words as the tape on the knob: LEAVE FULLY UP.
-  response: 'leave it fully up',
+  // The same words as the tape on the knob: LEAVE ON THE REC MARK. The mark is at fully up unless the
+  // crew's tests (T3, S3) moved it, and a DJ needs to know only where it is.
+  response: 'leave it on the REC mark',
   note: 'For a louder room, ask the crew. For a louder booth, turn up BOOTH MONITOR.',
   text: 'For a louder room, ask the crew.',
   label: 'RIG',
@@ -61,11 +62,11 @@ const masterLevel: Rule = {
 
 /**
  * The same deal, as the crew keep it: the room's volume comes from the amps, never above the RIG
- * marks that S4 finds (F4).
+ * marks that S6 finds (F4).
  */
 const crewMasterLevel: Rule = {
   challenge: 'MASTER LEVEL',
-  response: 'fully up, on the REC mark',
+  response: 'on the REC mark',
   note: 'If a DJ wants a louder room, turn up the amps, no higher than the RIG marks.',
   drill: 'not-loud',
 };

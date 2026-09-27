@@ -16,6 +16,7 @@ import SiteHeader from '../components/SiteHeader.astro';
 import CopyText from '../islands/CopyText.svelte';
 import Base from '../layouts/Base.astro';
 import { chatMessages, NAME_BLANK } from '../lib/messages';
+import { REVISION } from '../lib/revision';
 import { section } from '../lib/sections';
 import { MASTER_TAG, SHORT_TAGS } from '../lib/tags';
 import { href } from '../lib/url';
@@ -24,10 +25,10 @@ const site = Astro.site ?? Astro.url;
 const messages = chatMessages((path) => new URL(href(path), site).toString());
 
 /**
- * The date on every printed card. Change it whenever a card's words change, so a laminated card in
- * the booth can be checked against this page.
+ * The revision on every printed card: the date its words last changed and a code made from them
+ * (revision.ts), so a laminated card in the booth can be checked against this page.
  */
-const REVISED = '26 September 2026';
+const REVISED = REVISION;
 
 /**
  * The setup list is the longest, so its card sets the lines smaller, in two columns: 0.82 prints
@@ -63,8 +64,8 @@ const trim = section('trim');
         <a href="#messages">Messages for the group chat</a>
       </p>
       <p class="revised">
-        Every card carries the date its words last changed: {REVISED}. If a card in the booth has an older date, print
-        a new one.
+        Every card carries the date its words last changed, and a code made from them: {REVISED}. If a card in the booth
+        says anything else, print a new one.
       </p>
     </PageHeader>
 
@@ -114,6 +115,11 @@ const trim = section('trim');
     <section class="block flow">
       <h2 id="crew-title">Crew cards</h2>
       <p>Pages 3 and 4 print the checklists as cards: C1 to C3 for the booth, and S1 for setting up. This is C1.</p>
+      <p>
+        The cards send you to drills and setup cards that are not in the kit. Before the night, print
+        <a href={href('/night/')}>Crew on the night</a> and <a href={href('/setup/')}>Setting up</a>, or save them as
+        PDFs on your phone, in case the booth has no signal.
+      </p>
       <div class="wide crew-list">
         <div data-paper class="sheet-preview">
           <ChecklistCard list="doors" revised={REVISED} />

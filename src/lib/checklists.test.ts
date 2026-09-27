@@ -114,14 +114,16 @@ describe('S1: the whole job in order, every event', () => {
       'tags',
       'test-recording',
     ]);
-    // HSE GS50: a generator earthed by a competent person, sockets on 30 mA RCDs, and a trip means a fault.
+    // HSE GS50: a generator earthed by a competent person, big enough for the load, sockets on 30 mA RCDs, and a
+    // trip means a fault. Separate sockets are no help if the generator behind them is too small.
     expect(itemOf('setup', 'generator')).toMatchObject({
       check: 'Generator',
-      target: 'earthed by a competent person, sockets on 30 mA RCDs',
+      target: 'earthed and sized for the load by a competent person, 30 mA RCDs',
       note: 'If an RCD trips, find the fault before you reset it.',
     });
     expect(lineOf('setup', 'supply')).toBe('Sound gear on one distribution board, amps switched off');
-    expect(lineOf('setup', 'tests')).toBe('Tests T2 and T3 done once for this rig');
+    // The once-only cards: T2 and T3 test the mixer, S5 and S6 set the DriveRack and the amps.
+    expect(lineOf('setup', 'tests')).toBe('T2, T3, S5 and S6 done once for this rig');
     expect(itemOf('setup', 'record-level')).toMatchObject({
       check: 'Howler LEVEL light',
       target: 'blinking green on the loudest blend',
@@ -138,8 +140,9 @@ describe('S1: the whole job in order, every event', () => {
   it('gives the amps’ draw in amps, as QSC does, and never puts both on one 13 A strip', () => {
     const { note } = itemOf('setup', 'supply');
     // QSC p.11, halved for 230 V: about 13.4 A for the pair at peak programme levels, 26.5 A in full-power bursts.
-    expect(note).toMatch(/^Both GX7 amps draw about 13 A together at peak levels, and 26 A in short bursts/);
-    expect(note).toMatch(/Each amp has its own socket: a 13 A strip cannot take both\.$/);
+    // The burst figure is the one that trips a breaker, and the generator line asks for a supply sized for it.
+    expect(note).toMatch(/^Both GX7 amps draw about 26 A together in short bursts \(QSC p\. 11\)\./);
+    expect(note).toMatch(/Each has its own socket: a 13 A strip cannot take both\.$/);
     expect(allCopy.join(' ')).not.toMatch(/\bkW\b|one power strip|if the load allows/i);
   });
 
@@ -197,23 +200,31 @@ describe('the night’s lists', () => {
     });
   });
 
-  it('note the time at every changeover, where the next day’s work cuts the sets', () => {
-    expect(CHECKLISTS.changeover.items.map((i) => i.id)).toEqual(['light', 'time', 'rec', 'settings', 'next-dj']);
-    expect(lineOf('changeover', 'time')).toBe('Changeover time noted');
-    // Howler MK1 manual: a WAV file holds about 3.5 hours, then carries on in a new one with a gap.
-    const restart = sentences(itemOf('changeover', 'time').note ?? '');
-    expect(restart[0]).toBe('The Howler MK1’s WAV files end at about 3.5 hours, with up to a second missing.');
-    expect(restart.at(-1)).toMatch(/^If the recording started over 3 hours ago, press RECORD to stop it/);
-    expect(itemOf('files', 'cut').note).toBe('C1 has the start time, and C2 each changeover.');
+  it('start a new file at every changeover, with RECORD blinking, and note who is next', () => {
+    expect(CHECKLISTS.changeover.items.map((i) => i.id)).toEqual([
+      'light',
+      'charge',
+      'new-file',
+      'rec',
+      'settings',
+      'next-dj',
+    ]);
+    // Howler MK1 manual: a WAV file holds about 3.5 hours, then carries on in a new one with a gap. A new file at
+    // every changeover keeps any gap between DJs, however long the sets. RECORD blinking means it is recording.
+    expect(lineOf('changeover', 'new-file')).toBe('Howler recording a new file for the next set, RECORD blinking');
+    expect(itemOf('changeover', 'new-file').note).toBe(
+      'If it is still the last set’s file, press RECORD to stop it, then again to start a new one. If RECORD stops blinking soon after, put in another FAT32 microSD card.',
+    );
+    expect(lineOf('changeover', 'next-dj')).toBe('Next DJ name and start time noted, shown the booth card');
+    expect(itemOf('files', 'sets').note).toMatch(/^C1 and C2 have the start times and the DJs’ names\./);
   });
 
-  it('warn before the restart that a low battery starts nothing new off charge', () => {
-    // Howler MK1 manual: with around an hour left the BATTERY indicator blinks blue and red, and "You are unable
-    // to start new recordings until you connect a charger." The warning comes before the step it applies to.
-    const note = sentences(itemOf('changeover', 'time').note ?? '');
-    const warning = note.findIndex((s) => /only on charge/.test(s));
-    expect(note[warning - 1]).toBe('Its BATTERY light blinks blue and red with about an hour left.');
-    expect(warning).toBeLessThan(note.findIndex((s) => /press RECORD/.test(s)));
+  it('put the Howler on charge before the new file: a low battery starts nothing new off charge', () => {
+    // Howler MK1 manual: with around an hour left, "You are unable to start new recordings until you connect a
+    // charger." The charger comes before the line that starts one.
+    const ids = CHECKLISTS.changeover.items.map((i) => i.id);
+    expect(ids.indexOf('charge')).toBeLessThan(ids.indexOf('new-file'));
+    expect(lineOf('changeover', 'charge')).toBe('Howler on charge');
   });
 
   it('name the Howler’s light every time: the BATTERY light is red all the time it charges', () => {
@@ -224,8 +235,8 @@ describe('the night’s lists', () => {
       expect(itemOf(list, item).note, `${list} ${item}`).toMatch(/Its BATTERY light is red while it charges\./);
     }
     expect(allCopy.join(' ')).not.toMatch(/Howler(?:’s)? (?:red )?light\b|red light on the Howler/);
-    // The MK1's figures are said as the MK1's: the MK2 differs.
-    expect(itemOf('setup', 'howler').note).toMatch(/^The Howler MK1 records for about 30 hours on its battery\./);
+    // The MK1's figures are said as the MK1's: the MK2 differs. The battery's hours are F8's (a power cut).
+    expect(itemOf('setup', 'howler').note).toBe('Its BATTERY light is red while it charges.');
   });
 
   it('give the next DJ the booth card’s words, as the DJ box has them', () => {
@@ -327,27 +338,29 @@ describe('a red LEVEL light', () => {
 });
 
 describe('C4: the next day’s work on the recordings', () => {
-  it('copies, joins, cuts, checks and normalises, and deletes the files on the microSD card last', () => {
+  it('copies, checks each set’s file, checks and normalises, and deletes the files on the microSD card last', () => {
     expect(CHECKLISTS.files.items.map((i) => i.id)).toEqual([
       'copies',
       'play',
-      'join',
-      'cut',
+      'sets',
       'flat-tops',
       'peak',
       'normalise',
       'clear',
     ]);
-    expect(lineOf('files', 'copies')).toBe('microSD card files copied to two places, one kept as it is');
+    // Two drives: two folders on one drive fail together.
+    expect(lineOf('files', 'copies')).toBe('microSD card files copied to two drives, one copy kept as it is');
+    expect(lineOf('files', 'play')).toBe('Both copies same files and sizes as the card, the end of each file playing');
   });
 
-  it('joins split files by name: the Howler MK1’s file dates are unreliable', () => {
+  it('gives each set its own file, by name: the Howler MK1’s file dates are unreliable', () => {
     // Howler's MK2 announcement: "file timestamps are now set correctly".
-    expect(itemOf('files', 'join')).toMatchObject({
-      check: 'Split files',
-      target: 'joined in file name order',
-      note: 'The Howler MK1’s file dates are unreliable: Howler fixed them in the MK2.',
+    expect(itemOf('files', 'sets')).toMatchObject({
+      check: 'Each DJ’s set',
+      target: 'its own file, in file name order',
     });
+    expect(itemOf('files', 'sets').note).toMatch(/If a set runs on into a second file, join the two\./);
+    expect(itemOf('files', 'sets').note).toMatch(/Its file dates are unreliable: Howler fixed them in the MK2\.$/);
   });
 
   it('says what deleting the recordings costs before the line, and clears the card by deleting', () => {
@@ -357,7 +370,7 @@ describe('C4: the next day’s work on the recordings', () => {
       check: 'microSD card',
       target: 'files deleted',
       before:
-        'Deleting the files on the microSD card deletes the original recordings. Delete them only after both copies play to the end.',
+        'Deleting the files on the microSD card deletes the original recordings. Delete them only after both copies match the card.',
     });
     // Howler MK1 manual: the card must be FAT32 ("MS-DOS (FAT)" on a Mac); Windows can't make FAT32 over 32 GB.
     expect(clear.note).toBe(

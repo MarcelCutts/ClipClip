@@ -18,12 +18,12 @@
  *
  * Wiring, one way only: MASTER 1 (XLR) feeds the DriveRack PA2 and the amps, MASTER 2 (RCA) feeds the
  * Howler, BOOTH feeds the booth monitors. MASTER LEVEL sets MASTER 1 and MASTER 2 together (Pioneer
- * manual p.27). It stays fully up on the REC mark, and the MASTER meters, which read after it (p.31),
- * show the mix itself. The room's volume comes from the amps' gain knobs, never above the RIG marks
- * that S4 finds, and never from the mixer.
+ * manual p.27). It stays on its REC mark, fully up unless T3 or S3 moved it, and the MASTER meters,
+ * which read after it (p.31), show the mix. The room's volume comes from the amps' gain knobs, never
+ * above the RIG marks that S6 finds, and never from the mixer.
  *
  * Power, on a generator in the UK. HSE's GS50 asks for a generator earthed by a competent person (§28,
- * §33–34) and sockets on 30 mA RCDs (§22). QSC gives the GX7's current, not its watts (p.11): at 230 V
+ * §33–34), with enough capacity for the load, and sockets on 30 mA RCDs (§22). QSC gives the GX7's current, not its watts (p.11): at 230 V
  * the pair draws about 13.4 A at peak programme levels and about 26.5 A in full-power bursts, and a UK
  * strip or plug is 13 A (GS50 §21). dbx: the amps go on last, with no audio passing, and off first,
  * about 10 seconds before the rest (p.10).
@@ -205,10 +205,10 @@ export const drillText = (ref: DrillRef | readonly DrillRef[]): string =>
 export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
   setup: {
     // The whole job in order, every event, for one person. The leads go in before anything is plugged in
-    // (Pioneer manual p.10: connect the power cord "after all the connections are completed"; dbx p.8). T2 and
-    // T3 are once per rig. The DriveRack and amps come after S3, so S4 finds the RIG marks at the recording
-    // level on the REC tape. The cards it points to are on /setup/: S2 the wiring table, T2 and T3 the one-off
-    // tests, S3 the recording level, S4 the DriveRack and amps.
+    // (Pioneer manual p.10: connect the power cord "after all the connections are completed"; dbx p.8). T2, T3,
+    // S5 and S6 are once per rig: S6 sets the amps' gains and limiters with the speakers disconnected. The
+    // cards it points to are on /setup/: S2 the wiring table, T2 and T3 the one-off tests, S3 the recording
+    // level, S4 the DriveRack and amps.
     id: 'setup',
     anchor: 'setup',
     code: 'S1',
@@ -222,7 +222,7 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
         // not ignore it." (§22). INDG247 p.3: "Never bypass the RCD".
         id: 'generator',
         check: 'Generator',
-        target: 'earthed by a competent person, sockets on 30 mA RCDs',
+        target: 'earthed and sized for the load by a competent person, 30 mA RCDs',
         note: 'If an RCD trips, find the fault before you reset it.',
       },
       {
@@ -239,7 +239,7 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
         id: 'supply',
         check: 'Sound gear',
         target: 'on one distribution board, amps switched off',
-        note: 'Both GX7 amps draw about 13 A together at peak levels, and 26 A in short bursts (QSC p. 11). Each amp has its own socket: a 13 A strip cannot take both.',
+        note: 'Both GX7 amps draw about 26 A together in short bursts (QSC p. 11). Each has its own socket: a 13 A strip cannot take both.',
       },
       {
         // Howler MK1 manual: "able to record around 30 hours on a full battery"; the BATTERY indicator is "red when
@@ -247,13 +247,14 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
         id: 'howler',
         check: 'Howler',
         target: 'on charge, on WAV',
-        note: 'The Howler MK1 records for about 30 hours on its battery. Its BATTERY light is red while it charges.',
+        note: 'Its BATTERY light is red while it charges.',
       },
       {
         // Pioneer doesn't say which sockets MASTER ATT reaches (manual p.32), or what MASTER LEVEL adds fully up (the
-        // panel prints 0, p.27). T2 and T3 find out on the kit, once per rig (setup page).
+        // panel prints 0, p.27). T2 and T3 find out on the kit, once per rig. S5 runs the DriveRack's wizard and S6
+        // sets the amps' gains and limiters by dbx's procedure, with the speakers disconnected (setup page).
         id: 'tests',
-        check: 'Tests T2 and T3',
+        check: 'T2, T3, S5 and S6',
         target: 'done once for this rig',
       },
       {
@@ -265,7 +266,7 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
       },
       {
         // dbx manual p.10: the amps go on last, and "ensure you're not passing audio to the mixer's outputs" first.
-        // With MASTER LEVEL taped fully up, that means no track playing. S4 also finds the RIG marks.
+        // With MASTER LEVEL on its REC mark, that means no track playing.
         id: 'amps',
         check: 'DriveRack and amps',
         target: 'as in S4, amps switched on last',
@@ -328,7 +329,7 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
       {
         id: 'rec',
         check: 'MASTER LEVEL',
-        target: 'fully up, on the REC mark',
+        target: 'on the REC mark',
       },
       {
         id: 'att',
@@ -338,7 +339,7 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
       },
       {
         // dbx manual p.10: power amps last on, with no audio passing to the mixer's outputs, and first off. The
-        // RIG marks are the highest the amps go (S4).
+        // RIG marks are the highest the amps go (S6).
         id: 'amps',
         check: 'Both amps',
         target: 'on, gain knobs at or below the RIG marks',
@@ -367,20 +368,28 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
         drill: HOWLER_RED,
       },
       {
-        // Howler MK1 manual: a WAV file holds about 3.5 hours (about 4 GB); recording then carries on in a new
-        // file, with up to a second missing. "The BATTERY indicator blinks blue and red when you have around 1 hour
-        // left of recording. You are unable to start new recordings until you connect a charger." A new file
-        // started between DJs keeps the gap out of a set. The times noted here are where the next day's work cuts
-        // the sets.
-        id: 'time',
-        check: 'Changeover time',
-        target: 'noted',
-        note: 'The Howler MK1’s WAV files end at about 3.5 hours, with up to a second missing. Its BATTERY light blinks blue and red with about an hour left. It then starts a new recording only on charge. If the recording started over 3 hours ago, press RECORD to stop it, then again to start a new one.',
+        // Howler MK1 manual: the BATTERY indicator is "red when charging". "The BATTERY indicator blinks blue and red
+        // when you have around 1 hour left of recording. You are unable to start new recordings until you connect a
+        // charger." The next line starts one, so the charger comes first.
+        id: 'charge',
+        check: 'Howler',
+        target: 'on charge',
+      },
+      {
+        // Howler MK1 manual: a WAV file holds "about 3.5 hours of recording per file (≈4GB)", then recording carries
+        // on in a new file, "though there will be a brief ~1 second audio gap" (the FAQ says half a second). A new
+        // file at every changeover puts any gap between DJs, whatever the sets' lengths, and gives each set its own
+        // file. Recording is running "when the RECORD button is blinking constantly"; if it "stops blinking soon
+        // after you've pushed it, there is something wrong with the microSD card, or the microSD card is full".
+        id: 'new-file',
+        check: 'Howler recording',
+        target: 'a new file for the next set, RECORD blinking',
+        note: 'If it is still the last set’s file, press RECORD to stop it, then again to start a new one. If RECORD stops blinking soon after, put in another FAT32 microSD card.',
       },
       {
         id: 'rec',
         check: 'MASTER LEVEL',
-        target: 'fully up, on the REC mark',
+        target: 'on the REC mark',
       },
       {
         // Pioneer manual p.31: "[UTILITY] settings and other settings stored on a USB device can be called out" with
@@ -392,9 +401,10 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
         note: `A DJ’s MY SETTINGS may change them. ${OPEN_UTILITY} ${STORE_CHANGE}`,
       },
       {
+        // The name and time name each set's file the next day (C4), and cut a set that shares a file.
         id: 'next-dj',
         check: 'Next DJ',
-        target: 'shown the booth card',
+        target: 'name and start time noted, shown the booth card',
         note: `Say: “${NEXT_DJ_WORDS}”`,
       },
     ],
@@ -457,31 +467,26 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
     when: 'The day after, for whoever handles the recordings.',
     items: [
       {
-        // The work below is on one copy; the other stays as the Howler wrote it.
+        // The work below is on one copy; the other stays as the Howler wrote it (F9 needs it). Two drives, not two
+        // folders on one drive: a drive that fails takes both.
         id: 'copies',
         check: 'microSD card files',
-        target: 'copied to two places, one kept as it is',
+        target: 'copied to two drives, one copy kept as it is',
       },
       {
+        // A file that stops early shows as a smaller size, or goes quiet before its end.
         id: 'play',
         check: 'Both copies',
-        target: 'play to the end',
+        target: 'same files and sizes as the card, the end of each file playing',
       },
       {
-        // Howler MK1 manual: a WAV file holds about 3.5 hours, then recording carries on in a new file with up to a
-        // second missing (C2 says so). Files that start at a changeover are cut there anyway. Howler's MK2
-        // announcement (May 2026): "A shortcoming of the original hardware has also been resolved: file timestamps
-        // are now set correctly". The MK1's dates can't put the files in order; their names can.
-        id: 'join',
-        check: 'Split files',
-        target: 'joined in file name order',
-        note: 'The Howler MK1’s file dates are unreliable: Howler fixed them in the MK2.',
-      },
-      {
-        id: 'cut',
+        // C2 starts a new file at each changeover. Howler MK1 manual: a WAV file holds about 3.5 hours, then
+        // recording carries on in a new file with up to a second missing. Howler's MK2 announcement (May 2026): "file
+        // timestamps are now set correctly", so the MK1's dates can't put the files in order; their names can.
+        id: 'sets',
         check: 'Each DJ’s set',
-        target: 'cut at the noted times',
-        note: 'C1 has the start time, and C2 each changeover.',
+        target: 'its own file, in file name order',
+        note: 'C1 and C2 have the start times and the DJs’ names. The MK1 splits a WAV file at about 3.5 hours, about 4 GB. If a set runs on into a second file, join the two. Its file dates are unreliable: Howler fixed them in the MK2.',
       },
       {
         // Clipped in the mixer but not at the Howler: the flat tops sit below the file's full scale, where a 0 dBFS
@@ -521,7 +526,7 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
         check: 'microSD card',
         target: 'files deleted',
         before:
-          'Deleting the files on the microSD card deletes the original recordings. Delete them only after both copies play to the end.',
+          'Deleting the files on the microSD card deletes the original recordings. Delete them only after both copies match the card.',
         note: 'If you format it instead, choose FAT32: on a Mac, MS-DOS (FAT). On Windows, a card over 32 GB needs extra software for FAT32.',
       },
     ],

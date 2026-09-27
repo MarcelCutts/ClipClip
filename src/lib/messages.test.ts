@@ -81,7 +81,7 @@ describe('chat messages', () => {
       expect(briefing.split('\n')).toContain(ruleLine(rule));
     }
     expect(DJ_RULES).toHaveLength(3);
-    expect(briefing).toMatch(/MASTER LEVEL: leave it fully up\./);
+    expect(briefing).toMatch(/MASTER LEVEL: leave it on the REC mark\./);
     expect(briefing.endsWith(`${BASE}${GUIDE_PATH}`)).toBe(true);
     expect(GUIDE_PATH).toBe('/#trim');
   });

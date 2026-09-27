@@ -23,11 +23,14 @@
  * word for property damage is NOTICE. A consequence that is not an injury is a plain sentence instead.
  *
  * The rig, one way only: MASTER 1 (XLR) → DriveRack PA2 → two QSC GX7 amps → PA; MASTER 2 (RCA) → Howler;
- * BOOTH → booth monitors. MASTER LEVEL sets MASTER 1 and MASTER 2 (Pioneer manual p.27) and is taped fully
- * up on the REC mark, so the MASTER meters, which read after it (p.31), show the mix itself. The room's
- * volume comes from the amps' gain knobs, never above the RIG marks that S4 finds. Both attenuators are
- * UTILITY settings (p.32), written on the REC tape at setup (S1, S3). Pioneer does not say which sockets
- * MASTER ATT reaches: T2 finds out on the kit, and the drills never count on it turning the room down.
+ * BOOTH → booth monitors. MASTER LEVEL sets MASTER 1 and MASTER 2 (Pioneer manual p.27) and stays on its
+ * REC mark, so the MASTER meters, which read after it (p.31), show the mix. The room's volume comes from
+ * the amps' gain knobs, never above the RIG marks that S6 finds. Both attenuators are UTILITY settings
+ * (p.32), written on the REC tape at setup (S1, S3). Pioneer does not say which sockets MASTER ATT
+ * reaches: T2 finds out on the kit, and the drills never count on it turning the room down.
+ *
+ * A drill that opens on a light closes on it: after its last change, a step looks at that light again,
+ * and goes back to the start if it is still lit. The tests walk every path to make sure.
  *
  * Facts come from the documents in sources.ts, with page numbers in the comments:
  * - Pioneer, XDJ-RX2 Operating Instructions (DRI1479A) and Quick Start Guide (DRH1447A);
@@ -182,14 +185,14 @@ export const SAY_TO = 'Say to the DJ:';
  */
 const ROOM_MAY_DROP = 'The room may go quieter for a few seconds. Keep your levels as they are.';
 
-/** At the RIG marks, the amps have no more to give: S4 found the highest click with both CLIP lights dark. */
+/** At the RIG marks, the amps have no more to give: S6 set them where each amp starts to clip. */
 const RIG_LIMIT = 'That is the room’s limit.';
 
 /**
- * F1's first step that turns the recording down: the words to the DJ, then MASTER ATT. F6 sends the crew
- * there when the DriveRack clips on its +4 dBu setting.
+ * Said to the DJ after MASTER LEVEL comes down: the MASTER meters read after it (Pioneer p.31), so they
+ * now read low, and the channel meters are the rule to go by.
  */
-export const F1_TURN_DOWN = 2;
+const METERS_READ_LOW = `The MASTER meters now read low. ${CHANNEL_METERS_WORDS}`;
 
 export const FIXES: Fix[] = [
   // ---- In the booth, on the night ----------------------------------------------------------------
@@ -215,16 +218,16 @@ export const FIXES: Fix[] = [
         challenge: 'MASTER meters',
         response: 'below red',
         choose: [
-          { finding: 'Red', say: FADER_DOWN, end: true },
+          { finding: 'Red', say: FADER_DOWN, next: 6 },
           { finding: 'Below red', next: 2 },
         ],
       },
       { say: ROOM_MAY_DROP },
-      { if: 'If the REC tape says MASTER ATT does not reach the Howler (T2)', next: 5 },
       {
-        do: 'Look at MASTER ATT in UTILITY.',
+        do: 'Look at the REC tape, then at MASTER ATT in UTILITY.',
         note: OPEN_UTILITY,
         choose: [
+          { finding: 'Not used, on the REC tape', next: 4 },
           {
             finding: '0 dB',
             action: 'Set it to −6 dB. Press the rotary selector. The changed settings are stored.',
@@ -235,16 +238,28 @@ export const FIXES: Fix[] = [
             action: 'Set it to −12 dB. Press the rotary selector. The changed settings are stored.',
             next: 6,
           },
-          { finding: '−12 dB', next: 5 },
+          { finding: '−12 dB', next: 4 },
         ],
       },
       { before: LEVEL_FALLBACK.consequence, challenge: LEVEL_FALLBACK.challenge, response: LEVEL_FALLBACK.response },
+      { say: METERS_READ_LOW },
       {
-        if: 'If the room went quieter',
-        action: 'turn the four amp gain knobs back up, no higher than the RIG marks.',
+        challenge: 'Howler LEVEL light',
+        response: 'blinking green at the next loud part',
+        choose: [
+          {
+            finding: 'Blinking green',
+            action: 'If step 3 or 4 made the room quieter, turn the amps back up, no higher than the RIG marks.',
+            next: 7,
+          },
+          { finding: 'Red', next: 1 },
+        ],
       },
     ],
-    later: { when: 'At the changeover', steps: [{ challenge: 'REC tape', response: 're-marked' }] },
+    later: {
+      when: 'At the changeover',
+      steps: [{ if: 'If step 3 or 4 changed a setting', action: 'bring the REC tape up to date.' }],
+    },
     why: 'If the MASTER meters are below red, a red LEVEL light means the recording level is too high. Pioneer does not say which sockets MASTER ATT reaches: T2 finds out.',
     see: '#two-ceilings',
   },
@@ -259,6 +274,14 @@ export const FIXES: Fix[] = [
     objective: 'Stop the channel clipping.',
     steps: [
       { say: 'Your channel meter is in the red. Turn TRIM down a little.' },
+      {
+        challenge: 'Channel meter',
+        response: 'red dark at the loudest part',
+        choose: [
+          { finding: 'Red dark', next: 3 },
+          { finding: 'Red', next: 1 },
+        ],
+      },
       { if: 'If the DJ wants it louder', next: 'not-loud' },
     ],
     why: 'Pioneer says that when a channel meter lights red, “the sound may be distorted” (p. 31).',
@@ -277,22 +300,30 @@ export const FIXES: Fix[] = [
     steps: [
       { say: FADER_DOWN },
       {
+        challenge: 'CLIP light',
+        response: 'dark',
+        choose: [
+          { finding: 'Dark', next: 3 },
+          { finding: 'Blinking', next: 1 },
+        ],
+      },
+      {
         if: 'If it blinks on every blend',
         action: 'say to the DJ between tracks:',
         // On every blend, the channels are hot: two on the first orange stay under the top orange.
         say: `${MASTER_METERS_WORDS} ${CHANNEL_METERS_WORDS}`,
       },
     ],
-    why: 'Pioneer: CLIP blinks slowly when the sound is about to be distorted, and fast when it is distorted (p. 27). With MASTER LEVEL fully up, only the DJ’s faders and TRIMs bring the mix down.',
+    why: 'Pioneer: CLIP blinks slowly when the sound is about to be distorted, and fast when it is distorted (p. 27). With MASTER LEVEL on its REC mark, only the DJ’s faders and TRIMs bring the mix down.',
     see: '#meters',
   },
   {
     // QSC GX manual: gain controls CH1 and CH2 on the front, marked in dB of attenuation (p.5), with 21 detents
     // (p.11). Red CLIP LEDs flash when the amp is overdriven, and heavy overdrive makes it turn itself down (p.5).
     // dbx sets the limiters "based on where you have set your amplifier attenuators" (p.44), and raising them past
-    // that point "will cause the amplifiers to clip" (p.22). dbx doesn't say which GX7 gain the wizard assumes, so
-    // S4 finds the RIG marks: the highest click with both CLIP lights dark on the loudest blend. The loop ends in
-    // step 1: on the RIG marks, or at the first red CLIP light.
+    // that point "will cause the amplifiers to clip" (p.22). S6 finds the RIG marks by dbx's own procedure, with
+    // the speakers disconnected (pp.19–21). The limit is checked before any knob moves: the loop ends in step 1,
+    // on the RIG marks, or in step 3, at the first red CLIP light.
     id: 'not-loud',
     code: 'F4',
     where: 'booth',
@@ -302,20 +333,23 @@ export const FIXES: Fix[] = [
     steps: [
       {
         challenge: 'Amp gain knobs',
-        response: 'one click up, all four',
+        response: 'below the RIG marks',
         note: 'Each GX7 has two, CH1 and CH2, on the front. The RIG marks are as high as they go.',
         choose: [
-          { finding: 'Already on the RIG marks', say: RIG_LIMIT, end: true },
-          {
-            finding: 'A red CLIP light on either amp',
-            action: 'Turn all four back one click.',
-            say: RIG_LIMIT,
-            end: true,
-          },
-          { finding: 'Neither', next: 2 },
+          { finding: 'On the RIG marks', say: RIG_LIMIT, end: true },
+          { finding: 'Below them', next: 2 },
         ],
       },
-      { to: 'After a few bars, ask the DJ:', say: 'Is that loud enough?' },
+      { challenge: 'Amp gain knobs', response: 'one click up, all four' },
+      {
+        challenge: 'Both amps’ CLIP lights',
+        response: 'dark, after a few bars',
+        choose: [
+          { finding: 'A red CLIP light', action: 'Turn all four back one click.', say: RIG_LIMIT, end: true },
+          { finding: 'Dark', next: 4 },
+        ],
+      },
+      { to: 'Ask the DJ:', say: 'Is that loud enough?' },
       { if: 'If the DJ still wants it louder', next: 1 },
     ],
     why: 'The amps feed only the speakers. Turning them up never reaches the recording.',
@@ -347,7 +381,8 @@ export const FIXES: Fix[] = [
     seeAt: '#myth-limiter',
   },
   {
-    // dbx manual p.5: the input CLIP LEDs light when the inputs are overdriven; reduce the mixer's output. On
+    // dbx manual p.5: the input CLIP LEDs light when the inputs are overdriven, and "you will need to reduce the
+    // output" of the mixer; they "remain lit for a short period of time" after a peak, hence the minute. On
     // −10 dBV a +4 dBu source lights them early (0 dBFS at about +9.9 dBu, not +19.9 dBu): set the switch to
     // +4 dBu, muting the outputs first. p.7: the switch is recessed, "+4dBu option (switch out)", "-10dBV option
     // (switch in)", reached with "an object with a pointy tip, such as a pen". p.5: each output MUTE button's state
@@ -363,12 +398,14 @@ export const FIXES: Fix[] = [
     light: 'driverack-clip',
     objective: 'Stop the DriveRack’s input clipping.',
     steps: [
+      { say: FADER_DOWN },
       {
-        challenge: 'MASTER meters',
-        response: 'below red',
+        challenge: 'DriveRack input CLIP lights',
+        response: 'dark, a minute later',
+        note: 'They stay lit for a moment after each peak (dbx p. 5).',
         choose: [
-          { finding: 'Red', say: FADER_DOWN, end: true },
-          { finding: 'Below red', next: 2 },
+          { finding: 'Dark', next: 3 },
+          { finding: 'Lit', next: 1 },
         ],
       },
       {
@@ -376,8 +413,8 @@ export const FIXES: Fix[] = [
         response: '+4 dBu',
         note: 'Out is +4 dBu. Pushed in is −10 dBV.',
         choose: [
-          { finding: '+4 dBu', next: { drill: 'howler-red', step: F1_TURN_DOWN } },
-          { finding: '−10 dBV', next: 3 },
+          { finding: '+4 dBu', end: true },
+          { finding: '−10 dBV', next: 4 },
         ],
       },
     ],
@@ -385,9 +422,9 @@ export const FIXES: Fix[] = [
       when: 'At the changeover',
       steps: [
         {
-          before: 'The room goes silent until step 5.',
+          before: 'The room goes silent until step 6.',
           challenge: 'DriveRack outputs',
-          response: 'every MUTE button on',
+          response: 'every MUTE button on, any lit ones noted',
         },
         {
           challenge: 'DriveRack input switch',
@@ -395,8 +432,8 @@ export const FIXES: Fix[] = [
           note: 'It sits deep in the panel: a pen tip reaches it.',
         },
         {
-          challenge: 'DriveRack outputs',
-          response: 'every MUTE button off',
+          challenge: 'DriveRack MUTE buttons',
+          response: 'off, except any noted in step 4',
           note: 'A MUTE button left on stays on, even after the power goes off and on.',
         },
         { if: 'If the room is now too quiet', next: 'not-loud' },
@@ -456,7 +493,7 @@ export const FIXES: Fix[] = [
       when: 'When the power is back',
       steps: [
         { challenge: 'XDJ-RX2 and DriveRack', response: 'switched on' },
-        { challenge: 'MASTER LEVEL', response: 'fully up, on the REC mark' },
+        { challenge: 'MASTER LEVEL', response: 'on the REC mark' },
         { challenge: 'MASTER ATT and BOOTH ATT', response: 'as on the REC tape', note: ATT_NOTE },
         { challenge: 'Both amps', response: 'switched on last, with no track playing' },
       ],
@@ -480,19 +517,24 @@ export const FIXES: Fix[] = [
     objective: 'Find where the crunch came in, and who can stop it.',
     steps: [
       {
+        challenge: 'File',
+        response: 'the copy kept as the Howler wrote it',
+        note: 'Turning a file up moves the top of the file, and any flat tops with it.',
+      },
+      {
         do: 'Zoom in on a loud part that crunches.',
         note: 'In the file, flat tops can ripple or lean a little.',
         choose: [
           {
             finding: 'Flat tops at the top of the file',
             action:
-              'The Howler clipped, and the mixer may have clipped too. Set the recording level again with S3 before the next event.',
+              'The Howler most likely clipped, and the mixer may have clipped too. Set the recording level again with S3 before the next event.',
             end: true,
           },
-          { finding: 'Flat tops lower down', next: 2 },
+          { finding: 'Flat tops lower down', next: 3 },
           {
             finding: 'No flat tops',
-            action: 'Listen to the track on its own. It may be distorted itself.',
+            action: 'Listen to the track on its own. It may be distorted itself, or an effect may have been on.',
             end: true,
           },
         ],
@@ -501,7 +543,7 @@ export const FIXES: Fix[] = [
         do: 'Find where it crunches in the set.',
         choose: [
           { finding: 'On the blends', to: 'Tell that DJ:', say: MASTER_METERS_WORDS, end: true },
-          { finding: 'All through one track', next: 3 },
+          { finding: 'All through one track', next: 4 },
         ],
       },
       {

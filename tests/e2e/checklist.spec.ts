@@ -93,11 +93,13 @@ test.describe('the night page', () => {
     await expect(step).toContainText(
       'Say to the DJ: “The room may go quieter for a few seconds. Keep your levels as they are.”',
     );
-    // A rig where T2 found MASTER ATT misses MASTER 2 goes straight to the last resort.
-    await expect(page.locator('#fix-howler-red-step-3')).toContainText(
-      'If the REC tape says MASTER ATT does not reach the Howler (T2), go to step 5.',
-    );
-    await expect(page.locator('#fix-howler-red-step-4')).toContainText('Look at MASTER ATT in UTILITY.');
+    // One look at the tape and at MASTER ATT: a rig where T2 found MASTER ATT is not to be used goes straight to
+    // the last resort.
+    const look = page.locator('#fix-howler-red-step-3');
+    await expect(look).toContainText('Look at the REC tape, then at MASTER ATT in UTILITY.');
+    await expect(look).toContainText('Not used, on the REC tape');
+    // Every way through ends by looking at the Howler's light again.
+    await expect(page.locator('#fix-howler-red-step-6')).toContainText('Howler LEVEL light');
     await expect(nav.getByRole('link', { name: named('F', 'Something’s wrong') })).toHaveAttribute(
       'aria-current',
       'location',

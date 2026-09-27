@@ -2,10 +2,11 @@
  * The knob tags crew stick on the gear, in one place, so the printed tags and the setup page's
  * wiring table say the same thing.
  *
- * One wiring: MASTER LEVEL sets MASTER 1 (the PA) and MASTER 2 (the Howler) together, so it stays
- * fully up and carries REC. BOOTH MONITOR sets only the booth monitors, so it's the DJ's: MONITOR.
- * The room's volume comes from the amps' gain knobs, no higher than the RIG marks: the lines S4 draws
- * on the RIG tape at each knob's highest click with both amps' CLIP lights dark on the loudest blend.
+ * One wiring: MASTER LEVEL sets MASTER 1 (the PA) and MASTER 2 (the Howler) together, so it stays on
+ * its REC mark and carries REC. The mark is at fully up unless T3 or S3 moved it. BOOTH MONITOR sets
+ * only the booth monitors, so it's the DJ's: MONITOR. The room's volume comes from the amps' gain
+ * knobs, no higher than the RIG marks: the lines S6 draws on the RIG tape where each amp starts to
+ * clip on pink noise, with the speakers disconnected (dbx pp. 19–21).
  *
  * A short tag is a word and whose it is, in one form for all three: "crew" or "yours". The long tag
  * under MASTER LEVEL leads with what to do, as a label a hand already on the knob reads first.
@@ -46,14 +47,14 @@ export const MONITOR_TAG: ShortTag = {
 
 /**
  * On the amps: the room's volume, turned up by the crew when a DJ asks, no higher than the RIG marks.
- * The marks are the lines drawn across each gain knob onto this tape in S4, so the tape says what
+ * The marks are the lines drawn across each gain knob onto this tape in S6, so the tape says what
  * they are for.
  */
 export const RIG_TAG: ShortTag = {
   name: 'RIG',
   owner: 'crew',
   rule: 'No higher than the marks',
-  where: 'On both amps, beside the gain knobs, where S4 draws the RIG marks.',
+  where: 'On both amps, beside the gain knobs, where S6 draws the RIG marks.',
 };
 
 export const SHORT_TAGS: readonly ShortTag[] = [REC_TAG, MONITOR_TAG, RIG_TAG];
@@ -64,7 +65,7 @@ if (!ASK_THE_CREW) throw new Error('The DJ rule for a louder room (RIG) needs it
 
 /** The long tag under MASTER LEVEL: what to do with the knob, what it sets, and who to ask for more. */
 export const MASTER_TAG = {
-  name: 'LEAVE FULLY UP',
+  name: 'LEAVE ON THE REC MARK',
   lines: ['It sets the speakers and the recording.', ASK_THE_CREW],
   /** Printed width in millimetres. */
   width: 90,

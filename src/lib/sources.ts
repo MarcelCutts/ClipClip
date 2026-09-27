@@ -71,7 +71,7 @@ export const SOURCES: SourceGroup[] = [
         title: 'DriveRack PA2 Owner’s Manual',
         publisher: 'dbx',
         url: 'https://dbxpro.com/en-US/product_documents/driverack_pa2_manual_5044138-apdf',
-        note: 'The input switch, input CLIP and TH lights, where the limiters sit and when they are set, amps on last and off first.',
+        note: 'The input switch, input CLIP and TH lights, the crossover’s high-pass, where the limiters sit and when they are set, setting the amps’ gains and limiters with the speakers disconnected (pp. 19–21), amps on last and off first.',
       },
       {
         title: 'DriveRack PA2 speaker and amplifier tunings',
@@ -83,7 +83,19 @@ export const SOURCES: SourceGroup[] = [
         title: 'GX3, GX5 and GX7 user manual',
         publisher: 'QSC',
         url: 'https://www.qscaudio.com/resource-files/productresources/amp/gx/q_amp_gx_usermanual.pdf',
-        note: 'The front-panel gain knobs and CLIP lights, the FULL RANGE switch, current draw, earthing.',
+        note: 'The front-panel gain knobs and CLIP lights, the FULL RANGE switch, current draw, earthing, and the GX7’s 725 W into 8 Ω (p. 11).',
+      },
+      {
+        title: 'Club Series V owner’s manual',
+        publisher: 'Yamaha',
+        url: 'https://usa.yamaha.com/files/download/other_assets/5/335145/s112v_en_om_e0.pdf',
+        note: 'The top speakers’ power capacity, 250 W noise and 500 W programme into 8 Ω (p. 6), and matching an amp to it (p. 3).',
+      },
+      {
+        title: 'EKX passive loudspeakers user manual',
+        publisher: 'Electro-Voice',
+        url: 'https://products.electrovoice.com/binary/EKX_Passive_F01U318953_en.pdf',
+        note: 'The EKX-18S subs: 400 W continuous into 8 Ω, and a recommended high-pass at 30 Hz (p. 23).',
       },
       {
         title: 'Sound System Interconnection (RaneNote 110)',

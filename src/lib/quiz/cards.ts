@@ -57,7 +57,7 @@ const BLEND_ADDS = `${formatDb(KICKS_TOGETHER_DB, { signed: false })}, two light
 
 /** The same two facts on both volume cards, in the same words. */
 const PUSH_CHANNELS = 'Louder channels drive the MASTER meters towards the red.';
-const MASTER_LEVEL = `MASTER LEVEL is taped fully up, marked ${REC_TAG.name}. It sets the speakers and the recording together.`;
+const MASTER_LEVEL = `MASTER LEVEL stays on its ${REC_TAG.name} mark. It sets the speakers and the recording together.`;
 
 export const CARDS: readonly Card[] = [
   {

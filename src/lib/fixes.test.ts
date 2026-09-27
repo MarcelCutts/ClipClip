@@ -13,7 +13,6 @@ import {
   type Branch,
   drill,
   drillAnchor,
-  F1_TURN_DOWN,
   FIXES,
   type Fix,
   isDoStep,
@@ -65,6 +64,52 @@ const jumpsOf = (f: Fix): { from: number; next: Next }[] =>
       .filter((next) => next !== undefined)
       .map((next) => ({ from: i + 1, next })),
   );
+
+/**
+ * Where a step can lead: the steps it jumps to, the next step if it falls through, and "end" for the end
+ * of the drill or a jump to another drill. An "If …" step both jumps (if so) and falls through (if not).
+ */
+function exits(f: Fix, n: number): (number | 'end')[] {
+  const step = stepAt(f, n);
+  if (!step) return ['end'];
+  const fall = n < allSteps(f).length ? n + 1 : 'end';
+  const to = (next: Next | undefined, end?: true): number | 'end' | undefined =>
+    end ? 'end' : next === undefined ? undefined : typeof next === 'number' ? next : 'end';
+  if (isIfStep(step)) return [to(step.next, step.end) ?? fall, fall];
+  const choose = step.choose ?? [];
+  if (!choose.length) return [fall];
+  return choose.map((b) => to(b.next, b.end) ?? fall);
+}
+
+/** Whether the end of the drill can be reached from step n. */
+function canEnd(f: Fix, n: number, seen = new Set<number>()): boolean {
+  if (seen.has(n)) return false;
+  seen.add(n);
+  return exits(f, n).some((e) => e === 'end' || canEnd(f, e, seen));
+}
+
+/** Every path from step 1 to the end, each step visited at most once (a loop back is cut short). */
+function paths(f: Fix): number[][] {
+  const out: number[][] = [];
+  const walk = (n: number, path: number[]) => {
+    if (path.includes(n)) return;
+    const here = [...path, n];
+    for (const e of exits(f, n)) {
+      if (e === 'end') out.push(here);
+      else walk(e, here);
+    }
+  };
+  walk(1, []);
+  return out;
+}
+
+/** The step that looks at a drill's own light again, by the name the step gives it. */
+const RECHECK: Record<string, string> = {
+  'howler-red': 'Howler LEVEL light',
+  'meters-red': 'Channel meter',
+  clip: 'CLIP light',
+  'driverack-clip': 'DriveRack input CLIP lights',
+};
 
 describe('the drills', () => {
   it('have unique ids that are safe in a link (/night/#fix-<id>), and keep the ones other pages link to', () => {
@@ -223,16 +268,16 @@ describe('the drills', () => {
     }
   });
 
-  it('jump only to a step or a drill that exists, and loop only back to a step that ends the loop', () => {
+  it('jump only to a step or a drill that exists, and can always reach an end from any step', () => {
     const ids = new Set(FIXES.map((f) => f.id));
     for (const f of FIXES) {
+      // A loop is fine as long as it has a way out: every step can still reach the end of the drill.
+      for (let n = 1; n <= allSteps(f).length; n++) expect(canEnd(f, n), `${f.id} step ${n}`).toBe(true);
       for (const { from, next } of jumpsOf(f)) {
         if (typeof next === 'number') {
           expect(next, `${f.id} step ${from}`).toBeGreaterThanOrEqual(1);
           expect(next, `${f.id} step ${from}`).toBeLessThanOrEqual(allSteps(f).length);
           expect(next, `${f.id} step ${from}`).not.toBe(from);
-          // A jump back is a loop: the step it returns to has a finding that ends the drill.
-          if (next < from) expect(branchesOf(stepAt(f, next) as Step).some((b) => b.end)).toBe(true);
         } else {
           const id = typeof next === 'string' ? next : next.drill;
           expect(ids.has(id), `${f.id} → ${id}`).toBe(true);
@@ -241,6 +286,28 @@ describe('the drills', () => {
             expect(next.step).toBeGreaterThanOrEqual(1);
             expect(next.step).toBeLessThanOrEqual(allSteps(drill(id)).length);
           }
+        }
+      }
+    }
+  });
+
+  it('close on the light they open on: every path to the end looks at it again after the last change', () => {
+    for (const f of FIXES.filter((f) => f.light)) {
+      const name = RECHECK[f.light ?? ''];
+      const recheck = allSteps(f).findIndex((s) => isLineStep(s) && s.challenge === name) + 1;
+      expect(recheck, `${f.id} has a step that looks at ${name} again`).toBeGreaterThan(0);
+      // Still lit: back to an earlier step, never the end.
+      const again = branchesOf(stepAt(f, recheck) as Step).filter(
+        (b) => typeof b.next === 'number' && b.next < recheck,
+      );
+      expect(again, f.id).toHaveLength(1);
+      for (const path of paths(f)) {
+        expect(path, `${f.id}: ${path.join(' → ')}`).toContain(recheck);
+        // After the last look, nothing changes the level now: only what waits, words for later, or another drill.
+        for (const n of path.slice(path.lastIndexOf(recheck) + 1)) {
+          const s = stepAt(f, n) as Step;
+          const now = !isIfStep(s) && isSayStep(s) && !s.to;
+          expect(now, `${f.id} step ${n} changes the level after the last look`).toBe(false);
         }
       }
     }
@@ -259,8 +326,9 @@ describe('what the drills say', () => {
     const f1 = drill('howler-red');
     const [meters] = f1.steps;
     expect(meters).toMatchObject({ challenge: 'MASTER meters', response: 'below red' });
+    // Red: the DJ's fader first, then the Howler's light again (step 6).
     expect(branchesOf(meters as Step)).toEqual([
-      { finding: 'Red', say: FADER_DOWN, end: true },
+      { finding: 'Red', say: FADER_DOWN, next: 6 },
       { finding: 'Below red', next: 2 },
     ]);
     // Only the LEVEL light is F1's: the BATTERY light is red all the time the Howler charges (MK1 manual).
@@ -269,40 +337,40 @@ describe('what the drills say', () => {
 
   it('tell the DJ the room may go quieter before the recording is turned down', () => {
     const f1 = drill('howler-red');
-    const warned = stepAt(f1, F1_TURN_DOWN);
+    const warned = stepAt(f1, 2);
     // "May": Pioneer does not say whether MASTER ATT reaches MASTER 1, the room's socket (T2 finds out).
     expect(warned && isSayStep(warned) ? warned.say : '').toBe(
       'The room may go quieter for a few seconds. Keep your levels as they are.',
     );
-    // F6 sends the crew to the same place, so the DJ always hears it first.
-    const f6 = branches(drill('driverack-clip')).find((b) => b.finding === '+4 dBu');
-    expect(f6?.next).toEqual({ drill: 'howler-red', step: F1_TURN_DOWN });
+    // F6 has its own loop: a DriveRack clip is never handed to the recording level's steps.
+    for (const { next } of jumpsOf(drill('driverack-clip'))) expect(next).not.toMatchObject({ drill: 'howler-red' });
   });
 
-  it('go straight to the last resort on a rig where T2 found MASTER ATT does not reach MASTER 2', () => {
-    expect(stepAt(drill('howler-red'), 3)).toEqual({
-      if: 'If the REC tape says MASTER ATT does not reach the Howler (T2)',
-      next: 5,
+  it('go straight to the last resort on a rig where T2 found MASTER ATT is not to be used', () => {
+    expect(branchesOf(stepAt(drill('howler-red'), 3) as Step)[0]).toEqual({
+      finding: 'Not used, on the REC tape',
+      next: 4,
     });
   });
 
   it('set MASTER ATT by value, one setting lower than it is, never higher, and store it', () => {
-    const look = stepAt(drill('howler-red'), 4);
-    expect(look && isDoStep(look) ? look.do : '').toBe('Look at MASTER ATT in UTILITY.');
+    const look = stepAt(drill('howler-red'), 3);
+    expect(look && isDoStep(look) ? look.do : '').toBe('Look at the REC tape, then at MASTER ATT in UTILITY.');
     expect(look && !isIfStep(look) ? look.note : '').toBe(OPEN_UTILITY);
     // Pioneer p.31: "Press the rotary selector. The changed settings are stored."
     const store = 'Press the rotary selector. The changed settings are stored.';
     expect(STORE_CHANGE).toContain(`“${store}”`);
     expect(branchesOf(look as Step).map((b) => [b.finding, b.action, b.next])).toEqual([
+      ['Not used, on the REC tape', undefined, 4],
       ['0 dB', `Set it to −6 dB. ${store}`, 6],
       ['−6 dB', `Set it to −12 dB. ${store}`, 6],
-      ['−12 dB', undefined, 5],
+      ['−12 dB', undefined, 4],
     ]);
     expect(all.join(' ')).not.toMatch(/\bstep down\b|down a step|a step lower/i);
   });
 
   it('turn MASTER LEVEL down only as the last resort, with its cost said before the step', () => {
-    const level = stepAt(drill('howler-red'), 5);
+    const level = stepAt(drill('howler-red'), 4);
     expect(level).toEqual({
       before: LEVEL_FALLBACK.consequence,
       challenge: LEVEL_FALLBACK.challenge,
@@ -317,11 +385,19 @@ describe('what the drills say', () => {
 
   it('bring the room back at the amps only if it went quieter, never past the RIG marks', () => {
     const f1 = drill('howler-red');
-    expect(stepAt(f1, 6)).toEqual({
-      if: 'If the room went quieter',
-      action: 'turn the four amp gain knobs back up, no higher than the RIG marks.',
+    // Once the Howler is green again: only a change F1 made brings the amps back up, never the DJ's fader.
+    expect(branchesOf(stepAt(f1, 6) as Step)[0]).toEqual({
+      finding: 'Blinking green',
+      action: 'If step 3 or 4 made the room quieter, turn the amps back up, no higher than the RIG marks.',
+      next: 7,
     });
-    expect(f1.later).toEqual({ when: 'At the changeover', steps: [{ challenge: 'REC tape', response: 're-marked' }] });
+    expect(f1.later).toEqual({
+      when: 'At the changeover',
+      steps: [{ if: 'If step 3 or 4 changed a setting', action: 'bring the REC tape up to date.' }],
+    });
+    // After MASTER LEVEL comes down, the DJ hears that the MASTER meters read low.
+    const told = stepAt(f1, 5);
+    expect(told && isSayStep(told) ? told.say : '').toBe(`The MASTER meters now read low. ${CHANNEL_METERS_WORDS}`);
     // QSC publishes no dB per click, so no card says the knobs move by the same number of clicks.
     expect(all.join(' ')).not.toMatch(/same number of clicks/i);
   });
@@ -349,19 +425,20 @@ describe('what the drills say', () => {
   it('mute every output, flip the DriveRack’s switch at the changeover, then take the room back up at the amps', () => {
     const f6 = drill('driverack-clip');
     // dbx p.7: "+4dBu option (switch out)", "-10dBV option (switch in)".
-    expect(stepAt(f6, 2)).toMatchObject({
+    expect(stepAt(f6, 3)).toMatchObject({
       challenge: 'DriveRack input switch, on the back',
       response: '+4 dBu',
       note: 'Out is +4 dBu. Pushed in is −10 dBV.',
     });
     expect(f6.later?.when).toBe('At the changeover');
     const later = f6.later?.steps ?? [];
+    // A MUTE button that was lit before stays lit: the drill puts the outputs back as they were.
     expect(later.filter(isLineStep).map((s) => `${s.challenge} ${s.response}`)).toEqual([
-      'DriveRack outputs every MUTE button on',
+      'DriveRack outputs every MUTE button on, any lit ones noted',
       'DriveRack input switch +4 dBu, out',
-      'DriveRack outputs every MUTE button off',
+      'DriveRack MUTE buttons off, except any noted in step 4',
     ]);
-    expect(later[0]?.before).toBe('The room goes silent until step 5.');
+    expect(later[0]?.before).toBe('The room goes silent until step 6.');
     // dbx p.5: a MUTE button's state is kept through a power cycle.
     expect(later.filter(isLineStep).at(-1)?.note).toMatch(/stays on, even after the power goes off and on\.$/);
     expect(later.at(-1)).toMatchObject({ if: 'If the room is now too quiet', next: 'not-loud' });
@@ -385,7 +462,7 @@ describe('what the drills say', () => {
     expect(drill('no-louder').steps[0]).toEqual({ say: CHANNEL_METERS_WORDS });
     // The MASTER meters' rule, "top orange dark", between tracks (F3) and after a set (F9).
     expect(DJ_RULES[1]?.response).toBe('top orange dark');
-    const f3 = drill('clip').steps[1];
+    const f3 = drill('clip').steps[2];
     expect(f3 && isIfStep(f3) ? f3.say : '').toBe(`${MASTER_METERS_WORDS} ${CHANNEL_METERS_WORDS}`);
     expect(branches(drill('crunch')).find((b) => b.finding === 'On the blends')?.say).toBe(MASTER_METERS_WORDS);
     expect(all.join(' ')).not.toMatch(/first or second orange|below red in a blend/);
@@ -401,9 +478,12 @@ describe('what the drills say', () => {
 
   it('take the room up at the amps, a click at a time, and stop at the RIG marks', () => {
     const f4 = drill('not-loud');
-    expect(f4.steps[0]).toMatchObject({ challenge: 'Amp gain knobs', response: 'one click up, all four' });
-    const ends = branchesOf(f4.steps[0] as Step).filter((b) => b.end);
-    expect(ends.map((b) => b.finding)).toEqual(['Already on the RIG marks', 'A red CLIP light on either amp']);
+    // The limit is looked at before any knob moves.
+    expect(f4.steps[0]).toMatchObject({ challenge: 'Amp gain knobs', response: 'below the RIG marks' });
+    expect(f4.steps[1]).toMatchObject({ challenge: 'Amp gain knobs', response: 'one click up, all four' });
+    expect(f4.steps[2]).toMatchObject({ challenge: 'Both amps’ CLIP lights', response: 'dark, after a few bars' });
+    const ends = branches(f4).filter((b) => b.end);
+    expect(ends.map((b) => b.finding)).toEqual(['On the RIG marks', 'A red CLIP light']);
     // At the marks, the crew tell the DJ this is the room's limit.
     for (const b of ends) expect(b.say).toBe('That is the room’s limit.');
     expect(f4.steps.at(-1)).toEqual({ if: 'If the DJ still wants it louder', next: 1 });
@@ -429,7 +509,9 @@ describe('what the drills say', () => {
   });
 
   it('find a recording’s crunch by where its flat tops sit, without blaming the DJ for the track', () => {
-    const [look, where, track] = drill('crunch').steps;
+    const [file, look, where, track] = drill('crunch').steps;
+    // Turning a file up moves its top: the flat tops are read on the copy the Howler wrote.
+    expect(file).toMatchObject({ challenge: 'File', response: 'the copy kept as the Howler wrote it' });
     // After the converters a clipped top ripples and leans.
     expect(look && !isIfStep(look) ? look.note : '').toBe('In the file, flat tops can ripple or lean a little.');
     expect(branchesOf(look as Step).map((b) => b.finding)).toEqual([
@@ -438,10 +520,12 @@ describe('what the drills say', () => {
       'No flat tops',
     ]);
     // The Howler clipping can hide the mixer clipping under it.
-    expect(branchesOf(look as Step)[0]?.action).toMatch(/^The Howler clipped, and the mixer may have clipped too\./);
+    expect(branchesOf(look as Step)[0]?.action).toMatch(
+      /^The Howler most likely clipped, and the mixer may have clipped too\./,
+    );
     expect(branchesOf(where as Step)).toEqual([
       { finding: 'On the blends', to: 'Tell that DJ:', say: MASTER_METERS_WORDS, end: true },
-      { finding: 'All through one track', next: 3 },
+      { finding: 'All through one track', next: 4 },
     ]);
     // A track can be clipped in its own mastering: the crew look at its file before they tell the DJ.
     expect(track && isDoStep(track) ? track.do : '').toBe('Zoom in on the same part of the track’s own file.');

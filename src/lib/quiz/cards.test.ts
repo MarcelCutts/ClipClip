@@ -193,8 +193,8 @@ describe('the volume cards agree with the knob tags', () => {
       expect(choice(id, 'channels')?.feedback).toMatch(/^Louder channels drive the MASTER meters towards the red\. /);
     }
     expect(choice('room', 'master')?.feedback).toBe(choice('monitor', 'master')?.feedback);
-    // MASTER LEVEL carries the REC tag: it sets the speakers and the recording.
-    expect(choice('room', 'master')?.feedback).toContain(`marked ${REC_TAG.name}`);
+    // MASTER LEVEL stays on its REC mark: it sets the speakers and the recording.
+    expect(choice('room', 'master')?.feedback).toContain(`stays on its ${REC_TAG.name} mark`);
     expect(choice('room', 'master')?.feedback).toMatch(/speakers and the recording/);
   });
 

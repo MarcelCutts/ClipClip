@@ -12,7 +12,8 @@ const words = [
 
 describe('knob tags', () => {
   it('lead the MASTER LEVEL tag with what to do', () => {
-    expect(MASTER_TAG.name).toBe('LEAVE FULLY UP');
+    // Where the crew left it: the REC mark sits at fully up unless T3 or S3 moved it.
+    expect(MASTER_TAG.name).toBe('LEAVE ON THE REC MARK');
     expect(MASTER_TAG.lines[0]).toBe('It sets the speakers and the recording.');
   });
 
@@ -35,7 +36,8 @@ describe('knob tags', () => {
 
   it('mark the RIG tape as the amps’ limit: the knobs go no higher than the RIG marks', () => {
     expect(RIG_TAG.rule).toBe('No higher than the marks');
-    expect(RIG_TAG.where).toMatch(/\bS4\b draws the RIG marks/);
+    // S6 draws them once, by dbx's procedure with the speakers disconnected.
+    expect(RIG_TAG.where).toMatch(/\bS6\b draws the RIG marks/);
     // The others carry no rule: REC has its blanks, and MONITOR is the DJ's to turn.
     expect(SHORT_TAGS.filter((t) => t.rule)).toEqual([RIG_TAG]);
   });

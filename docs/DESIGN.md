@@ -103,9 +103,10 @@ The register is a reference guide's: an equipment manual, a quick reference hand
 **Purpose.** Every section and every line serves a named reader and does one job for them: a decision, an action, a fact, or the reason behind a rule. Each thing is said once, where that reader needs it. The core message has one wording: "If you turn the recording down, the crunch gets quieter. It does not go away." Gaps in what the makers publish are stated once, in the guide's makers-and-assumptions section, and inline only where they change what someone does.
 
 **Doing text** (know-by-heart boxes, checklists, drills, procedures, cards and tags):
-- A line is the printed name, leader dots, and the state you can see: "MASTER LEVEL …… fully up, on the REC mark". Never "check", "set" or "as required". The action goes in the note, as one sentence: "If …, …".
+- A line is the printed name, leader dots, and the state you can see: "MASTER LEVEL …… on the REC mark". Never "check", "set" or "as required". What to do if the line isn't so goes in its note, as one sentence: "If …, …".
 - A know-by-heart box has three lines at most.
-- One instruction per step, as a command, with the condition first. Say a consequence or an irreversible action in a plain sentence before its step. Notes carry information, never instructions.
+- One instruction per step, as a command, with the condition first. Say a consequence or an irreversible action in a plain sentence before its step. A note carries facts, and at most its own line's remedy ("If …, …"). Any other action gets a line of its own: a reader who skips the note must still end in the right state.
+- A drill that opens on a light closes on it: after its last change, a step looks at that light again, and goes back to the start if it is still lit. A path that ends while the light is still lit is a bug, and the tests walk every path to catch one.
 - Drill branches ("Choose one") are the outcomes you can see at that step, and each ends in the end mark or a Go to. Give values, not "down a step", and the exact words to say to the DJ.
 - Cards are read-and-do, written for one person working alone.
 - "Warning." is only for injury (mains earth, hearing). There's no "Caution".

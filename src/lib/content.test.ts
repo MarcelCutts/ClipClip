@@ -84,7 +84,10 @@ describe('content guards', () => {
 
   it('keeps the room’s volume at the amps, no higher than the RIG marks', () => {
     const crew = CREW_RULES.find((r) => r.challenge === 'MASTER LEVEL');
-    expect(crew?.response).toBe('fully up, on the REC mark');
+    // The REC mark is at fully up unless T3 or S3 moved it: the lines say where it is, never "fully up".
+    expect(crew?.response).toBe('on the REC mark');
+    expect(DJ_RULES.find((r) => r.challenge === 'MASTER LEVEL')?.response).toBe('leave it on the REC mark');
+    expect(JSON.stringify({ DJ_RULES, CREW_RULES })).not.toMatch(/fully up/);
     expect(crew?.note).toBe('If a DJ wants a louder room, turn up the amps, no higher than the RIG marks.');
   });
 

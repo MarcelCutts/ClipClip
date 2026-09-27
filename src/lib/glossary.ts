@@ -80,7 +80,7 @@ export const GLOSSARY = {
   },
   masterLevel: {
     term: 'MASTER LEVEL',
-    gloss: 'Sets the speakers and the recording together. Taped fully up and marked REC.',
+    gloss: 'Sets the speakers and the recording together. It stays on the REC mark.',
   },
   masterMeters: {
     term: 'MASTER meters',
