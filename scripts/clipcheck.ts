@@ -1,6 +1,6 @@
-// Checks WAV recordings for clipping: the recorder overloading, and flat tops from something earlier
-// in the chain, such as the mixer past its red. Reads files of any length a piece at a time. See
-// src/lib/clipcheck/analyse.ts for how it decides.
+// Checks WAV recordings for clipping: runs of samples at the file's peak, where the recorder clipped,
+// and flat tops piled up at one level, from something earlier in the chain such as the mixer past its
+// red. Reads files of any length a piece at a time. See src/lib/clipcheck/analyse.ts for how it decides.
 //
 //   pnpm clipcheck "/Volumes/HOWLER/Howler recordings/"*.WAV
 //   pnpm clipcheck set.wav --minutes    # every minute with a mark, not just the worst
@@ -21,7 +21,7 @@ if (files.length === 0 || args.includes('--help')) {
   process.exit(files.length === 0 && !args.includes('--help') ? 1 : 0);
 }
 
-/** Events kept in the JSON output, per kind. The counts always cover everything. */
+/** Examples kept for the JSON output, of each kind. The counts always cover everything. */
 const JSON_EVENTS = 500;
 const FRAMES_PER_READ = 1 << 16;
 
@@ -40,7 +40,7 @@ for (const path of files) {
       return bytes.subarray(0, bytesRead);
     };
     const info = await readWavInfo(read, size);
-    const check = new ClipCheck(info.sampleRate, info.channels);
+    const check = new ClipCheck(info.sampleRate, info.channels, { maxEvents: JSON_EVENTS });
     const chunk = new Uint8Array(FRAMES_PER_READ * info.blockAlign);
     let samples: Float32Array | undefined;
     let shown = -1;
@@ -61,15 +61,7 @@ for (const path of files) {
     if (process.stderr.isTTY) process.stderr.write('\r\x1b[K');
     const result = check.finish();
     if (asJson) {
-      const { overloads, flatTops, ...rest } = result;
-      const trimmed = {
-        file: path,
-        info,
-        ...rest,
-        overloads: { ...overloads, events: overloads.events.slice(0, JSON_EVENTS) },
-        flatTops: { ...flatTops, events: flatTops.events.slice(0, JSON_EVENTS) },
-      };
-      console.log(JSON.stringify(trimmed, null, 2));
+      console.log(JSON.stringify({ file: path, info, ...result }, null, 2));
     } else {
       console.log(`${formatReport(name, info, result, { allMinutes })}\n`);
     }

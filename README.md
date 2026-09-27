@@ -109,24 +109,42 @@ These are simulations, with EQ shapes Pioneer does not publish, and sample peaks
 
 ## Checking a recording for clipping
 
-`pnpm clipcheck` reads WAV files and says whether they clipped, where, and at what level. It reads a file a piece at a time, so a whole night off the Howler is fine: the analysis takes a few seconds per hour of audio, and reading the card takes longer than that.
+`pnpm clipcheck` reads WAV files and says whether they clipped, where, and at what level. It reads a file a piece at a time, so a whole night off the Howler is fine: the analysis takes a few seconds per hour of audio, and reading the card takes longer than that. Its counts cover the whole file, however long.
 
 ```sh
 pnpm clipcheck "/Volumes/HOWLER/Howler recordings/"*.WAV
 pnpm clipcheck set.wav --minutes   # every minute with a mark, not just the worst
-pnpm clipcheck set.wav --json      # the findings as JSON
+pnpm clipcheck set.wav --json      # the findings as JSON, with the first 500 of each mark
 ```
 
 It looks for two marks:
 
-- **The recorder overloading:** three or more samples in a row at full scale, the same test as Audacity's Find Clipping.
-- **Clipping before the recorder**, most likely the mixer past its red: flat tops at one level below full scale, again and again. On the way to the recorder the analogue stages tilt the flat tops and add noise, so no two samples are the same, and Audacity's Show Clipping and the SoX or ffmpeg stats read these files as clean. The check smooths out the converters' ringing, fits a straight line to the middle of each top, pairs each flat top with its neighbour on the other side of the wave to cancel the drift, and looks for a pile of them at the top of the file.
+- **Runs at the file's peak:** three or more samples in a row at the file's own highest or lowest value. In the file as the Howler wrote it, that is full scale, and the Howler's input clipped. A copy normalised afterwards keeps the runs at its new peak, and the check still finds them there. Audacity's Find Clipping also wants 3 in a row, but only at full scale (within about 0.0003 dB of it), so it misses them in a copy turned down. Clipping that happened before the Howler does not repeat a sample exactly, because the analogue stages add noise. A clean file that peaks just under full scale has no runs either.
+- **Flat tops piled up at one level, below full scale**, from something before the Howler, such as the mixer past its red. On the way to the recorder the analogue stages tilt the flat tops and add noise, so no two samples are the same, and Audacity's Show Clipping and the SoX or ffmpeg stats read these files as clean. The check smooths out the converters' ringing, fits a straight line to the middle of each top, and pairs each flat top with its neighbour on the other side of the wave to cancel the drift. Then it looks for a pile: at least 8 flat tops within 0.5 dB, 3 times as dense as in the 2 dB below. A pile at the file's loudest level is where a ceiling in the rig shows. A pile further down, such as a channel in the red with its fader down, must also hold a third of all the flat tops, and counts only those at the loudest level of the 2 seconds before them. Released tracks often have flat tops of their own, from their mastering or from one sound under louder drums, each at the level the track was played.
 
-It also gives the file's levels against the guide's target (`TARGET` in `src/lib/model.ts`), and the minutes to listen to.
+The report says what the file shows, then what that means for the rig if the file is as the Howler wrote it, and which drill on the site to follow. It also gives the file's levels against the guide's target (`TARGET` in `src/lib/model.ts`), and the minutes to listen to.
 
-What it can't do: tell a track that was mastered with flat tops from the mixer when both sit at the top of the file in one stretch (the report says so and gives the times to listen); find very light clipping (in tests with real tracks it finds clipping once the loudest moments go about 2 dB past the mixer's ceiling); or find clipping that the mixer rounds off instead of flattening. The Howler MK1 splits a night into files of about 3.5 hours (4 GB), so check them all, and don't trust the MK1's file dates.
+What it cannot do: tell a track with flat tops of its own from a channel or the mixer in the red, when either sits at one level (the report names both, and F9 on the Crew page compares the track's own file); find light clipping (see the table below); find clipping that the mixer rounds off instead of flattening; or find a pile below the loudest level that is a small part of a long file's flat tops. A copy saved with dither keeps only some of the runs, so check the file as the Howler wrote it. The Howler MK1 splits a night into files of about 3.5 hours (4 GB), so check them all, and do not trust the MK1's file dates.
 
-The code is in `src/lib/clipcheck/` and has no dependencies, so a page on the site could use it too. Its tests build recordings from the site's synth and pass them through a model of the analogue stages.
+The code is in `src/lib/clipcheck/` and has no dependencies, so a page on the site could use it too.
+
+### How well it finds clipping
+
+The tests build recordings from the site's synth and pass them through a model of the analogue stages (`src/lib/clipcheck/analogue.ts`: AC coupling, the converters' filters, noise, and 24-bit samples that stop at full scale). `scripts/clipcheck-calibrate.ts` does the same with real music. It takes 90 seconds from the middle of each track, plays them into sets the way the guide says (each track TRIMmed to the first orange, give or take 1.5 dB, with 8-second blends where both faders are up, and the mixer's red at −6 dBFS in the file), and checks the sets clean and clipped. Track orders, levels and noise come from fixed seeds. On 10 released dance tracks, which are not in the repo, it found:
+
+| Found, by dB past the ceiling | 0.5 | 1 | 2 | 3 | 4 | 6 |
+| --- | --- | --- | --- | --- | --- | --- |
+| The master in the red (3 sets) | 0/3 | 0/3 | 1/3 | 3/3 | 3/3 | 3/3 |
+| A channel in the red with its fader 6 dB down, then a louder blend (each track) | 3/10 | 5/10 | 9/10 | 9/10 | 10/10 | 10/10 |
+| The same channel, one track in a clean set (3 sets) | 0/3 | 1/3 | 2/3 | 3/3 | 3/3 | 3/3 |
+| The Howler clipped (3 sets) | 2/3 | 3/3 | 3/3 | 3/3 | 3/3 | 3/3 |
+| The Howler clipped, then normalised to −2 dBFS | 2/3 | 3/3 | 3/3 | 3/3 | 3/3 | 3/3 |
+
+It raised no false alarms on 10 clean sets at the guide's levels, or on the same sets turned up to peak at −1 dBFS. On those sets, the biggest pile below the loudest level held 20% of the flat tops, and a pile there needs a third. To run it on your own tracks (it needs ffmpeg, and 10 tracks take about 15 minutes):
+
+```sh
+node --import ./scripts/resolve-ts.mjs scripts/clipcheck-calibrate.ts ~/Music/some-tracks/
+```
 
 ## How it's built
 
