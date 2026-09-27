@@ -87,9 +87,13 @@ test('the channel fixes crunch made in the mixer, and the recording level fixes 
   await expect(step).toContainText('Step 3 of 3');
   await expect(lab.locator('.howler .led')).toHaveAttribute('data-light', 'red');
   const knob = lab.getByRole('slider', { name: 'Recording level' });
+  // Green at −4 dB stops the overload, but leaves no room for a blend: the title says only that.
   for (let i = 0; i < 4; i++) await knob.press('ArrowLeft');
-  await expect(lab.getByText('Fixed with the recording level', { exact: true })).toBeVisible();
+  await expect(lab.getByText('Overload stopped', { exact: true })).toBeVisible();
   await expect(lab.locator('.howler .led')).toHaveAttribute('data-light', 'green');
+  // With room for a blend, it is fixed.
+  for (let i = 0; i < 5; i++) await knob.press('ArrowLeft');
+  await expect(lab.getByText('Fixed with the recording level', { exact: true })).toBeVisible();
   // The last step: only the way back.
   await expect(lab.locator('.nav').getByRole('button')).toHaveText(['Back']);
 });

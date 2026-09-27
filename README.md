@@ -66,13 +66,42 @@ The writing style is UK English, second person, short sentences, and hardware na
 
 The demos simulate the rig, so a few assumptions are baked in. They live in `src/lib/model.ts` and `src/lib/xdj.ts`, and the site states them where they matter.
 
-- **The meters** copy the XDJ-RX2: twelve LEDs from −24 to +12 dB, green to −3, orange from 0 to +9, red at +12. The channel meters show each channel before its fader; the middle meters show the mix.
+- **The meters** copy the XDJ-RX2: twelve LEDs from −24 to +12 dB, green to −3, orange from 0 to +9, red at +12. The channel meters show each channel before its fader; the MASTER meters show the mix.
 - **Ceiling 1**, inside the mixer, sits at the red light. Pioneer only says red "may" distort and doesn't publish the margin, so the site treats red as the top.
 - **Ceiling 2**, the Howler's input, isn't published anywhere. The demos assume it overloads 6 dB below the mixer's red with MASTER LEVEL fully up. The setup page has a test to find the real point.
 - **Knobs after the mix** (MASTER LEVEL, BOOTH MONITOR) run from off to unity and can't add gain.
 - **Sound** is synthesised in the browser (`src/lib/dsp/synth.ts`): two short 124 BPM loops (drums, a bass line, chord stabs) in the same key and tempo, so every device hears the same thing and nothing needs a licence. Clean and clipped versions are loudness-matched (ITU-R BS.1770 weighting) before any comparison.
+- **Blends** of the synth loops add the full 6 dB, because they share one kick in phase: the worst case. Released tracks add a little less (below), and the rules plan for all 6.
 
 Nothing plays until a button is pressed. Sound starts quietly, fades in, stops when the tab is hidden, and only one demo plays at a time (`src/lib/audio/engine.svelte.ts`).
+
+## How blends and the EQ move a peak
+
+Three things on the site rest on a measurement rather than a maker's document: the guide's 2.4 on how much a blend adds, the blend lab keeping only LOW's boost half, and the fixes that point at a fader rather than a bass swap. `scripts/research/blend-peaks.mjs` runs it on any folder of tracks:
+
+```sh
+node scripts/research/blend-peaks.mjs ~/Music/some-tracks --start 60 --seconds 90
+```
+
+It decodes a stretch of each track with `ffmpeg` into a temp folder (never the repo), scales each to a sample peak of 1, as if every channel meter read the same light, and measures sample peaks throughout. The EQs are RBJ biquads, in a range of shapes, because Pioneer publishes only the range of each knob (LOW at 20 Hz, MID at 1 kHz, HI at 20 kHz). A blend is 60 seconds of two tracks, the second resampled to the first's tempo with its beat grid on the first's and both faders up. The loudest sample of the sum is set against the louder of the two tracks.
+
+On ten released tracks from a DJ's library (90 seconds each, 92 to 173 BPM; not in the repo), with 79 ordered pairs long enough to blend:
+
+| Move on the incoming track | The blend's peak over the louder track |
+|---|---|
+| None | +5.0 dB median (10–90%: 4.2 to 5.4, worst 5.6) |
+| Fader 3 dB down | +3.6 dB (worst 4.3) |
+| Fader 6 dB down | +2.6 dB (worst 3.2) |
+| LOW fully down, shelf from 70 Hz / 150 Hz, or everything under 150 Hz out | +5.1 to +5.4 dB (worst 7.0) |
+| MID fully down | +4.5 dB |
+| HI fully down | +5.0 dB |
+| None, with the incoming track half a beat or a quarter beat late | +5.0 dB |
+
+- A LOW cut makes a blend about 2.4 dB quieter in energy, but not lower in peak: taking a mastered track's lows out raised its own peak on 9 of 10 tracks (median 2.0 dB, up to 2.9), and on 8 of 10 with the same cut run both ways, with no phase shift. The lows are about two thirds of a track's energy, but a mastered track's peak is set across the whole spectrum.
+- +6 dB on one band raised a track's peak by a median 2.4 to 4.9 dB for LOW (depending on where the shelf starts), 2.9 to 4.2 dB for MID and 1.3 to 4.4 dB for HI: any of the three can take a channel up a light or two.
+- Lined-up kicks are not what makes a blend peak: the same blends half or a quarter beat apart peaked just as high, and two in three passed +4 dB within 2 seconds (five in six within 10).
+
+These are simulations, with EQ shapes Pioneer does not publish, and sample peaks, not the XDJ-RX2's meters. The open questions below include a test on the real kit.
 
 ## Share image and chat clip
 
@@ -131,4 +160,5 @@ A few answers change the advice, and only the kit can give them:
 - Do the channel meters read after the EQ, and before the fader? Pioneer doesn't say; only VirtualDJ's layout page does. The setup page's "Check it yourself" tests the fader.
 - Are the amps' RIG marks and limiters set? dbx sets the DriveRack's limiters "based on where you have set your amplifier attenuators", but doesn't say what its wizard assumes for the GX7s. So S6 on the setup page sets them once by dbx's own procedure (pp. 19–21): pink noise, the speakers disconnected, each amp's gain up until its CLIP light comes on, marked, then each limiter down until the lights go out. The top speakers' limiter goes 2 dB lower again, because the GX7 gives more than the Yamahas' programme rating: that margin is our inference from the published figures.
 - Where does the mixer's ceiling land in the Howler's file? Record a test that goes into the red on purpose (setup S3) and run `pnpm clipcheck` on it: the level its flat tops pile up at is the mixer's ceiling as the Howler sees it, which the demos currently assume (`HOWLER_BELOW_RED_DB` in `src/lib/model.ts`).
+- How much hiss does the Howler add? Howler publishes no noise figure, and the guide's 4.3 assumes it is not unusually noisy. Record a minute with the decks stopped at the S3 recording level, normalise it as C4 does, and listen on headphones.
 - Does swapping the LOWs lower a blend's peak on the XDJ-RX2? The site no longer offers it as a fix, because of a simulation on 10 released tracks: a LOW cut made a blend quieter but left its peak where it was, and only a fader brought it down (`LOW` in `src/lib/blend/model.ts`). Pioneer publishes the EQ's range but not its curves, or how fast the meters respond. Record the same blend twice on the Howler, once with both LOWs at 12 o'clock and once with the incoming LOW fully down, and compare the peaks in Audacity's Amplify. Watch the MASTER meters too: if they drop and the file's peak doesn't, the meters are hiding peaks.

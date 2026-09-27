@@ -131,7 +131,7 @@ export function hypercorrectionLine(summary: Summary): string | null {
 export const DEVICE_EXPLANATIONS: Record<Device, string> = {
   phone: 'The crunch sits above the bass, where phone speakers still play. Headphones make it easier to hear.',
   laptop: 'The crunch sits above the bass, where laptop speakers still play. Headphones make it easier to hear.',
-  headphones: 'Headphones play the whole range, up close, with nothing to cover the crunch.',
+  headphones: 'Headphones play the whole range, up close. At home volume, little covers the crunch.',
 };
 
 export const TRY_AGAIN = 'Try again';

@@ -92,10 +92,11 @@ describe('house style', () => {
   });
 
   it('points to the guide’s one home for what the makers leave out, and states the gap only there', () => {
-    // Howler publishes no maximum input level, so ceiling 2 is an assumption (model.ts).
+    // Pioneer says only that red "may" distort, and Howler publishes no maximum input level: both ceilings
+    // are assumptions (model.ts).
     const makers = section('red-top');
     expect(copy.MODEL_NOTE).toEqual({
-      text: 'Ceiling 2 is an assumption.',
+      text: 'Both ceilings are assumptions.',
       link: `See ${makers.number}`,
       href: `#${makers.id}`,
     });
@@ -247,6 +248,9 @@ describe('feedback', () => {
 
   it('says a recording close to the top leaves no headroom for a blend, and ends the lab after step 3', () => {
     expect(copy.successFeedback(3, at(9, -4))!.lines[1]).toMatch(/close to the top/);
+    // A green light with no room for a blend is only the overload stopped, not the job done.
+    expect(copy.successFeedback(3, at(9, -4))!.title).toBe('Overload stopped');
+    expect(copy.successFeedback(3, at(9, -12))!.title).toBe('Fixed with the recording level');
     expect(copy.successFeedback(3, at(9, -12))!.lines).toEqual([
       'The recording level comes before the Howler’s input.',
     ]);

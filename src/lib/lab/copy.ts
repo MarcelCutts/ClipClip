@@ -102,8 +102,10 @@ export function successFeedback(step: Step, r: Reading): Feedback | null {
   }
   if (step === 3) {
     const lines = ['The recording level comes before the Howler’s input.'];
-    if (blendClipsRecording(r)) lines.push('The recording peaks close to the top. A blend would clip it again.');
-    return { title: 'Fixed with the recording level', lines, next: null };
+    // A green light is not yet room for a blend: until there is, the title says only what stopped.
+    const close = blendClipsRecording(r);
+    if (close) lines.push('The recording peaks close to the top. A blend would clip it again.');
+    return { title: close ? 'Overload stopped' : 'Fixed with the recording level', lines, next: null };
   }
   return null;
 }
@@ -221,13 +223,14 @@ export const SOUND = {
 export const NO_SCRIPT = 'The lab needs JavaScript to move.';
 
 /**
- * Howler publishes no maximum input level, so ceiling 2 is an assumption (model.ts). The gap is
- * stated once, in the guide's section on what the makers publish; this line points there.
+ * Both ceilings are assumptions: Pioneer says only that red "may" distort (p. 31), and Howler
+ * publishes no maximum input level (model.ts). The gaps are stated once, in the guide's section on
+ * what the makers publish; this line points there.
  */
 const MAKERS = section('red-top');
 
 export const MODEL_NOTE = {
-  text: 'Ceiling 2 is an assumption.',
+  text: 'Both ceilings are assumptions.',
   link: `See ${MAKERS.number}`,
   href: `#${MAKERS.id}`,
 } as const;

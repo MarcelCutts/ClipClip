@@ -175,6 +175,12 @@ export const SOURCES: SourceGroup[] = [
         note: 'What repair tools can and cannot do.',
       },
       {
+        title: 'A survey and an extensive evaluation of popular audio declipping methods',
+        publisher: 'Záviška, Rajmic, Ozerov and Rencker, IEEE Journal of Selected Topics in Signal Processing, 2021',
+        url: 'https://arxiv.org/abs/2007.07663',
+        note: 'How far repair tools restore clipped audio, measured, and where they fall short.',
+      },
+      {
         title: '32-bit float files explained',
         publisher: 'Sound Devices',
         url: 'https://www.sounddevices.com/32-bit-float-files-explained/',

@@ -509,14 +509,16 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
         note: `Audacity’s Amplify, in the Effect menu, reads it with the whole set selected. Its Amplification box shows how far the peak is below 0 dB: 12 dB means −12 dBFS. If the peak is higher than ${PEAK_TOP}, set the recording level again with S3 before the next event.`,
       },
       {
-        // Audacity's Normalize sets "the peak amplitude", the sample peak; it can't read true peak. BS.1770-5: "the
-        // true-peak value may occur between samples". SoundCloud Help: "If your master is louder than -14 dB
-        // integrated LUFS, make sure it stays below -2 dB TP (True Peak) max to avoid extra distortion." −2 dB on
-        // the samples leaves room for both.
+        // Audacity's Normalize sets "the peak amplitude", the sample peak, and no Audacity tool reads or limits true
+        // peak. BS.1770-5: "the true-peak value may occur between samples". SoundCloud Help asks for true peaks below
+        // −1 dB at −14 LUFS, and below −2 dB for louder masters. Measured with BS.1770 true peak, normalised to
+        // −2 dB: 10 released tracks at −2.04 to −1.31 dB, and 45 blends of them at a median −1.97, worst −0.95; −1 dB
+        // or lower in 54 of 55. Whole sets land around −14 LUFS. So −2 dB meets the −14 LUFS ask, and can miss the
+        // louder one by tenths.
         id: 'normalise',
         check: 'Each set',
         target: 'normalised to −2 dB',
-        note: 'Audacity’s Normalize, in the Effect menu, sets the sample peak. At −2 dB it leaves room for the peaks between samples. SoundCloud asks a master louder than −14 LUFS to stay “below −2 dB TP (True Peak) max”.',
+        note: 'Audacity’s Normalize, in the Effect menu, sets the sample peak. The true peak, between samples, can sit up to about 1 dB higher, and Audacity does not show it. At −2 dB, a set usually meets SoundCloud’s ask for a master at −14 LUFS: true peaks below −1 dB.',
       },
       {
         // Howler MK1 manual: "FAT32 formatted"; on a Mac, Disk Utility's "MS-DOS (FAT)" gives FAT32; on Windows, 64GB+

@@ -96,8 +96,8 @@ const contents: ContentsEntry[] = [
         like a harsh crunch. If you turn the recording down, the crunch gets quieter. It does not go away.
       </p>
       <p>
-        On the night, big speakers, a loud room and tired ears often cover the crunch. On headphones the next day,
-        nothing covers it. Late in the night, trust the meters over your ears.
+        On the night, big speakers, a loud room and tired ears often cover the crunch. On headphones the next day, none
+        of that covers it. Late in the night, trust the meters over your ears.
       </p>
 
       <h3 id="hear">{h('hear')}</h3>
@@ -116,7 +116,7 @@ const contents: ContentsEntry[] = [
           { challenge: 'TRIM, HI, MID and LOW', response: '12 o’clock' },
           { challenge: 'Track', response: 'in your headphones, loudest part playing' },
           { challenge: 'TRIM', response: 'first orange (0)' },
-          { challenge: 'Channel fader', response: 'up' },
+          { challenge: 'Channel fader', response: 'up, when you mix it in' },
         ]}
       >
         <p class="source">
@@ -186,8 +186,9 @@ const contents: ContentsEntry[] = [
       <p>
         Two tracks that each peak on orange can reach red together. When both peak at the same moment, the peaks add.
         Two equal peaks that land together can reach twice the height: up to 6&nbsp;dB more, two lights up the meter.
-        In a blend of a minute or more, both tracks’ loudest moments land together at some point, whether the kicks line
-        up or not. Pioneer’s support team says audio “will either sum or cancel out, depending on the phasing” (<a
+        Peaks land together within seconds of a blend starting, whether the kicks line up or not. We tested 10 released
+        tracks, blended in pairs for a minute: most blends peaked 4 to 5.5 dB above the louder track. Pioneer’s support
+        team says audio “will either sum or cancel out, depending on the phasing” (<a
           href={PIONEER_COMMUNITY_LEVELS}
           rel="external">Pioneer DJ Community</a
         >). Plan for all 6&nbsp;dB.
@@ -285,6 +286,10 @@ const contents: ContentsEntry[] = [
         </li>
         <li>Phones and laptops lose the deep bass but keep its crunch.</li>
       </ul>
+      <p>
+        The first two points come from hearing tests with pure tones. How they add up in a club is our reasoning: we
+        found no study that compares clipping heard in a club with the same clipping on a recording.
+      </p>
 
       <h3 id="undo">{h('undo')}</h3>
       <p>
@@ -293,9 +298,9 @@ const contents: ContentsEntry[] = [
         line.
       </p>
       <p>
-        Repair tools redraw the missing tops by guessing from the wave on either side. That works for a few short clicks.
-        It works less well on long runs of flat tops, dense club mixes, and audio processed after it clipped. Newer AI
-        restorers make a more believable guess. It is still a guess.
+        Repair tools redraw the missing tops by guessing from the wave on either side. They can make brief clipping sound
+        much better. The guess gets worse on long runs of flat tops, dense club mixes, and audio processed after it
+        clipped. It is still a guess.
       </p>
 
       <h3 id="quiet">{h('quiet')}</h3>
@@ -309,7 +314,8 @@ const contents: ContentsEntry[] = [
       </p>
       <p>
         A recording that peaks around {normalPeak}&nbsp;<Term of="dbfs">dBFS</Term> leaves 2 of its 24 bits unused. If
-        it is turned up afterwards, its hiss stays far below anything you would hear under a kick drum.
+        it is turned up afterwards, its hiss comes up with it. Unless the Howler is unusually noisy, that hiss stays far
+        below the music.
       </p>
       <p>
         If you turn a file up, stop at −2&nbsp;dB in Audacity’s Normalize. It measures the samples, and a wave can swing
@@ -414,10 +420,6 @@ const contents: ContentsEntry[] = [
       <p id="model">
         In the demos, clean and clipped versions play at the same measured loudness. The louder one nearly always sounds better at
         first. The waveforms are zoomed in to a few hundredths of a second.
-      </p>
-      <p>
-        The hearing facts in {section('worse').number} are measured. The room’s part is our reasoning: we found no study
-        that compares clipping heard in a club with the same clipping on a recording.
       </p>
     </Part>
 

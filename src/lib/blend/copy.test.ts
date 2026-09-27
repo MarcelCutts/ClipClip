@@ -328,7 +328,7 @@ describe('challenge copy', () => {
 
   it('keeps the two model notes that change what a DJ does, each opening with the action', () => {
     expect(MODEL_NOTES_TITLE).toBe('What the lab assumes');
-    expect(MODEL_NOTES).toHaveLength(4);
+    expect(MODEL_NOTES).toHaveLength(6);
     expect(MODEL_NOTES[0]).toMatch(/^On the unit, watch the MASTER meters as you pull a fader down\. /);
     expect(MODEL_NOTES[1]).toMatch(/^If CLIP blinks/);
   });
@@ -341,9 +341,18 @@ describe('challenge copy', () => {
     expect(MODEL_NOTES.join(' ')).not.toMatch(/does not publish the XDJ-RX2’s fader curve/);
   });
 
+  it('says where the lab clips, and that its loops add the full 6 dB, released tracks less', () => {
+    expect(MODEL_NOTES.map(text)).toContain(
+      'The lab cuts the peaks flat at the red light. Pioneer says only that the sound “may be distorted” there (p. 31).',
+    );
+    expect(text(MODEL_NOTES.at(-1) ?? '')).toBe(
+      'The two tracks are loops made for the lab, with their kicks in step. A blend of them adds the full 6 dB, the worst case.',
+    );
+  });
+
   it('says the lab’s LOW only turns up, and what the unit’s EQ can add', () => {
     // Quick Start Guide, specifications: HI, MID and LOW each −∞ dB to +6 dB.
-    expect(text(MODEL_NOTES.at(-1) ?? '')).toBe(
+    expect(MODEL_NOTES.map(text)).toContain(
       'The lab has one EQ knob, LOW, and only the half that turns it up. On the unit, HI, MID and LOW can each boost by as much as 6 dB.',
     );
   });

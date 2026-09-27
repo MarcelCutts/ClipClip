@@ -66,7 +66,7 @@ export const GUIDE: GuidePart[] = [
       {
         id: 'quiet',
         number: '4.3',
-        title: 'Why a quiet recording loses nothing you can hear',
+        title: 'Why a quiet recording is fine',
         short: 'Why quiet is fine',
       },
       {

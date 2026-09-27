@@ -333,7 +333,9 @@ export const MODEL_NOTES_TITLE = 'What the lab assumes';
 /**
  * The two assumptions that change what a DJ does on the unit, each opening with the action, then
  * the controls the lab leaves out: the crossfader (Pioneer's THRU, manual p. 28), and most of the
- * EQ (model.ts, LOW, says why only the boost half is here). The rest are in the guide's section on
+ * EQ (model.ts, LOW, says why only the boost half is here). Then the lab's own two shortcuts: it
+ * clips flat at the red light, which Pioneer does not say, and its loops add the full 6 dB, where
+ * released tracks add about 5 (model.ts, KICKS_TOGETHER_DB). The rest are in the guide's section on
  * what the makers publish.
  */
 export const MODEL_NOTES: readonly string[] = [
@@ -341,6 +343,8 @@ export const MODEL_NOTES: readonly string[] = [
   `If CLIP blinks, even slowly, pull a channel fader down a little. Pioneer does not say at what level CLIP starts to blink. In this lab it blinks slowly within ${formatDb(CLIP_SLOW_RANGE_DB, { decimals: 1, signed: false })} of the red light, and fast past it.`,
   'The lab has no crossfader. It plays like the unit with CROSS FADER CURVE on THRU, Pioneer’s setting for not using it (p. 28).',
   `The lab has one EQ knob, LOW, and only the half that turns it up. On the unit, HI, MID and LOW can each boost by as much as ${formatDb(LOW.max, { signed: false })}.`,
+  'The lab cuts the peaks flat at the red light. Pioneer says only that the sound “may be distorted” there (p. 31).',
+  `The two tracks are loops made for the lab, with their kicks in step. A blend of them adds the full ${BLEND_ADDS}, the worst case.`,
 ];
 
 /** Plain words for a fader position, for screen readers. Rounds the way the display does. */
