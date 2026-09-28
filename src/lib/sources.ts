@@ -24,7 +24,7 @@ export const SOURCES: SourceGroup[] = [
         title: 'XDJ-RX2 Operating Instructions',
         publisher: 'Pioneer DJ',
         url: 'https://downloads.support.alphatheta.com/manuals/all-in-one-dj-systems/XDJ-RX2/XDJ-RX2_DRI1479A_manual.pdf',
-        note: 'The BOOTH terminals (p. 10), the CLIP light and the printed scales (p. 27), HEADPHONES LEVEL (p. 28), setting TRIM and MASTER LEVEL (p. 31), the UTILITY attenuators and MY SETTINGS (pp. 31–32), the fix for distorted sound (p. 34), settings that are not stored (p. 35).',
+        note: 'The BOOTH terminals (p. 10), MASTER LEVEL, the CLIP light and the printed scales (p. 27), HEADPHONES LEVEL (p. 28), setting TRIM and MASTER LEVEL (p. 31), the UTILITY attenuators and MY SETTINGS (pp. 31–32), the fix for distorted sound (p. 34), settings that are not stored (p. 35).',
       },
       {
         title: 'XDJ-RX2 Quick Start Guide and specifications',

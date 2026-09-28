@@ -1,16 +1,20 @@
 <script lang="ts">
   /**
-   * The Howler's LEVEL light with its state in words, sized for the result strip. Howler's manual:
-   * it blinks green while the level is fine and red when it's too hot. The real light blinks all
-   * the time; this one blinks for under 5 seconds after each change and then stays lit (WCAG
-   * 2.2.2), and with reduced motion it doesn't blink at all. The words say "blinking". Colour is
-   * never the only cue.
+   * The Howler's LEVEL light with its state in words, in the Howler's stage. Howler's manual: it
+   * blinks green while the level is fine and red when it's too hot. The real light blinks all the
+   * time; this one blinks for under 5 seconds after each change and then stays lit (WCAG 2.2.2),
+   * and with reduced motion it doesn't blink at all. The words say "blinking". Colour is never the
+   * only cue.
+   *
+   * What it means is the level at the Howler's input, as a distance from its ceiling: all the light
+   * goes by. It is never "OK": a green light over a crunchy file is the lab's lesson, and "OK" would
+   * read as a verdict on the file.
    */
   interface Props {
     light: 'green' | 'red';
     /** "Blinking green", "Blinking red". */
     state: string;
-    /** "Level OK", "Level too high". */
+    /** "Input 3 dB under its ceiling", "Input at its ceiling", "Input 2 dB over its ceiling". */
     meaning: string;
   }
 
@@ -87,7 +91,8 @@
   }
 
   .meaning {
-    font-size: var(--text-xs);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
     color: var(--hw-label);
   }
 

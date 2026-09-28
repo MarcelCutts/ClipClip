@@ -307,3 +307,56 @@ In "At each end, one bolt" the monitor's bracket hid part of the bolt's washer. 
 - What a DJ does if no crew can be found.
 - The better guides also give a reason the page does not: late in a night your ears mislead you, and the meters do not.
 - Whether Print kit should be a fourth entrance in the header. It would make the header two lines tall on most phones.
+
+## 28 September 2026, late: the Two ceilings lab
+
+### What the owner said
+
+"I think this lab might be busted. make it better ui/ux/educational. i think if it was heavy crunch shouldn't the howler not be green? focus on this and research how to make this educational better." He was looking at step 1 after its result: "Heavy crunch" beside "Howler’s LEVEL light: Blinking green, Level OK".
+
+### What was wrong
+
+The model was right. With a channel 6 dB past the red and the recording level down, the mixer cuts the tops flat and the Howler’s input stays under its ceiling. The page made that read as a fault:
+
+- Two verdicts side by side, neither saying where it was measured: "Heavy crunch" and "Level OK".
+- The light was shown before the question it answers had been asked.
+- The mixer’s screen was folded away, and the screens ran against the sound’s order.
+- Locked controls were drawn as faders that did not move.
+- "Heavy" graded the crunch with no ground. Nothing published says how much hard clipping on dance music is heavy; the one survey that names a range calls the lab’s 6 dB over "mild but still noticeable".
+
+### What the research found
+
+Two reports, working papers kept outside the repository with every quotation and its source:
+
+- Doubting the apparatus is a known response to evidence against a belief (Chinn and Brewer). It is likeliest when no cause is in view and the reader knows the subject.
+- A prediction helps, and only with what was asked: g = 0.54 for what was asked, 0.04 for the rest (a meta-analysis, abstract read).
+- Saying the belief back, then the fact, then the cause beats plain explanation: g = 0.41 over 44 comparisons.
+- Feedback that explains beats right or wrong, most of all straight after the attempt.
+- An indicator is read as a verdict on the whole (Three Mile Island). A light should be labelled by what it measures.
+- Howler’s manual invites the belief: it "is correctly recording when … the LEVEL indicator is blinking green" (2.2). Howler never says green means clean, and says the mixer distorts first (FAQ).
+- Zoom’s H6essential manual draws the lab’s lesson in three words: "Clipped recording", "Volume lowered", "Still clipped".
+
+### What changed
+
+- The lab asks before it shows, twice, and each question sits where its subject is. "What colour is the Howler’s LEVEL light?" takes the light’s place. "Can the recording level remove the crunch?" sits with the recording level, which goes live once it is answered.
+- The answer says back what was said, then what is so, then the cause, in three lines at most: "You said red. It is green", then "The light is right. The level into the Howler is 3 dB under its ceiling."
+- The light’s reading says what it measures: "Input 3 dB under its ceiling". While the mixer cuts, it adds "It does not show crunch made before it."
+- The file says where its crunch was made and how much was cut: "Made in the mixer. Tops cut by 6 dB." The number stays put while the recording level moves.
+- Crunch is Clean, Tips cut or Crunchy. "Some crunch" and "Heavy crunch" are gone.
+- The Howler’s screen draws the wave that left the mixer, faint, behind its own: the same flat tops, made smaller. It marks only what its own ceiling cut, which cleared the tangle of lines it had.
+- Each try in step 2 is answered at once ("You turned it down 6 dB. The flat tops are smaller. They are still flat."). The step ends after two tries, or 20 seconds after the first.
+- A control a step leaves alone shows as a reading, its name and setting, and not as a dead fader.
+- The stage heads lost their state words. The light and the screen say it once.
+- Step 4 says that Howler puts the mixer first, and that the step shows the other case.
+- The notes on what you hear show while the sound plays. "It starts quietly" stays, as on the other labs.
+- The screens line up side by side down to their captions (a subgrid), so a caption that wraps moves both.
+- Learn 4.4 has two new rows: the Howler’s LEVEL light, in its manual’s words, and MASTER LEVEL with a channel in the red, the assumption the lab’s lesson rests on.
+
+### Verification
+
+`pnpm verify` passes: lint, Astro and Svelte checks, 605 unit and component tests, the build, and 239 browser tests (10 skipped by design). With `BASE_PATH=/ClipClip/` and `CROSS_BROWSER=1`, 319 browser tests pass (13 skipped by design). Every step was inspected at 360, 390 and 1440 pixels, in both themes.
+
+### Still open
+
+- Whether the XDJ-RX2 cuts a channel in the red before MASTER LEVEL. Pioneer does not say. A forum post relays Pioneer’s engineers saying that on the DJM-900NXS2 a digital source cannot clip at the channel; if the XDJ-RX2 works that way, turning MASTER LEVEL down would cure a channel in the red. One check settles it: TRIM up until CH1’s red light shows at the loudest part, MASTER LEVEL down until the MASTER meters show the first orange, record on the Howler, and listen the next day. Crunch in the file means the lab is right.
+- The learning report proposes a test with five DJs on their own phones, thinking aloud. It passes if nobody calls the lab broken and four of five say the light cannot tell them the file is clean.

@@ -16,7 +16,7 @@
   const H = 20;
   const AMP = 8;
   /** Where the tops get cut, as a share of the wave's height. Tips cut shaves only the very top. */
-  const CUT: Record<Crunch, number> = { clean: 1, tips: 0.9, some: 0.72, heavy: 0.42 };
+  const CUT: Record<Crunch, number> = { clean: 1, tips: 0.9, crunch: 0.55 };
 
   const POINTS = 80;
   const at = (i: number) => ({ x: (i / POINTS) * W, s: Math.sin((i / POINTS) * 4 * Math.PI) });

@@ -42,8 +42,8 @@ test('saved guide reopens offline with pages, fonts, diagrams, islands and old l
     await reopened.goto(`${server.url}lab/`);
     await expect(reopened).toHaveURL(/learn\/#two-ceilings$/);
     const lab = reopened.locator('.two-ceilings');
-    await lab.getByRole('button', { name: 'Show the result' }).click();
-    await expect(lab.getByText('The crunch is still there', { exact: true })).toBeVisible();
+    await lab.getByRole('button', { name: 'Show the answer' }).click();
+    await expect(lab.locator('.goal-title')).toHaveText('It is green');
     expect(errors).toEqual([]);
   } finally {
     await server.stop();

@@ -140,14 +140,20 @@ const contents: ContentsEntry[] = [
       </p>
 
       <h3 id="two-ceilings">{h('two-ceilings')}</h3>
-      <p>The lab plays sound.</p>
+      <p>
+        The sound can be cut flat in two places on its way to the file: inside the mixer, and at the Howler’s input.
+        Each is a <Term of="ceiling" then=".">ceiling</Term> Each has a control before it, and a light that watches it
+        and nothing else.
+      </p>
+      <p>The lab follows the sound through both. It plays sound.</p>
       <div class="wide lab"><TwoCeilings client:visible /></div>
       <table class="cases" id="record-level">
-        <caption>Three recordings, and what fixes each</caption>
+        <caption>Three recordings, what the Howler’s light showed, and what fixes each</caption>
         <thead>
           <tr>
             <th scope="col">What you hear</th>
             <th scope="col">Where it clipped</th>
+            <th scope="col">Howler’s LEVEL light</th>
             <th scope="col">What fixes it</th>
           </tr>
         </thead>
@@ -155,11 +161,13 @@ const contents: ContentsEntry[] = [
           <tr>
             <td>Crunch in the room and the recording</td>
             <td>In the mixer: a channel or the mix in the red</td>
+            <td>Green or red. It cannot show this crunch.</td>
             <td>Only the DJ’s TRIM, EQ and faders</td>
           </tr>
           <tr>
             <td>A clean room, a crunchy recording</td>
             <td>At the Howler’s input</td>
+            <td>Red</td>
             <td>
               A lower recording level, set by the crew (<a href={href('/night/#fix-howler-red')}>F1</a>)
             </td>
@@ -167,6 +175,7 @@ const contents: ContentsEntry[] = [
           <tr>
             <td>Clean in both</td>
             <td>Nowhere</td>
+            <td>Green</td>
             <td>Nothing. Turn the file up afterwards.</td>
           </tr>
         </tbody>
@@ -299,6 +308,21 @@ const contents: ContentsEntry[] = [
           </dd>
         </div>
         <div>
+          <dt>MASTER LEVEL and a channel in the red</dt>
+          <dd>
+            <span class="who">Pioneer:</span> MASTER LEVEL sets the sound out of MASTER 1 and MASTER 2 (<a
+              href={`${XDJ_MANUAL}#page=27`}
+              rel="external">p.&nbsp;27</a
+            >), after the channels are mixed. For distorted sound, it lists TRIM for a channel and MASTER LEVEL for the
+            mix (<a href={`${XDJ_MANUAL}#page=34`} rel="external">p.&nbsp;34</a>). It does not say where inside the
+            mixer the sound is cut.
+          </dd>
+          <dd>
+            <span class="who">We assume:</span> a channel in the red is cut before MASTER LEVEL. Turned down, that
+            crunch gets quieter and stays in. The lab in {section('two-ceilings').number} rests on this.
+          </dd>
+        </div>
+        <div>
           <dt>MASTER ATT</dt>
           <dd>
             <span class="who">Pioneer:</span> it “sets the master output attenuator” (<a
@@ -328,6 +352,20 @@ const contents: ContentsEntry[] = [
           <dd>
             <span class="who">On this rig:</span> nobody has seen the LEVEL light blink red with the MASTER meters
             below red.
+          </dd>
+        </div>
+        <div>
+          <dt>The Howler’s LEVEL light</dt>
+          <dd>
+            <span class="who">Howler:</span> it “is correctly recording when the RECORD button is blinking constantly,
+            and the LEVEL indicator is blinking green”. Blinking red “means your volume is too high” (<a
+              href="https://howler-audio.com/pages/manual-mk1"
+              rel="external">manual, 2.2 and 4</a
+            >). It gives no level for either colour, and says nothing of sound cut before it arrives.
+          </dd>
+          <dd>
+            <span class="who">We assume:</span> the light goes by the level at its input and nothing else. Crunch made
+            in the mixer, then turned down, lights it green. The lab in {section('two-ceilings').number} shows it.
           </dd>
         </div>
       </dl>

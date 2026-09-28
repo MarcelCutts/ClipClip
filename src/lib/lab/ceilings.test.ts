@@ -8,9 +8,11 @@ import {
   CEILING_1,
   CEILING_2,
   CHANNELS,
+  CONTROL_STAGE,
   crunchFor,
   drawScope,
   goalMet,
+  howlerMarginDb,
   KNOB,
   LAB_SCOPE,
   labSignal,
@@ -18,7 +20,6 @@ import {
   REVEAL_AFTER_MOVES,
   readLab,
   STEP_COUNT,
-  STEP_SCOPE,
   STEP_SETUP,
   scopeTraces,
 } from './ceilings';
@@ -55,13 +56,14 @@ describe('lab signals', () => {
 });
 
 describe('reading the lab', () => {
-  it('shows the channel in the red as heavy crunch with a green Howler light', () => {
+  it('shows the channel in the red as crunch with a green Howler light', () => {
     const r = readLab(track, 18, -12);
     expect(r.mixer).toBe('over');
     expect(r.recorder).toBe('clear');
     expect(r.howler).toBe('green');
     expect(r.recordingPeakDbfs).toBeCloseTo(-6, 9);
-    expect(r.crunch).toBe('heavy');
+    expect(r.crunch).toBe('crunch');
+    expect(r.cutDb).toBe(6);
   });
 
   it('shows a recording level too high as a clean mix clipped at the Howler', () => {
@@ -70,7 +72,8 @@ describe('reading the lab', () => {
     expect(r.recorder).toBe('over');
     expect(r.howler).toBe('red');
     expect(r.recordingPeakDbfs).toBe(0);
-    expect(r.crunch).toBe('some');
+    expect(r.crunch).toBe('crunch');
+    expect(r.cutDb).toBe(3);
   });
 
   it('shows a tidy channel and a lower recording level as clean, green and comfortably low', () => {
@@ -79,6 +82,7 @@ describe('reading the lab', () => {
     expect(r.distortion).toBeLessThan(1e-9);
     expect(r.howler).toBe('green');
     expect(r.recordingPeakDbfs).toBeCloseTo(-12, 9);
+    expect(r.cutDb).toBe(0);
   });
 
   it('keeps mixer crunch when the recording level comes down: quieter, same damage', () => {
@@ -86,14 +90,15 @@ describe('reading the lab', () => {
     for (const knob of [-9, -12, -18, -24]) {
       const r = readLab(track, 18, knob);
       expect(r.distortion).toBeCloseTo(base.distortion, 9);
-      expect(r.crunch).toBe('heavy');
+      expect(r.crunch).toBe('crunch');
+      expect(r.cutDb).toBe(base.cutDb);
       // The mixer holds the peak at +12; ceiling 2 sits at +6, so the file peaks at knob + 6 dBFS.
       expect(r.recordingPeakDbfs).toBeCloseTo(knob + 6, 9);
     }
   });
 
   it('removes Howler-only clipping completely when the recording level comes down', () => {
-    expect(readLab(track, 9, 0).crunch).toBe('some');
+    expect(readLab(track, 9, 0).crunch).toBe('crunch');
     const fixed = readLab(track, 9, -4);
     expect(fixed.crunch).toBe('clean');
     expect(fixed.howler).toBe('green');
@@ -103,6 +108,7 @@ describe('reading the lab', () => {
     const atRed = readLab(track, 12, -12);
     expect(atRed.mixer).toBe('at');
     expect(atRed.crunch).toBe('clean');
+    expect(atRed.cutDb).toBe(0);
     const atHowler = readLab(track, 9, -3);
     expect(atHowler.recorder).toBe('at');
     expect(atHowler.howler).toBe('red');
@@ -124,14 +130,21 @@ describe('reading the lab', () => {
     }
   });
 
-  it('grades crunch by how far past a ceiling the peaks go', () => {
+  it('names crunch from the second dB past a ceiling, and never grades it', () => {
+    // No study we could open says how much hard clipping on dance music is heavy, so the lab says
+    // how much was cut, in dB, and names nothing past crunch.
     const overBy = (db: number) => crunchFor(addedDistortion(track.samples, 12 + db, -12));
     expect(overBy(0)).toBe('clean');
     expect(overBy(1)).toBe('tips');
-    expect(overBy(2)).toBe('some');
-    expect(overBy(3)).toBe('some');
-    expect(overBy(4)).toBe('heavy');
-    expect(overBy(6)).toBe('heavy');
+    for (const db of [2, 3, 4, 6]) expect(overBy(db)).toBe('crunch');
+  });
+
+  it('counts the cut in dB, from both ceilings, whatever the recording level does after the first', () => {
+    expect(readLab(track, 18, -9).cutDb).toBe(6);
+    expect(readLab(track, 18, -24).cutDb).toBe(6);
+    // Turned up past the Howler's ceiling, the flat tops are cut again.
+    expect(readLab(track, 18, 0).cutDb).toBe(12);
+    expect(readLab(track, 9, -3).cutDb).toBe(0);
   });
 
   it('calls the first dB over what the blend lab calls its red: only the tips cut', () => {
@@ -141,7 +154,7 @@ describe('reading the lab', () => {
     expect(cut(1)).toBeLessThan(0.005);
     expect(crunchFor(0.005)).toBe('tips');
     expect(cut(3)).toBeGreaterThan(0.02);
-    expect(crunchFor(0.02)).toBe('some');
+    expect(crunchFor(0.02)).toBe('crunch');
   });
 });
 
@@ -197,48 +210,119 @@ describe('scopes', () => {
     expect(cut.match(/Z/g)?.length).toBe(flats.match(/M/g)?.length);
   });
 
-  it('shows the mixer’s damage in the recording even when the Howler has room', () => {
+  it('shows the mixer’s flat tops in the recording, and nothing cut there when the Howler has room', () => {
     const drawing = drawScope(scopeTraces(track, 18, -12).recording);
     expect(drawing.flats).not.toBe('');
-    expect(drawing.ghost).not.toBe('');
+    // The Howler's ceiling cut nothing: the flat tops arrived flat.
+    expect(drawing.ghost).toBe('');
+    expect(drawing.cut).toBe('');
+  });
+
+  it('draws on the Howler’s screen only what its own ceiling cut off', () => {
+    // Turned up 3 dB past the Howler's ceiling: the mixer's flat tops arrive, and are cut again.
+    const { recording } = scopeTraces(track, 18, -3);
+    expect(peak(recording.arrived!)).toBeCloseTo(CEILING_1 * dbToGain(-3), 6);
+    expect(peak(recording.arrived!)).toBeLessThan(peak(recording.wanted));
+    const { ghost } = drawScope(recording);
+    expect(ghost).not.toBe('');
+    // The ghost rises to the flat tops as they arrived, not to the peaks the mixer cut.
+    expect(highest(ghost)).toBeCloseTo(screenY(peak(recording.arrived!)), 0);
+  });
+
+  it('leaves the mixer’s screen as it was: with no ceiling before it, what arrived is what was wanted', () => {
+    const { mixer, recording } = scopeTraces(track, 9, 0);
+    expect('arrived' in mixer).toBe(false);
+    expect(recording.arrived).toEqual(recording.wanted);
   });
 });
 
+/** Where a sample value sits on the lab's screen, as drawScope places it. */
+function screenY(v: number): number {
+  const half = LAB_SCOPE.height / 2;
+  return half - (v / LAB_SCOPE.range) * (half - 4);
+}
+
+/** The highest point (smallest y) of a path of moves and relative steps, as drawScope writes them. */
+function highest(path: string): number {
+  const num = '-?(?:\\d+\\.?\\d*|\\.\\d+)';
+  let top = Number.POSITIVE_INFINITY;
+  for (const sub of path.split('M').filter(Boolean)) {
+    const [head, ...moves] = sub.split('l');
+    let y = Number(head!.trim().split(' ')[1]);
+    top = Math.min(top, y);
+    for (const move of moves) {
+      const m = new RegExp(`^(${num})\\s?(${num})$`).exec(move.trim());
+      y += Number(m![2]);
+      top = Math.min(top, y);
+    }
+  }
+  return top;
+}
+
 describe('the guided flow', () => {
-  it('has three steps, each with one live control: the recording level, the channel, the recording level', () => {
-    expect(STEP_COUNT).toBe(3);
-    expect([STEP_SETUP[1].live, STEP_SETUP[2].live, STEP_SETUP[3].live]).toEqual(['knob', 'channels', 'knob']);
+  it('has four steps: a question, then one live control each', () => {
+    expect(STEP_COUNT).toBe(4);
+    expect([1, 2, 3, 4].map((step) => STEP_SETUP[step as 1 | 2 | 3 | 4].live)).toEqual([
+      null,
+      'knob',
+      'channels',
+      'knob',
+    ]);
   });
 
-  it('opens step 1 with the channel in the red and the Howler green, and step 3 with the Howler red', () => {
-    const one = readLab(track, STEP_SETUP[1].start.channels, STEP_SETUP[1].start.knob);
-    expect(one).toMatchObject({ mixer: 'over', howler: 'green', crunch: 'heavy' });
-    const three = readLab(track, STEP_SETUP[3].start.channels, STEP_SETUP[3].start.knob);
-    expect(three).toMatchObject({ mixer: 'clear', howler: 'red' });
+  it('keeps each control in the stage whose ceiling it comes before', () => {
+    expect(CONTROL_STAGE).toEqual({ channels: 'mixer', knob: 'howler' });
   });
 
-  it('points each step at the screen its control moves', () => {
-    expect(STEP_SCOPE).toEqual({ 1: 'recording', 2: 'mixer', 3: 'recording' });
+  it('asks its question with the channel in the red, the file crunchy and the Howler’s light green', () => {
+    const { channels, knob } = STEP_SETUP[1].start;
+    const one = readLab(track, channels, knob);
+    expect(one).toMatchObject({ mixer: 'over', recorder: 'clear', howler: 'green', crunch: 'crunch' });
+    // The flat tops reach the Howler plainly under its ceiling, and big enough to see on a phone.
+    expect(howlerMarginDb(one)).toBe(-3);
+    // The next two steps carry on from the same place.
+    expect(STEP_SETUP[2].start).toEqual(STEP_SETUP[1].start);
+    expect(STEP_SETUP[3].start).toEqual(STEP_SETUP[1].start);
   });
 
-  it('gives step 1 no way to win, and opens step 2 somewhere its one control can fix', () => {
-    const { channels, knob } = STEP_SETUP[2].start;
-    for (let k = KNOB.min; k <= KNOB.max; k++) expect(goalMet(1, readLab(track, 18, k))).toBe(false);
-    expect(goalMet(2, readLab(track, channels, knob))).toBe(false);
-    expect(goalMet(2, readLab(track, 3, knob))).toBe(true);
+  it('opens the last step with the mixer clean and the Howler red', () => {
+    const four = readLab(track, STEP_SETUP[4].start.channels, STEP_SETUP[4].start.knob);
+    expect(four).toMatchObject({ mixer: 'clear', howler: 'red' });
+  });
+
+  it('gives the question and step 2 no way to win, and opens step 3 somewhere its one control can fix', () => {
+    const { channels, knob } = STEP_SETUP[3].start;
+    for (let k = KNOB.min; k <= KNOB.max; k++) {
+      expect(goalMet(1, readLab(track, 18, k))).toBe(false);
+      expect(goalMet(2, readLab(track, 18, k))).toBe(false);
+    }
+    expect(goalMet(3, readLab(track, channels, knob))).toBe(false);
+    expect(goalMet(3, readLab(track, 3, knob))).toBe(true);
     expect(REVEAL_AFTER_MOVES).toBeGreaterThan(1);
   });
 
-  it('only calls step 2 fixed when the crunch is gone, the light is green and the red is dark', () => {
-    expect(goalMet(2, readLab(track, 3, -9))).toBe(true);
-    expect(goalMet(2, readLab(track, 12, -12))).toBe(false);
-    expect(goalMet(2, readLab(track, 18, -24))).toBe(false);
-    expect(goalMet(2, readLab(track, 11, 0))).toBe(false);
+  it('lets step 2 turn the light red and green again, with the crunch there throughout', () => {
+    // The light follows the recording level a decibel at a time. The crunch does not move.
+    const margins: number[] = [];
+    for (let k = KNOB.min; k <= KNOB.max; k++) {
+      const r = readLab(track, 18, k);
+      expect(r.crunch).toBe('crunch');
+      expect(r.howler).toBe(k < -6 ? 'green' : 'red');
+      margins.push(howlerMarginDb(r));
+    }
+    expect(margins.slice(1).map((m, i) => m - margins[i]!)).toEqual(margins.slice(1).map(() => 1));
   });
 
-  it('calls step 3 fixed once the recording level brings the Howler back to green', () => {
-    expect(goalMet(3, readLab(track, 9, -3))).toBe(false);
-    expect(goalMet(3, readLab(track, 9, -4))).toBe(true);
+  it('only calls step 3 fixed when the crunch is gone, the light is green and the red is dark', () => {
+    expect(goalMet(3, readLab(track, 3, -9))).toBe(true);
+    expect(goalMet(3, readLab(track, 12, -12))).toBe(false);
+    expect(goalMet(3, readLab(track, 18, -24))).toBe(false);
+    expect(goalMet(3, readLab(track, 11, 0))).toBe(false);
+  });
+
+  it('calls step 4 fixed once the recording level brings the Howler back to green', () => {
+    expect(goalMet(4, readLab(track, 9, -3))).toBe(false);
+    expect(goalMet(4, readLab(track, 9, -4))).toBe(true);
   });
 });
 

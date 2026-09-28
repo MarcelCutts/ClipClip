@@ -3,9 +3,10 @@
    * One oscilloscope screen of the lab. Every screen shares one fixed scale in mixer units (see
    * LAB_SCOPE), and draws its own ceiling where it really sits on that scale, so a quieter signal
    * draws smaller and a hotter one runs past its ceiling: the screen never rescales to flatter it.
-   * Signal in --sig; where a ceiling cut the peaks off, the flat tops are stroked in --dmg and the
-   * missing part hangs beyond them as a dashed ghost over a faint wash. The ceiling's name sits in
-   * the caption row, where it can't collide with the wave and keeps its size on a phone.
+   * Signal in --sig; flat tops are stroked in --dmg, whichever ceiling made them, and what this
+   * screen's own ceiling cut off hangs beyond them as a dashed ghost over a faint wash. The key to
+   * the screen sits in the caption row, where it can't collide with the wave and keeps its size on
+   * a phone.
    *
    * Under the screen, one line says what to notice. It is the picture's text equivalent too, so
    * the drawing itself is hidden from screen readers rather than described twice.
@@ -21,9 +22,18 @@
     /** What to notice on this screen, in a sentence. */
     claim: string;
     drawing: ScopeDrawing;
+    /** Shown in place of the wave, until the step lets it be seen. */
+    covered?: string | undefined;
+    /**
+     * The wave as it left the stage before, drawn faint behind this one on the same scale: the two
+     * differ in size and in nothing else, which is all a level control can do.
+     */
+    before?: string | undefined;
+    /** The key's name for `before`. */
+    beforeLabel?: string | undefined;
   }
 
-  let { title, ceilingLabel, ceiling = CEILING_1, claim, drawing }: Props = $props();
+  let { title, ceilingLabel, ceiling = CEILING_1, claim, drawing, covered, before, beforeLabel }: Props = $props();
 
   const g = LAB_SCOPE;
   const mid = g.height / 2;
@@ -36,25 +46,37 @@
 <figure class="scope">
   <figcaption>
     <span class="title">{title}</span>
-    <span class="key"><span class="dash" aria-hidden="true"></span>{ceilingLabel}</span>
+    <span class="keys">
+      <span class="key"><span class="dash" aria-hidden="true"></span>{ceilingLabel}</span>
+      {#if before && beforeLabel && !covered}
+        <span class="key"><span class="faint" aria-hidden="true"></span>{beforeLabel}</span>
+      {/if}
+    </span>
   </figcaption>
-  <svg class="screen" viewBox="0 0 {g.width} {g.height}" aria-hidden="true">
-    <path class="grid" d={grid} />
-    <line class="axis" x1="0" x2={g.width} y1={mid} y2={mid} />
-    <path class="cut" d={drawing.cut} />
-    <line class="ceiling" x1="0" x2={g.width} y1={top} y2={top} />
-    <line class="ceiling" x1="0" x2={g.width} y1={bottom} y2={bottom} />
-    <path class="ghost" d={drawing.ghost} />
-    <path class="trace" d={drawing.trace} />
-    <path class="flat" d={drawing.flats} />
-  </svg>
-  <p class="claim">{claim}</p>
+  <div class="glass">
+    <svg class="screen" viewBox="0 0 {g.width} {g.height}" aria-hidden="true">
+      <path class="grid" d={grid} />
+      <line class="axis" x1="0" x2={g.width} y1={mid} y2={mid} />
+      <line class="ceiling" x1="0" x2={g.width} y1={top} y2={top} />
+      <line class="ceiling" x1="0" x2={g.width} y1={bottom} y2={bottom} />
+      {#if !covered}
+        {#if before}<path class="before" d={before} />{/if}
+        <path class="cut" d={drawing.cut} />
+        <path class="ghost" d={drawing.ghost} />
+        <path class="trace" d={drawing.trace} />
+        <path class="flat" d={drawing.flats} />
+      {/if}
+    </svg>
+    {#if covered}<p class="covered"><span>{covered}</span></p>{/if}
+  </div>
+  {#if !covered}<p class="claim">{claim}</p>{/if}
 </figure>
 
 <style>
   .scope {
     display: grid;
     gap: 0.4rem;
+    align-content: start;
     min-width: 0;
     margin: 0;
   }
@@ -74,6 +96,12 @@
     color: var(--hw-label);
   }
 
+  .keys {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+  }
+
   .key {
     display: inline-flex;
     align-items: center;
@@ -87,6 +115,12 @@
     border-top: 1.5px dashed var(--screen-text);
   }
 
+  /* The key for the wave that left the stage before: the signal's own colour, faint. */
+  .faint {
+    width: 1.4rem;
+    border-top: 1.5px solid color-mix(in oklab, var(--sig) 50%, transparent);
+  }
+
   /* What to notice: the screen's point, brighter than its labels. */
   .claim {
     margin: 0.1rem 0 0;
@@ -95,10 +129,38 @@
     color: var(--hw-bright);
   }
 
+  /* The screen, and anything laid over it. */
+  .glass {
+    position: relative;
+    display: grid;
+  }
+
   svg {
     width: 100%;
     height: auto;
     overflow: hidden;
+  }
+
+  /* Until the question is answered, the screen shows its ceiling and says what it is waiting for.
+     The words sit on the screen's own colour, so no line runs through them. */
+  .covered {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    margin: 0;
+    padding: 1rem 1.25rem;
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    text-align: center;
+    text-wrap: balance;
+    color: var(--screen-text);
+  }
+
+  .covered span {
+    max-width: 16rem;
+    padding: 0.4rem 0.6rem;
+    background: var(--screen);
   }
 
   .grid {
@@ -129,11 +191,19 @@
 
   .ghost,
   .trace,
-  .flat {
+  .flat,
+  .before {
     fill: none;
     stroke-linejoin: round;
     stroke-linecap: round;
     vector-effect: non-scaling-stroke;
+  }
+
+  /* What left the stage before: the same music in the signal's colour, faint and thin, behind. */
+  .before {
+    stroke: var(--sig);
+    stroke-width: 1.5;
+    stroke-opacity: 0.4;
   }
 
   .ghost {
@@ -170,6 +240,11 @@
       stroke: CanvasText;
     }
 
+    .before {
+      stroke: GrayText;
+      stroke-opacity: 1;
+    }
+
     .ghost,
     .flat {
       stroke: Highlight;
@@ -183,7 +258,8 @@
       stroke: GrayText;
     }
 
-    .dash {
+    .dash,
+    .faint {
       border-top-color: GrayText;
     }
   }
