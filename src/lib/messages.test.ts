@@ -64,7 +64,7 @@ describe('chat messages', () => {
 
   it.each(messages)('$title links into the new site: the guide or the night page', ({ text }) => {
     expect(text).not.toMatch(/\/(dj|crew|lab|why)\//);
-    expect(text).toMatch(new RegExp(`${BASE}/(#[a-z-]+|night/#[a-z-]+|learn/#[a-z-]+)$`));
+    expect(text).toMatch(new RegExp(`${BASE}/(|night/#[a-z-]+|learn/#[a-z-]+)$`));
   });
 
   it('says things plainly: no question-and-answer lead-ins', () => {
@@ -82,8 +82,9 @@ describe('chat messages', () => {
     }
     expect(DJ_RULES).toHaveLength(3);
     expect(briefing).toMatch(/MASTER LEVEL: leave it as you find it\./);
+    // The link lands on the top of Playing: the reason, the drawing of the meters, then the lines.
     expect(briefing.endsWith(`${BASE}${GUIDE_PATH}`)).toBe(true);
-    expect(GUIDE_PATH).toBe('/#trim');
+    expect(GUIDE_PATH).toBe('/');
   });
 
   it('tells DJs that BOOTH MONITOR is theirs, once', () => {

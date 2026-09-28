@@ -8,12 +8,12 @@ It grew out of a one-page "Two ceilings" clipping lab. This version is written f
 
 | Path | What's there |
 |---|---|
-| `/` | Playing: three rules, TRIM, meters, a blend fix and control ownership. No exercise is required to find an instruction |
-| `/night/` | Crew: Before doors as one list in the order of the work (table, leads, power, levels, recording), with its five drawings above the lines they serve. Then Changeover, the booth's eight fault drills (F1 to F8) and End |
-| `/setup/` | Rig reference: what feeds what, and how each unit is set. It carries no tests; an event's work is in Crew |
-| `/learn/` | Listening test, blend practice, meter check, signal path, Two ceilings, explanations, glossary and sources |
-| `/recordings/` | Copy, check and prepare files, plus the two drills for what is found by listening the day after: crunch (F9) and a hollow or one-sided recording (F11) |
-| `/print/` | Six A4 sheets: booth cards, optional tape labels, Before doors in two readable parts, its five drawings, then Changeover and End. Also group-chat messages |
+| `/` | Playing, in the header: the reason, the drawing of the meters, three rules, TRIM, a blend fix and control ownership. No exercise is required to find an instruction |
+| `/night/` | Crew, in the header: Before doors as one list in the order of the work (table, leads, power, levels, recording), with its five drawings above the lines they serve. Then Changeover, the booth's eight fault drills (F1 to F8) and End |
+| `/setup/` | Rig reference, one step from Crew: what feeds what, and how each unit is set. It carries no tests; an event's work is in Crew |
+| `/learn/` | Learn, in the header: listening test, blend practice, meter check, signal path, Two ceilings, explanations, glossary and sources |
+| `/recordings/` | Recordings, one step from Crew: copy, check and prepare files, plus the two drills for what is found by listening the day after: crunch (F9) and a hollow or one-sided recording (F11) |
+| `/print/` | Print kit, one step from Crew: six A4 sheets: booth cards, optional tape labels, Before doors in two readable parts, its five drawings, then Changeover and End. Also group-chat messages |
 
 The old addresses `/dj/`, `/crew/`, `/lab/` and `/why/` forward to the same section in its new home, so printed QR codes and old links keep working.
 
@@ -127,7 +127,7 @@ These are simulations, with EQ shapes Pioneer does not publish, and sample peaks
 
 ## Share image and chat clip
 
-`public/og.png` (the link preview) and `public/media/turn-it-down.mp4` (a ten-second silent clip for group chats) are rendered from `scripts/media/og.html` and `scripts/media/clip.html` with the site's own fonts. After changing either page, run `node scripts/media/render.mjs` (it needs Chromium from Playwright and `ffmpeg`).
+`public/og.png` (the link preview) and `public/media/turn-it-down.mp4` (a ten-second silent clip for group chats) are rendered from `scripts/media/og.html` and `scripts/media/clip.html` with the site's own fonts. The share image draws the meters as Playing does (`src/components/MeterTargets.astro`); keep the two in step by hand. After changing either page, run `node scripts/media/render.mjs` (it needs Chromium from Playwright and `ffmpeg`).
 
 ## Checking a recording for clipping
 

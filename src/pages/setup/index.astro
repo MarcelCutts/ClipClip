@@ -218,12 +218,12 @@ const moved = {
     <p>To prepare for an event, use <a href={href('/night/#doors')}>Before doors (C1)</a>. Come here if a lead or a setting looks wrong.</p>
   </PageHeader>
 
-  <div class="page flow">
+  <div class="flow page-body">
     <Contents entries={contents} rows={contents.length + 1} />
     <LegacyAnchors map={moved} />
 
     <!-- The table needs the page's wide column; its card has no steps, only the table. -->
-    <div class="job subflow">
+    <div class="subflow">
       <div class="wide wiring">
         <Procedure id="wiring" number="S2" title="Wiring" kind={REFERENCE} level={2} steps={[]}>
           <p>The rack holds the top amp, the DriveRack PA2 and the bottom amp. The leads between the three stay in.</p>
@@ -335,7 +335,7 @@ const moved = {
       </div>
     </div>
 
-    <div class="job">
+    <div class="section-start">
       <Procedure id="driverack" number="S4" title="DriveRack and amp settings" kind={REFERENCE} level={2} steps={S4_STEPS}>
         <p>The three switches are at the back of the rack, which faces the DJ. The STORE light, the gain knobs and the CLIP lights are at the front, which faces the crowd. If the DriveRack’s input CLIP lights come on, use <a href={href('/night/#fix-driverack-clip')}>F6</a>.</p>
         <p class="source">
@@ -350,31 +350,11 @@ const moved = {
 </Base>
 
 <style>
-  .page {
-    --job-gap: clamp(2.25rem, 1.75rem + 2vw, 3.5rem);
-    row-gap: 0;
-  }
-
-  .page > :global(.toc) {
-    margin-block-start: 2.25rem;
-  }
-
-  /* Wide screens: the rail starts level with the first card. */
-  @media (min-width: 80rem) {
-    .page > :global(.toc) {
-      margin-block-start: calc(var(--job-gap) + 0.1rem);
-    }
-  }
-
-  /* One job to a row of the page's grid, so the rail runs beside all of them. A job with a table
-     keeps the page's columns, so the table can take the wide one. */
-  .job {
-    margin-block-start: var(--job-gap);
-  }
-
+  /* One card to a row of the page's grid, so the rail runs beside all of them. The card with the
+     table keeps the page's columns, so the table can take the wide one. */
   .subflow {
     grid-column: full;
-    row-gap: 1rem;
+    row-gap: var(--gap-text);
     align-content: start;
   }
 

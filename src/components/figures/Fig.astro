@@ -5,7 +5,9 @@
  *
  * One drawing language for every figure (the classes below, shared through :global):
  * - `.is` a thin line: what is there, and stays as it is;
- * - `.do` a heavy line in the action colour: what the crew plug, turn or move;
+ * - `.do` a heavy line in the action colour: what the crew plug, turn or move. A part drawn as a
+ *   line that does not close (a bracket seen from the side) is `.do open`: a path without `open`
+ *   is filled, and the fill of an open path is the triangle between its ends;
  * - `.lead` a lead the crew run;
  * - `.t` a label, `.b` a bold one, `.m` a quieter one.
  * The page's tokens colour it, so it turns with the theme, and prints as ink on paper.
@@ -94,6 +96,13 @@ const { id, title, note } = Astro.props;
     stroke-width: 2.5;
     stroke-linecap: round;
     stroke-linejoin: round;
+  }
+
+  /* A part drawn as a line that does not close, such as a bracket seen from the side: nothing to
+     fill. Without this, the path's fill is the triangle between its two ends, over whatever is drawn
+     under it. */
+  .fig :global(.open) {
+    fill: none;
   }
 
   /* A light to watch: a heavy ink outline, since nobody turns or plugs it. */

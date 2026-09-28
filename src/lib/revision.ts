@@ -5,11 +5,12 @@
  * the cards should have.
  *
  * The code is a hash of every string the kit prints: the DJ box, the three printed checklists, the
- * tape tags and the captions of C1's drawings. A drawing's own labels are not in it. revision.test.ts fails when those words change and PRINTED does not. Then set the date to
- * the day, and the code to the one the test prints.
+ * tape tags, the captions of C1's drawings and the names on the booth card's drawing of the meters.
+ * The labels inside C1's drawings are not in it. revision.test.ts fails when those words change and
+ * PRINTED does not. Then set the date to the day, and the code to the one the test prints.
  */
 import { CHECKLISTS, type ChecklistId, drillText } from './checklists';
-import { FIGURE_ORDER, FIGURES } from './figures';
+import { CARD_METER_PLACES, FIGURE_ORDER, FIGURES } from './figures';
 import { DJ_RULES } from './rules';
 import { MASTER_TAG, SHORT_TAGS } from './tags';
 
@@ -42,7 +43,8 @@ export function printedWords(): string[] {
     ...MASTER_TAG.lines,
   ];
   const drawings = FIGURE_ORDER.flatMap((id) => [FIGURES[id].title, FIGURES[id].note]);
-  return [...rules, ...lists, ...tags, 'Continue with C1, part 2.', ...drawings];
+  const meters = Object.values(CARD_METER_PLACES);
+  return [...rules, ...lists, ...tags, 'Continue with C1, part 2.', ...drawings, ...meters];
 }
 
 /** FNV-1a over the words, 32 bits, as six hex digits: short enough to print and to read out. */
@@ -56,7 +58,7 @@ export function wordsCode(words: readonly string[]): string {
 }
 
 /** The revision the cards carry. Change both when the test says the printed words changed. */
-export const PRINTED = { date: '28 September 2026', code: 'AA7150' } as const;
+export const PRINTED = { date: '28 September 2026', code: '716B79' } as const;
 
 /** As a card prints it after "Revised": "27 September 2026 (3F9A2C)". */
 export const REVISION = `${PRINTED.date} (${PRINTED.code})`;

@@ -42,5 +42,18 @@ export const FIGURES: Readonly<Record<FigureId, FigureCaption>> = {
   },
 };
 
+/**
+ * What the booth card prints beside the lights of its drawing of the meters, top down. The card is
+ * A6, so each is a few words: the two meter rules name their meter as the mixer letters it (CH1, CH2,
+ * MASTER), and the rule itself is beside the drawing in full. A ring on the drawing goes round the
+ * lights each is about.
+ */
+export const CARD_METER_PLACES = {
+  red: 'May distort',
+  master: 'MASTER: dark',
+  blend: 'Blend room',
+  channels: 'CH1, CH2: aim',
+} as const;
+
 /** The drawings in the order C1 meets them. */
 export const FIGURE_ORDER: readonly FigureId[] = ['table', 'booth', 'rackRear', 'mixerRear', 'rackFront'];

@@ -47,8 +47,12 @@ test('ticks made before the checklist wakes up are kept', async ({ page }) => {
  */
 const named = (code: string, label: string) => new RegExp(`^${code} ?: ${label}$`);
 
+/** Narrower than the index rail needs (80rem): the tabs are the way round the page. */
+const BELOW_THE_RAIL = { width: 1024, height: 768 };
+
 test.describe('the night page', () => {
   test('opens on its tabs, in the order the night runs, each big enough for a thumb', async ({ page }) => {
+    if ((page.viewportSize()?.width ?? 0) >= 1280) await page.setViewportSize(BELOW_THE_RAIL);
     await page.goto('night/');
     const tabs = page.getByRole('navigation', { name: 'Checklists and drills' }).getByRole('link');
     // Each named as it reads, code first: "C1: Doors".
@@ -70,6 +74,7 @@ test.describe('the night page', () => {
   });
 
   test('a drill’s jump lands on its step, clear of the tabs, outlined, and marks the drills tab', async ({ page }) => {
+    if ((page.viewportSize()?.width ?? 0) >= 1280) await page.setViewportSize(BELOW_THE_RAIL);
     await page.goto('night/#fix-howler-red');
     const nav = page.getByRole('navigation', { name: 'Checklists and drills' });
     const drill = page.locator('#fix-howler-red');
@@ -143,15 +148,15 @@ test.describe('the night page', () => {
     await expect(drills.last()).toHaveText(/^\s*F8 /);
     await expect(rail.getByRole('link', { name: /^F8 / })).toHaveAttribute('aria-current', 'location');
     await expect(rail.locator('.subs a')).toHaveCount(8);
-    // It stays in view under the tabs.
-    const [box, tabs] = await Promise.all([
-      rail.boundingBox(),
-      page.getByRole('navigation', { name: 'Checklists and drills' }).boundingBox(),
-    ]);
-    expect(box && tabs && box.y >= tabs.y + tabs.height).toBe(true);
+    // The rail does the tabs' job here, as on every page with a rail, and a jump lands at the top.
+    const tabs = page.locator('[data-night-tabs]');
+    await expect(tabs).toBeHidden();
+    const landed = await page.locator('#fix-power-cut').boundingBox();
+    expect(landed && landed.y >= 0 && landed.y < 64).toBe(true);
 
     // A phone has the tabs and the drills' own index instead.
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(rail).toBeHidden();
+    await expect(tabs).toBeVisible();
   });
 });

@@ -77,15 +77,43 @@ test('the old pages tell search engines where their content went', async ({ requ
   expect(canonical, 'points at the guide, not the old page').not.toContain('/lab/');
 });
 
-test('the guide opens for DJs: one box of three lines, then the way to the crew page', async ({ page }) => {
+test('the guide opens for DJs: the drawing of the meters, then one box of three lines', async ({ page }) => {
   await page.goto('');
+  // The drawing carries the two meter rules beside their lights, each naming its own meter, top down.
+  const drawing = page.locator('#playing figure .drawing');
+  await expect(drawing).toHaveCount(1);
+  await expect(drawing.locator('.place')).toHaveText([
+    'Red: may distort',
+    'MASTER meters: top orange dark',
+    'Room for a blend',
+    'Channel meters: first orange (0)',
+  ]);
+  // A ring goes round each meter's own lights and no others: CH1 and CH2 at the first orange, the
+  // MASTER pair at the top orange.
+  const rings = await drawing.locator('.ring').evaluateAll((els) =>
+    els.map((el) => {
+      const r = el.getBoundingClientRect();
+      const inside = [...(el.parentElement?.querySelectorAll('.led') ?? [])].filter((led) => {
+        const b = led.getBoundingClientRect();
+        return b.left >= r.left && b.right <= r.right && b.top >= r.top && b.bottom <= r.bottom;
+      });
+      return inside.map((led) => `${led.getAttribute('data-zone')}${led.hasAttribute('data-on') ? ' lit' : ' dark'}`);
+    }),
+  );
+  expect(rings).toEqual([['orange dark', 'orange dark'], ['orange lit'], ['orange lit']]);
+  // It prints the scale as the panel does: no plus signs.
+  await expect(drawing.locator('.tick').first()).toHaveText('12');
   const box = page.locator('.kbh');
   await expect(box).toHaveCount(1);
   await expect(box.locator('.item')).toHaveCount(3);
-  await expect(page.locator('.other-route').getByRole('link', { name: 'Crew', exact: true })).toHaveAttribute(
-    'href',
-    /\/night\/$/,
-  );
+  // The drawing comes first: the lines name its lights.
+  const [picture, lines] = [await drawing.boundingBox(), await box.boundingBox()];
+  expect(picture && lines && picture.y + picture.height <= lines.y).toBe(true);
+  // Each instruction is said once: no jump links, and the way to the crew page is the site’s own navigation.
+  await expect(page.locator('#playing nav')).toHaveCount(0);
+  await expect(
+    page.getByRole('navigation', { name: 'Site' }).getByRole('link', { name: 'Crew', exact: true }),
+  ).toHaveAttribute('href', /\/night\/$/);
   // The index lists the guide's own parts. The drills are on the crew page.
   await expect(page.locator('[data-toc] a[href*="night"]')).toHaveCount(0);
 });
@@ -96,7 +124,7 @@ test('the header names the pages the same way on every page that has it', async 
     await expect(page.getByRole('navigation', { name: 'Site' }).getByRole('link')).toHaveText([
       'Playing',
       'Crew',
-      'Print kit',
+      'Learn',
     ]);
   }
 });

@@ -1,0 +1,342 @@
+---
+/**
+ * Figure: what the XDJ-RX2's meters should show. A line drawing of the meter bridge on the page
+ * (CH1, the MASTER pair with CLIP above it, CH2, and the scale the panel prints between them), lit
+ * the way a well-set blend looks at its loudest: each channel on the first orange, the mix two
+ * lights higher, and the top orange, red and CLIP dark.
+ *
+ * The two meters have different jobs, and the drawing keeps them apart. A channel meter has a
+ * target: the first orange. The MASTER meters have a limit: the top orange stays dark. Each is
+ * marked twice. A ring goes round the lights themselves, on that meter's columns and no others.
+ * Beside their row is the rule for them in its own words (rules.ts), the meter's name over the state
+ * of its light, set as the rules box sets a line: the name in ink, the state in the action colour.
+ * A reader who knows the drawing knows the first two rules.
+ *
+ * Red, and the room a blend takes, are named too, in a lighter weight: they explain the two rules.
+ *
+ * It fills the reading column, and its lights grow with it. The rows keep one pitch, and a rule's two
+ * lines overlap the gaps round its row, so a name never moves away from its light.
+ *
+ * Like every meter on the site it doesn't rely on colour: a printed break where the colour changes,
+ * a bold 0, a dark light drawn as an outline, the red light outlined in red, and every place named
+ * in words. Server-rendered.
+ */
+import { TARGET_PEAK_DB } from '../lib/model';
+import { DJ_RULES } from '../lib/rules';
+import { CEILING_DB, litCount, METER_SEGMENTS, scaleLabel } from '../lib/xdj';
+
+// The blend in the picture: both decks on the aim, the mix where lined-up kicks put it (model.ts).
+const { aim, blend, top: topOrange } = TARGET_PEAK_DB;
+const higher = litCount(blend) - litCount(aim);
+const lightsHigher = `${['no', 'one', 'two', 'three', 'four'][higher] ?? higher} light${higher === 1 ? '' : 's'} higher`;
+/** The light above the aim: where a blend's extra starts to show. */
+const blendFrom = METER_SEGMENTS.find((s) => s.db > aim)?.db ?? aim;
+
+/** A rule as the drawing carries it: the meter's name and the state of its light. */
+const drawn = (label: string) => {
+  const rule = DJ_RULES.find((r) => r.label === label)?.drawn;
+  if (!rule) throw new Error(`The DJ rule "${label}" needs its words for the drawing`);
+  return rule;
+};
+const channels = drawn('TRIM');
+const master = drawn('MIX');
+
+// The drawing's rows, top to bottom: the panel's top edge, the column names, CLIP, then the lights
+// from 12 down, with a short break row wherever the colour changes. Then "dB" and the lower edge.
+const lights = [...METER_SEGMENTS].reverse();
+const FIRST_LIGHT_ROW = 4; // 1 panel top, 2 names, 3 CLIP
+let row = FIRST_LIGHT_ROW - 1;
+const rows = lights.map((s, i) => {
+  if (i > 0 && lights[i - 1]?.zone !== s.zone) row++;
+  row++;
+  return { ...s, row };
+});
+const lastLightRow = row;
+const lightRows = Array.from({ length: lastLightRow - FIRST_LIGHT_ROW + 1 }, (_, i) =>
+  rows.some((s) => s.row === FIRST_LIGHT_ROW + i) ? 'var(--led-h)' : 'var(--break)',
+).join(' ');
+const rowOf = (db: number) => rows.find((s) => s.db === db)?.row ?? FIRST_LIGHT_ROW;
+const lit = (db: number, level: number) => db <= level;
+
+interface Place {
+  /** The highest and the lowest light it covers, as the panel marks them. */
+  from: number;
+  to: number;
+  /** A rule: the meter it is about, the state of its light, and the columns its ring goes round. */
+  rule?: { meter: string; state: string; rings: string[] };
+  /** Anything else: what the lights mean, in a lighter weight. */
+  note?: string;
+}
+const places: Place[] = [
+  { from: CEILING_DB, to: CEILING_DB, note: 'Red: may distort' },
+  { from: topOrange, to: topOrange, rule: { ...master, rings: ['ml / mr-end'] } },
+  { from: blend, to: blendFrom, note: 'Room for a blend' },
+  { from: aim, to: aim, rule: { ...channels, rings: ['ch1', 'ch2'] } },
+];
+const span = (p: Place) => `grid-row: ${rowOf(p.from)} / ${rowOf(p.to) + 1}`;
+
+const label = `The XDJ-RX2’s meters at a blend’s loudest moment: CH1, the MASTER pair and CH2, with the numbers the mixer prints between them. ${channels.meter}, CH1 and CH2: each peaks on the first orange light, ${scaleLabel(aim)}, which is ringed. ${master.meter}, the pair in the middle: they show the mix at ${scaleLabel(blend)}, ${lightsHigher}, and their top orange light, ${scaleLabel(topOrange)}, is ringed and dark. ${scaleLabel(blendFrom)} and ${scaleLabel(blend)} are room for a blend. The red lights, ${scaleLabel(CEILING_DB)}, are dark: there the sound may distort. CLIP is dark.`;
+---
+
+<figure class="targets">
+  <figcaption class="takeaway">
+    The drawing shows a blend at its loudest. The channel meters, CH1 and CH2, show one track each: both peak on the
+    first orange. The MASTER meters, the pair in the middle, show the mix: up to {lightsHigher}.
+  </figcaption>
+  <!-- biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users must be able to pan the magnified diagram. -->
+  <section class="drawing-scroll" aria-label="Meter diagram; scroll sideways if needed" tabindex="0">
+    <div class="drawing" role="img" aria-label={label} style={`--light-rows: ${lightRows}`}>
+      <span class="panel-edge"></span>
+      <span class="name" style="grid-column: ch1">CH1</span>
+      <span class="name" style="grid-column: t1 / t2-end">MASTER</span>
+      <span class="name" style="grid-column: ch2">CH2</span>
+      <span class="clip">CLIP</span>
+      {rows.map((s) => (
+  <Fragment>
+    <span class="led" data-zone={s.zone} data-on={lit(s.db, aim) ? '' : undefined} style={`grid-area: ${s.row} / ch1`}></span>
+    <span class="tick" data-zero={s.db === 0 ? '' : undefined} style={`grid-area: ${s.row} / t1`}>{scaleLabel(s.db)}</span>
+    <span class="led" data-zone={s.zone} data-on={lit(s.db, blend) ? '' : undefined} style={`grid-area: ${s.row} / ml`}></span>
+    <span class="led" data-zone={s.zone} data-on={lit(s.db, blend) ? '' : undefined} style={`grid-area: ${s.row} / mr`}></span>
+    <span class="tick" data-zero={s.db === 0 ? '' : undefined} style={`grid-area: ${s.row} / t2`}>{scaleLabel(s.db)}</span>
+    <span class="led" data-zone={s.zone} data-on={lit(s.db, aim) ? '' : undefined} style={`grid-area: ${s.row} / ch2`}></span>
+  </Fragment>
+))}
+      <span class="tick unit" style="grid-column: t1">dB</span>
+      <span class="tick unit" style="grid-column: t2">dB</span>
+      {places.map((p) => (
+  <Fragment>
+    {p.rule?.rings.map((columns) => <span class="ring" style={`${span(p)}; grid-column: ${columns}`}></span>)}
+    <span class="bracket" data-rule={p.rule ? '' : undefined} style={span(p)}></span>
+    <span class="place" data-rule={p.rule ? '' : undefined} style={span(p)}>
+      {p.rule ? (
+        <Fragment><span class="meter">{p.rule.meter}</span><span class="visually-hidden">: </span><span class="state">{p.rule.state}</span></Fragment>
+      ) : p.note}
+    </span>
+  </Fragment>
+))}
+    </div>
+  </section>
+  <p class="printed">A ring marks the light each rule is about. The mixer prints the numbers between its meters, in dB.</p>
+</figure>
+
+<style>
+  .targets {
+    /* The drawing's line weight. */
+    --line: 1.5px;
+    container: targets / inline-size;
+    display: grid;
+    gap: 0.9rem;
+    margin: 0;
+  }
+
+  /* What the drawing shows, and which meter shows what, above it. It is an instruction's size and
+     colour: a reader needs it to read the drawing. */
+  .takeaway {
+    font-size: var(--text-base);
+    line-height: 1.5;
+    color: var(--ink);
+  }
+
+  .printed {
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+
+  /* Keep magnified labels readable in this two-dimensional drawing: it pans if it cannot fit. */
+  .drawing-scroll {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  /* The drawing, as one grid: CH1, the scale, the MASTER pair, the scale again, CH2, then the
+     brackets and the names of the places beside their rows. The bridge grows with the column, so
+     its lights are as wide as the page allows. The rows keep one pitch. */
+  .drawing {
+    --ch: clamp(1.75rem, 8cqi, 3.5rem);
+    --m: clamp(1.15rem, 6cqi, 2.6rem);
+    --tk: clamp(1.45rem, 5.5cqi, 2.4rem);
+    --col-gap: clamp(4px, 1cqi, 7px);
+    --pad: clamp(0.45rem, 2cqi, 0.9rem);
+    --led-h: 0.875rem;
+    --row-gap: 0.5rem;
+    --break: 2px;
+    --letter: 0.8125rem;
+    display: grid;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: min-content;
+    padding-inline-start: var(--pad);
+    grid-template-columns:
+      [ch1] var(--ch) [t1] var(--tk) [ml] var(--m) [mr] var(--m) [mr-end t2] var(--tk) [t2-end ch2] var(--ch)
+      [ch2-end] var(--pad) [bracket] 0.5rem [place] minmax(min-content, 1fr);
+    grid-template-rows: [top] 0.2rem [names] auto [clip] auto var(--light-rows) [unit] auto [bottom] 0.2rem;
+    column-gap: var(--col-gap);
+    row-gap: var(--row-gap);
+    font-family: var(--font-label);
+    color: var(--ink);
+  }
+
+  /* The meter bridge's outline, drawn behind everything on it. */
+  .panel-edge {
+    grid-column: ch1 / ch2-end;
+    grid-row: top / -1;
+    margin-inline: calc(-1 * var(--pad));
+    border: var(--line) solid var(--ink);
+    border-radius: var(--radius-panel);
+    background: var(--paper-2);
+  }
+
+  .name {
+    grid-row: names;
+    justify-self: center;
+    font-size: var(--letter);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  /* CLIP, above the MASTER pair: a lamp outlined in its red, dark. */
+  .clip {
+    grid-row: clip;
+    grid-column: ml / mr-end;
+    justify-self: stretch;
+    margin-block-end: 0.1rem;
+    padding-block: 0.1rem;
+    border: var(--line) solid var(--led-r);
+    border-radius: 2px;
+    background: var(--paper);
+    font-size: calc(var(--letter) - 0.0625rem);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    line-height: 1.2;
+    text-align: center;
+  }
+
+  /* Each light drawn as a small outlined lamp, filled where it's lit. The red one keeps a red
+     outline, so it reads as red while it's dark. */
+  .led {
+    border: 1px solid var(--ink);
+    border-radius: 2px;
+    background: var(--paper);
+  }
+
+  .led[data-zone='red'] {
+    border: var(--line) solid var(--led-r);
+  }
+
+  .led[data-on][data-zone='green'] {
+    background: var(--led-g);
+  }
+
+  .led[data-on][data-zone='orange'] {
+    background: var(--led-a);
+  }
+
+  /* A ring round the lights a rule is about, on that meter's columns only: the channels' first
+     orange, the MASTER pair's top orange. It sits in the gaps round the lights. */
+  .ring {
+    --out: 4px;
+    margin: calc(-1 * var(--out)) calc(-1 * min(var(--out), var(--col-gap)));
+    border: 2px solid var(--ink);
+    border-radius: 5px;
+    pointer-events: none;
+  }
+
+  /* The scale as the panel prints it, with the 0 in bold. */
+  .tick {
+    align-self: center;
+    font-size: var(--letter);
+    font-weight: 600;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    color: var(--ink-2);
+  }
+
+  .tick[data-zero] {
+    font-weight: 800;
+    color: var(--ink);
+  }
+
+  .tick.unit {
+    grid-row: unit;
+  }
+
+  /* A bracket down the bridge's right-hand side, spanning the lights a place covers. */
+  .bracket {
+    grid-column: bracket;
+    margin-block: -3px;
+    border: 2px solid var(--ink-2);
+    border-inline-start: 0;
+  }
+
+  .bracket[data-rule] {
+    border-width: 3px;
+    border-color: var(--ink);
+  }
+
+  /* The place's name, beside its lights. It is our note, not the mixer's lettering, so it is set in
+     the text face. A name taller than its row overlaps the gaps around it and never moves a light. */
+  .place {
+    grid-column: place;
+    align-self: center;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    line-height: 1.2;
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+
+  /* A rule, as the rules box sets a line: the meter in ink, the state of its light in the action
+     colour, one over the other. */
+  .place[data-rule] {
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .meter,
+  .state {
+    display: block;
+  }
+
+  .state {
+    color: var(--action);
+  }
+
+  /* Wide enough: wider lights, larger lettering, and rows far enough apart for it. */
+  @container targets (min-width: 34rem) {
+    .drawing {
+      --letter: 0.9375rem;
+      --led-h: 0.9375rem;
+      --row-gap: 0.5625rem;
+    }
+
+    .place {
+      font-size: var(--text-base);
+    }
+  }
+
+  @media (forced-colors: active) {
+    .led,
+    .clip {
+      forced-color-adjust: none;
+      background: Canvas;
+      border-color: CanvasText;
+    }
+
+    .led[data-on][data-zone] {
+      background: CanvasText;
+    }
+
+    .ring {
+      border-color: Highlight;
+    }
+
+    .state {
+      color: CanvasText;
+    }
+  }
+</style>

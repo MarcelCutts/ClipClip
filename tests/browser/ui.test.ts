@@ -181,10 +181,10 @@ test('the meter prints its scale like the panel, with 0 in bold and a break betw
   const screen = await render(LedMeter, { label: 'CH1', level: 3 });
   const ticks = [...screen.container.querySelectorAll('.tick')];
   expect(ticks.map((t) => t.textContent)).toEqual([
-    '+12',
-    '+9',
-    '+6',
-    '+3',
+    '12',
+    '9',
+    '6',
+    '3',
     '0',
     '−3',
     '−6',
@@ -200,7 +200,7 @@ test('the meter prints its scale like the panel, with 0 in bold and a break betw
   // The gap under the red light and under the 0 light is wider than between lights of one colour.
   const rows = [...screen.container.querySelectorAll('.row')].map((r) => r.getBoundingClientRect());
   const gaps = rows.slice(1).map((r, i) => r.top - rows[i]!.bottom);
-  // Top down: +12 over +9 is red over orange, 0 over −3 is orange over green, −3 over −6 is green over green.
+  // Top down: 12 over 9 is red over orange, 0 over −3 is orange over green, −3 over −6 is green over green.
   const [redToOrange, orangeToGreen, greenToGreen] = [gaps[0]!, gaps[4]!, gaps[5]!];
   expect(redToOrange).toBeGreaterThanOrEqual(greenToGreen + 2);
   expect(orangeToGreen).toBeGreaterThanOrEqual(greenToGreen + 2);

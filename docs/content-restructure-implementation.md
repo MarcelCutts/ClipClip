@@ -185,6 +185,125 @@ Every internal link and fragment on the built site was checked by script, with e
 - The name or number of the rig's DriveRack preset, and the MASTER ATT and BOOTH ATT settings. S4 says "the rig's own" preset until the owner gives it.
 - Whether the booth monitors are the Achat 104 A. The owner confirmed the make; the model is read from a photograph.
 - Whether Recordings (C4, F9 and F11) stays. It is the one place that needs a computer, and it is the next day's work.
-- The mixer prints its meter scale without plus signs (12, 9, 6, 3, 0). The site's drawings print +12, +9, +6, +3.
 - C3 ends "Howler …… on charge" after the rig is switched off, and does not say where.
 - Section numbers on Learn start at 2.4 in part 2, because 2.1 to 2.3 were Playing's and Playing's headings now carry none.
+
+## 28 September 2026, evening: Playing, the drawing first
+
+### What the owner said
+
+- "let's do B": the drawing of the meters above the three rules.
+- "why is it so skinny compared to the old diagram?" The preview's drawing was one fixed picture, sized so that its names fitted beside it on a phone, and capped at 24rem. On a wide screen it stayed phone-sized, with thin lights and empty space beside it.
+- "just do what you think is best from an education and data hierarchy approach."
+
+### The page, top to bottom
+
+1. The title, and the reason in three sentences: every set is recorded, no limiter sits between the mixer and the recorder, and turning a clipped recording down does not remove the crunch.
+2. **Where to aim**: the drawing, with one sentence on what it shows and which meter shows what.
+3. **When you're playing**: the three rules, with no jump links.
+4. **Set TRIM in your headphones**, every track.
+5. **MASTER meters: top orange lit**, in a blend. It says what to do when CLIP blinks.
+6. **Whose controls**, with where each knob is on the panel (Pioneer p. 27). The hearing warning was removed the same evening, at the owner's word: "we don't need this either".
+7. One link to Learn.
+
+The quick links, the "(0)" line, "Read the right meter" and its three paragraphs, the heading "Keep blends out of the red", the crew's settings (MASTER ATT, BOOTH ATT, the amps' place), the MY SETTINGS sentence and "Ready to play" were removed. On a 390 × 844 phone the page went from 6.7 screens and 755 words to 4.7 screens and 490 words, and from 17 links to 3. The drawing moved from 2.4 screens down to 0.6.
+
+### The drawing (`MeterTargets.astro`)
+
+- A grid of page elements, as the old figure was, so its lettering is real text at the reader's own size. It fills the reading column: the bridge is 181 px of 358 on a phone and 328 px of 684 on a wide screen, and a channel light is 29 px or 55 px wide.
+- The lights the rules name are named beside their rows. There is no numbered key. (The names were first "Top orange: fader down" and "First orange: aim here". They were changed the same evening: see "The drawing keeps the two meters apart" below.)
+- It is lit as a blend at its loudest: each channel on the first orange, the MASTER meters two lights higher, the top orange, the red and CLIP dark.
+- On the unit the MASTER pair is wider than a channel meter (Pioneer's pictures). The old figure drew it narrower. The new one draws the pair at about one and a half times a channel light.
+- The rows keep one pitch at every width. On a phone a long name takes two lines and overlaps the gaps around its row.
+
+### Facts corrected
+
+| Was | Now | Source |
+|---|---|---|
+| The scale on every drawing printed +12, +9, +6, +3 | 12, 9, 6, 3, as the panel prints it (`scaleLabel`) | Pioneer's panel drawing, manual p. 27, and its pictures of the unit |
+| "If you load MY SETTINGS from USB, tell the crew. It may change MASTER ATT and BOOTH ATT." | Removed from Playing | rekordbox's My Settings has no attenuator among its 46 controls; Pioneer's mixers keep ATT. in a separate list. Not tested on the unit |
+| "Warning. A night at club volume can damage your hearing…" | Removed from Playing, with the three documents that served only it | The owner, 28 September 2026 |
+| Channel meters read before the fader: VirtualDJ only | Learn 4.4 adds Pioneer's own sentence for the XDJ-RX3 | XDJ-RX3 manual p. 86 |
+| The share image named the whole orange band "loudest parts" and the green "headroom" | The share image is the page's drawing | `scripts/media/og.html` |
+
+### Links
+
+The DJ briefing's link now lands on the top of Playing (`GUIDE_PATH`): the chat carries the three rules and cannot carry the drawing. The booth card's QR code still lands on Set TRIM (`CARD_PATH`), the first thing on the page that the card does not carry, so printed cards need no change.
+
+### Removed files
+
+`MeterAnatomy.astro`, replaced by `MeterTargets.astro`. `Hero.astro`, which no page had used since the restructure and which named the orange band "loudest parts".
+
+### Verification
+
+`pnpm verify` passed: lint, Astro and Svelte checks, 582 unit and component tests, the build, and 212 browser tests (10 skipped by design). With `BASE_PATH=/ClipClip/` and `CROSS_BROWSER=1`, 283 browser tests passed (13 skipped by design). Every internal link and fragment on the built site resolved. The printed words did not change.
+
+## 28 September 2026, night: one layout, the two meters, three entrances
+
+### What the owner said
+
+- "some pages have a top left header, some don't. spacing of titles, gaps between elements and paragraphs differs. improve and make consistent to your judgement"
+- Of the hearing warning: "we don't need this either I don't think", and "it also makes the text block look oddly sized".
+- "does the diagram distinguish correctly where to aim for the channel volume and for the master volume, do you think?"
+- "should learn be its own tab? I feel there's a tonne of stuff hidden."
+
+### What was measured before
+
+| | Playing | Crew | Print kit | Learn | Recordings | Rig reference |
+|---|---|---|---|---|---|---|
+| Site's name at the top left | no | yes | yes | yes | yes | yes |
+| Title's line height | 1.05 | 1.1 | 1.05 | 1.05 | 1.05 | 1.05 |
+| Title below the header, wide screen | 30 px | 36 px | 30 px | 30 px | 30 px | 30 px |
+| Gaps inside the title block | 16 px | 0 px | 16 px | 16 px | 16 px | 16 px |
+| Title block to the first block, phone | 24 px | 0 px | 49 px | 0 px | 24 px | 36 px |
+| Title block to the first block, wide screen | 24 px | 0 px | 80 px | 40 px | 24 px | 58 px |
+| Between cards | 24 px | 40 px | 58 to 80 px | 50 to 80 px | 24 px | 36 to 56 px |
+| Links in a row | none | dots between | none | none | dots between | none |
+
+### One layout
+
+- The site's name is at the top left of every page. Playing's own title is now "Playing a set"; it was the site's name, which the header did not repeat there.
+- One title block (`PageHeader.astro`) on every page, Crew included. It sets the title's size, the distance from the header and the distance to the page's body.
+- Three gaps (`--gap-text`, `--gap-block`, `--space-section`) replace each page's own numbers. Between blocks: 24 px on a phone, 32 px on a wide screen. Before a new section: 42 px and 64 px.
+- The index rail starts level with the page's first block on every page that has one. Recordings has the rail too, in place of a row of links.
+- Crew's tab strip gives way to the rail on wide screens, as Learn's does. It used to show beside the rail with the same four entries.
+- Links in a row are spaced apart with nothing printed between them, and each is 44 px tall.
+- The lede takes the full reading column. It was held to 34rem, which broke its lines early beside full-width paragraphs.
+- "Whose controls" and Learn's two reference lists share one pattern (`.deflist`).
+- The header fits one line from 360 pixels wide. It was two lines tall there.
+
+### The drawing keeps the two meters apart
+
+The drawing named rows, not meters. "First orange: aim here" sat beside a row that three meters share, and the MASTER meters in that same drawing were lit two lights above it. "Top orange: fader down" did not say whose top orange.
+
+- A channel meter has a target, and the MASTER meters have a limit. A ring goes round each meter's own lights: CH1 and CH2 at the first orange, the MASTER pair at the top orange.
+- Beside each row is the rule in its own words, as the rules box sets it: "Channel meters" over "first orange (0)", "MASTER meters" over "top orange dark".
+- The heading is "What the meters should show". "Where to aim" covered one of the two.
+- The share image is the same drawing.
+- The booth card's drawing is the same in small: lit as a blend at its loudest (it lit every light, red included), with the rings, and "CH1, CH2: aim" and "MASTER: dark" in place of "Aim" and "Fader down". Its names are now part of the printed revision.
+
+### Three entrances
+
+- The header is **Playing · Crew · Learn**. Learn holds the listening test, the blend to try, the meter check, the signal path and the sources, and was reachable only from the foot of Playing and the footer.
+- Print kit left the header. It is used once before an event, by the crew. It is in the row of links under Crew's title, with the rig reference and the recordings, and in the footer.
+- The footer lists every page.
+- Learn's second part numbers its sections 2.1 to 2.3. They were 2.4 to 2.6, after three sections that are now Playing's and show no number.
+
+### Removed
+
+The hearing warning on Playing, with the three documents that served only it (WHO's standard, HSE's HSG260, Bray 2004). The site has no "Warning." now.
+
+### A fault in a drawing
+
+In "At each end, one bolt" the monitor's bracket hid part of the bolt's washer. The bracket is a line that does not close, and its style filled it: the fill of an open path is the triangle between its two ends. Lines like it now carry `open`, and `src/components/figures/figures.test.ts` fails if a filled path in any of C1's drawings is left open.
+
+### Verification
+
+`pnpm verify` passes: lint, Astro and Svelte checks, 586 unit and component tests, the build, and 221 browser tests (10 skipped by design). With `BASE_PATH=/ClipClip/` and `CROSS_BROWSER=1`, 295 browser tests pass (13 skipped by design). Every internal link and fragment on the built site resolves. `tests/e2e/page-anatomy.spec.ts` is new: it holds every page to one header, one title block and the two gaps. Every page was inspected at 360, 390 and 1440 pixels. The printed revision is **28 September 2026 (716B79)**: the booth card's drawing changed.
+
+### Still open
+
+- F7 on Crew, and C2's line that leads to it, rest on the reading that a USB stick can change MASTER ATT. The evidence is against it. One check on the unit settles it: set MASTER ATT to −6 dB, pause both decks, load MY SETTINGS from a stick, and read MASTER ATT again.
+- What a DJ does if no crew can be found.
+- The better guides also give a reason the page does not: late in a night your ears mislead you, and the meters do not.
+- Whether Print kit should be a fourth entrance in the header. It would make the header two lines tall on most phones.

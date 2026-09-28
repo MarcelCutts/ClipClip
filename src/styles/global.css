@@ -209,6 +209,40 @@
   .stack > * + * {
     margin-block-start: var(--stack-gap, 1em);
   }
+
+  /*
+   * Every page is built the same way: the title block (PageHeader.astro), then the page's body.
+   * In the body, blocks sit one block gap apart. What starts a new section (a plain heading, a
+   * part's bar, a card on a new subject) takes the section gap above it instead.
+   */
+  .page-body {
+    row-gap: var(--gap-block);
+  }
+
+  .page-body > .section-start {
+    margin-block-start: calc(var(--space-section) - var(--gap-block));
+  }
+
+  /* A section: a heading and what belongs under it, a text gap apart. */
+  .page-section {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    row-gap: var(--gap-text);
+  }
+
+  /* Cards on one subject, a block gap apart, which the page treats as one block. */
+  .page-group {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    row-gap: var(--gap-block);
+  }
+
+  /* A figure, a lab or a preview among paragraphs: a little more air than a paragraph gets. */
+  .page-figure {
+    margin-block: 0.5rem;
+  }
 }
 
 @layer components {
@@ -236,6 +270,60 @@
     line-height: 1.45;
     font-weight: 400;
     text-wrap: pretty;
+  }
+
+  /* A row of links to other pages or sections: spaced apart, with nothing printed between them.
+     Each is tall enough for a thumb. The row gives that height back above and below, so its words
+     sit as far from their neighbours as a paragraph's would. */
+  .link-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1.5rem;
+    margin: -0.5rem 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .link-row a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+  }
+
+  /* A list of names and what each means or holds: ruled rows under a heavy rule, the name beside
+     its text where there is room. */
+  .deflist {
+    display: grid;
+    margin: 0;
+    border-top: 2px solid var(--ink);
+  }
+
+  .deflist > div {
+    display: grid;
+    gap: 0.25rem;
+    padding-block: 0.7rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .deflist dt {
+    font-weight: 700;
+    color: var(--ink-bright);
+  }
+
+  .deflist dd {
+    margin: 0;
+  }
+
+  @media (min-width: 40rem) {
+    .deflist > div {
+      grid-template-columns: 10rem minmax(0, 1fr);
+      column-gap: 1.25rem;
+      align-content: start;
+    }
+
+    .deflist dd {
+      grid-column: 2;
+    }
   }
 
   /* A note: set off by a rule above and its size, never by a stripe down its side. */

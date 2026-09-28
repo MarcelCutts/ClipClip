@@ -38,7 +38,7 @@ test('the meter check links each answer to its section, and ends on the score an
     'Ask the crew',
     'Turn up BOOTH MONITOR',
   ];
-  const sections = ['Set TRIM in your headphones', 'Read the right meter', 'Whose controls', 'Whose controls'];
+  const sections = ['Set TRIM in your headphones', 'What the meters should show', 'Whose controls', 'Whose controls'];
   for (const [i, answer] of answers.entries()) {
     await screen.getByRole('radio', { name: answer }).click();
     await screen.getByText('Confidence (optional)', { exact: true }).click();
@@ -79,9 +79,9 @@ test('a chosen answer says so in words and shapes once it’s in, not by colour 
 test('the meter pictures print the panel’s scale, with a break where the colours change', async () => {
   const screen = await render(MeterPicture, { ch1: 6, master: 12, ch2: 6 });
   const scale = [...screen.container.querySelectorAll('.s1')].map((t) => t.textContent);
-  expect(scale).toEqual(['+12', '+9', '+6', '+3', '0', '−3', '−6', '−9', '−12', '−15', '−18', '−24']);
+  expect(scale).toEqual(['12', '9', '6', '3', '0', '−3', '−6', '−9', '−12', '−15', '−18', '−24']);
   // The printed break sits above the first row of each new colour: orange under red, green under orange.
-  expect([...screen.container.querySelectorAll('.s1.cut')].map((t) => t.textContent)).toEqual(['+9', '−3']);
+  expect([...screen.container.querySelectorAll('.s1.cut')].map((t) => t.textContent)).toEqual(['9', '−3']);
   const zero = screen.container.querySelector<HTMLElement>('.s1.zero');
   expect(zero && Number(getComputedStyle(zero).fontWeight)).toBeGreaterThanOrEqual(700);
   // Every reading reaches screen readers in words.

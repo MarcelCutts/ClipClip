@@ -78,8 +78,8 @@
   --text-lede: clamp(1.125rem, 1.05rem + 0.4vw, 1.3125rem);
   --text-h3: clamp(1.1875rem, 1.1rem + 0.35vw, 1.375rem);
   --text-h2: clamp(1.4375rem, 1.3rem + 0.7vw, 1.875rem);
-  --text-title: clamp(2rem, 1.6rem + 2vw, 3.25rem);
-  --text-h1: clamp(2.375rem, 1.8rem + 3vw, 4rem);
+  /* A page's name: big enough to know where you are, small enough to reach the tool under it */
+  --text-page: clamp(1.75rem, 1.45rem + 1.4vw, 2.5rem);
 
   /* Layout */
   --gutter: max(16px, 4vw);
@@ -90,7 +90,13 @@
   --wide: 66rem;
   /* Wide screens: index rail, reading column and notes column, each 3rem apart */
   --frame: calc(var(--nav-rail) + var(--measure) + var(--notes) + 6rem);
-  --space-section: clamp(3rem, 2.25rem + 3.5vw, 5rem);
+  /* Vertical rhythm, the same on every page (docs/DESIGN.md, Spacing). Three gaps, each about one
+     and a half times the last: between paragraphs, between the blocks of a section, and before a
+     new section. The page's title sits one title space under the header's rule. */
+  --gap-text: 1rem;
+  --gap-block: clamp(1.5rem, 1.25rem + 1vw, 2rem);
+  --space-section: clamp(2.5rem, 2rem + 2.5vw, 4rem);
+  --space-title: clamp(1.25rem, 1rem + 1vw, 2rem);
   /* Two radii: panels, and the controls on them */
   --radius-panel: 6px;
   --radius-control: 4px;

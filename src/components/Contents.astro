@@ -100,6 +100,8 @@ const { entries, rows } = Astro.props;
 
 <style>
   .toc {
+    /* The column for a part's number or a card's code: as wide as the widest, F11. */
+    --no: 2rem;
     display: grid;
     gap: 0.5rem;
     align-content: start;
@@ -168,7 +170,7 @@ const { entries, rows } = Astro.props;
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
-    min-width: 1.5rem;
+    min-width: var(--no);
     font-weight: 700;
   }
 
@@ -213,7 +215,6 @@ const { entries, rows } = Astro.props;
       max-height: calc(100dvh - var(--sticky-top, 0px) - 3rem);
       overflow-y: auto;
       overscroll-behavior: contain;
-      margin-block-start: clamp(1.75rem, 1.2rem + 2vw, 2.75rem);
       padding-block-end: 1rem;
     }
 
@@ -236,7 +237,7 @@ const { entries, rows } = Astro.props;
       display: block;
       padding-block: 0.3rem;
       /* In line with the titles: tab, gap, number, gap. */
-      padding-inline-start: calc(0.625rem + 0.55rem + 1.5rem + 0.55rem);
+      padding-inline-start: calc(0.625rem + 0.55rem + var(--no) + 0.55rem);
       font-size: var(--text-sm);
       line-height: 1.3;
       color: var(--ink-2);

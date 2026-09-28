@@ -33,6 +33,8 @@ const XDJ_QUICK_START =
 const PIONEER_COMMUNITY_LEVELS =
   'https://community.pioneerdj.com/hc/en-us/community/posts/22976408344345-XDJ-RX2-Recording-levels';
 const VIRTUALDJ_LAYOUT = 'https://virtualdj.com/manuals/hardware/pioneer/xdjrx2/layout/mixer.html';
+const XDJ_RX3_MANUAL =
+  'https://downloads.support.alphatheta.com/manuals/all-in-one-dj-systems/XDJ-RX3/XDJ-RX3_DRI1702C_manual.pdf';
 
 /** A section's heading: its number and title, from the one list. */
 const h = (id: string) => `${section(id).number} ${section(id).title}`;
@@ -107,7 +109,7 @@ const contents: ContentsEntry[] = [
       </p>
       <p>
         A track that peaks on the first orange light leaves headroom for the two lights a blend adds. Two such tracks
-        read up to +6 on the MASTER meters, and the top orange, +9, stays dark.
+        read up to 6 on the MASTER meters, and the top orange, 9, stays dark.
       </p>
       <div class="wide lab"><BlendLab client:visible /></div>
 
@@ -252,6 +254,12 @@ const contents: ContentsEntry[] = [
             >).
           </dd>
           <dd>
+            <span class="who">Pioneer, for the XDJ-RX3:</span> the channel meters show the level “before the sound
+            passes through the channel fader” (<a href={`${XDJ_RX3_MANUAL}#page=86`} rel="external"
+              >XDJ-RX3 manual, p.&nbsp;86</a
+            >). That is the model that followed this one.
+          </dd>
+          <dd>
             <span class="who">We assume:</span> after the EQ and before the fader. An EQ boost shows on the meter, and
             moving the fader does not. The drawing in {section('signal').number} shows it that way.
           </dd>
@@ -365,23 +373,20 @@ const contents: ContentsEntry[] = [
 </Base>
 
 <style>
+  /* The parts set their own distance, the section gap. The index follows the opening on phones;
+     on wide screens it moves into the rail, and the first part starts level with it. */
   .guide {
     row-gap: 0;
   }
 
-  /* The index follows the opening on phones; on wide screens it moves into the rail. */
-  .guide > :global(.toc) {
-    margin-block-start: 2rem;
-  }
-
   @media (min-width: 80rem) {
-    .guide > :global(.toc) {
-      margin-block-start: clamp(1.5rem, 1.1rem + 1.8vw, 2.5rem);
+    .guide > :global(.part:first-of-type) {
+      margin-block-start: 0;
     }
   }
 
   .lab {
-    margin-block: 0.75rem;
+    margin-block: 0.5rem;
   }
 
   /* Reasons, not steps: a plain list. */

@@ -29,6 +29,11 @@ export interface Rule {
   text?: string;
   /** A short key the code finds the line by: TRIM, MIX, RIG. It is not printed. */
   label?: string;
+  /**
+   * The line as the drawing of the meters carries it, beside the light it is about: the meter's
+   * name, then the state of that light. Each is the start of the line's own words.
+   */
+  drawn?: { meter: string; state: string };
 }
 
 const channelMeters: Rule = {
@@ -40,6 +45,7 @@ const channelMeters: Rule = {
   note: 'If the second orange lights on every kick, turn TRIM (the gain knob) down a little.',
   label: 'TRIM',
   why: '#trim',
+  drawn: { meter: 'Channel meters', state: 'first orange (0)' },
 };
 
 const masterMeters: Rule = {
@@ -51,6 +57,7 @@ const masterMeters: Rule = {
   note: 'If the top orange lights, pull a channel fader down a little.',
   label: 'MIX',
   why: '#blends',
+  drawn: { meter: 'MASTER meters', state: 'top orange dark' },
 };
 
 /** The deal, as a DJ hears it: MASTER LEVEL is the crew's, and so is the room's volume. */

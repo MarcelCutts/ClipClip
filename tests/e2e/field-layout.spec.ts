@@ -26,6 +26,40 @@ for (const width of [320, 390]) {
   });
 }
 
+for (const width of [360, 390, 1280]) {
+  test(`the meter drawing fills the column at ${width}px, with each name beside its light`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto('');
+    const figure = page.locator('#playing figure');
+    const measured = await figure.evaluate((el) => {
+      const box = (e: Element) => e.getBoundingClientRect();
+      const pan = el.querySelector('.drawing-scroll') as HTMLElement;
+      const places = [...el.querySelectorAll('.place')].map(box);
+      const brackets = [...el.querySelectorAll('.bracket')].map(box);
+      return {
+        column: box(el).width,
+        bridge: box(el.querySelector('.panel-edge') as Element).width,
+        light: box(el.querySelector('.led') as Element).width,
+        pans: pan.scrollWidth > pan.clientWidth,
+        right: Math.max(...places.map((p) => p.right)) - box(el).right,
+        gaps: places.slice(1).map((p, i) => p.top - (places[i] as DOMRect).bottom),
+        offCentre: places.map((p, i) => {
+          const b = brackets[i] as DOMRect;
+          return Math.abs((p.top + p.bottom) / 2 - (b.top + b.bottom) / 2);
+        }),
+      };
+    });
+    // The bridge takes about half the column, and its lights are bars, never slivers.
+    expect(measured.bridge / measured.column).toBeGreaterThan(0.45);
+    expect(measured.light).toBeGreaterThanOrEqual(28);
+    // Every name fits beside the bridge, clear of the next one, level with its bracket.
+    expect(measured.pans).toBe(false);
+    expect(measured.right).toBeLessThanOrEqual(0.5);
+    for (const gap of measured.gaps) expect(gap).toBeGreaterThanOrEqual(2);
+    for (const off of measured.offCentre) expect(off).toBeLessThanOrEqual(1);
+  });
+}
+
 test('larger text and keyboard use keep practical instructions available', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   for (const path of ['', 'setup/', 'recordings/', 'night/#changeover']) {

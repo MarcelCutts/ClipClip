@@ -1,26 +1,34 @@
 ---
+/**
+ * The next day's work on the files: C4, then the two drills for what is found by listening. The one
+ * page that needs a computer. Its index is the same as Crew's and the rig reference's: a list under
+ * the title on a phone, the rail on a wide screen.
+ */
+import Contents, { type ContentsEntry } from '../../components/Contents.astro';
 import DrillCard from '../../components/DrillCard.astro';
 import PageHeader from '../../components/PageHeader.astro';
 import Checklist from '../../islands/Checklist.svelte';
 import Base from '../../layouts/Base.astro';
-import { FIXES } from '../../lib/fixes';
+import { CHECKLISTS } from '../../lib/checklists';
+import { drillAnchor, FIXES } from '../../lib/fixes';
 import { href } from '../../lib/url';
 
+const { files } = CHECKLISTS;
 /** The drills for what you find by listening, the day after. */
 const drills = FIXES.filter((f) => f.where === 'recording');
+const contents: ContentsEntry[] = [
+  { id: files.anchor, number: files.code, label: files.title },
+  ...drills.map((f) => ({ id: drillAnchor(f.id), number: f.code, label: f.short })),
+];
 ---
 <Base title="Recordings" description="Copy, check and prepare the Howler recordings after the night. Keep an untouched original and diagnose clipping before normalising.">
   <PageHeader title="Recordings" lede="Copy and check the files before editing. Keep one untouched original.">
     <p>For a problem during soundcheck or a set, use <a href={href('/night/#fixes')}>Crew’s fault guide</a>.</p>
   </PageHeader>
-  <div class="recordings flow">
-    <nav aria-label="Recording tasks"><a href="#next-day">Copy and prepare files</a> · <a href="#fix-crunch">Crunch in a recording</a> · <a href="#fix-hollow">Hollow or one-sided sound</a></nav>
+  <div class="flow page-body">
+    <Contents entries={contents} rows={contents.length + 1} />
     <div><Checklist list="files" headingLevel={2} client:visible /></div>
-    {drills.map((fix) => <DrillCard fix={fix} level={2} />)}
+    <div class="page-group section-start">{drills.map((fix) => <DrillCard fix={fix} level={2} />)}</div>
     <p><a href={href('/learn/#quiet')}>Why a quiet recording is fine</a></p>
   </div>
 </Base>
-<style>
-  .recordings { row-gap: 1.5rem; padding-top: 1.5rem; }
-  nav a { display: inline-flex; align-items: center; min-height: 2.75rem; }
-</style>

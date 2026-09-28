@@ -4,7 +4,7 @@
    * An XDJ-RX2 level indicator: twelve LEDs, green to −3 dB, orange 0 to +9, red at +12.
    * `level` is the peak on the meter's own dB scale. The master variant has two columns and a
    * CLIP light. Colour is never the only cue: the scale is printed beside the LEDs as on the
-   * panel (−24 … 0, +3 … +12, with 0 in bold), a printed break sets each colour zone apart, and
+   * panel (−24 … 0, 3 … 12, with 0 in bold), a printed break sets each colour zone apart, and
    * the meter exposes its reading to screen readers.
    *
    * The break is `--zone-break` (3px by default) added under the red light and under the 0 light.

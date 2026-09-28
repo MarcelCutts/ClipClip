@@ -1,14 +1,23 @@
 ---
+/**
+ * Playing: what a DJ needs at the mixer, in the order they need it. The reason in three sentences,
+ * the drawing of the meters, the three lines to know by heart, then the two procedures and whose
+ * controls are whose. Each instruction is said once, where it is used.
+ *
+ * The drawing comes before the lines because they name its lights: "first orange" and "top orange"
+ * mean nothing until the reader has seen which lights they are. Nothing here is for the crew:
+ * MASTER ATT, UTILITY and the amps are on Crew.
+ */
 import KnowByHeart from '../components/KnowByHeart.astro';
 import LegacyAnchors from '../components/LegacyAnchors.astro';
-import MeterAnatomy from '../components/MeterAnatomy.astro';
+import MeterTargets from '../components/MeterTargets.astro';
 import PageHeader from '../components/PageHeader.astro';
 import Procedure from '../components/Procedure.astro';
 import Base from '../layouts/Base.astro';
 import { ZERO_MARK } from '../lib/checklists';
 import { GLOSSARY } from '../lib/glossary';
 import { DJ_RULES } from '../lib/rules';
-import { GUIDE } from '../lib/sections';
+import { GUIDE, section } from '../lib/sections';
 import { href } from '../lib/url';
 
 const moved = Object.fromEntries([
@@ -19,89 +28,54 @@ const moved = Object.fromEntries([
 ].map((id) => [id, `/learn/#${id === 'loud' ? 'myths' : id}`]));
 ---
 
-<Base title="Out of the red: rig setup and clean recordings" description="Set TRIM, read the right meter and keep blends out of the red. Practical instructions for DJs, with setup and fault checks for crew.">
-  <PageHeader title="Out of the red" lede="Rig setup and clean recordings.">
-    <p>Every set here is recorded. Keep the mixer clean: turning a clipped recording down makes the crunch quieter, but does not remove it.</p>
+<Base title="Out of the red: keep your set’s recording clean" description="Every set here is recorded, straight from the mixer. Where to aim on the meters, how to set TRIM for each track, and what to do when a blend reads high.">
+  <PageHeader title="Playing a set" lede="Every set here is recorded, straight from the mixer.">
+    <p>No limiter sits between the mixer and the recorder. If the mixer clips, the crunch is in the recording. If you turn the recording down, the crunch gets quieter. It does not go away.</p>
   </PageHeader>
-  <div class="playing flow" id="playing">
-    <KnowByHeart title="When you’re playing" rules={DJ_RULES} />
-    <p class="zero">(0) is the number the mixer prints beside the first orange light.</p>
-    <nav class="quick-links" aria-label="Playing tasks">
-      <a href="#trim">Set TRIM</a><a href="#meters">Read the meters</a><a href="#blends">Fix a blend</a><a href="#knobs">Whose controls</a>
-    </nav>
-    <p class="other-route"><a href={href('/learn/')}>Learn why and practise</a> with optional listening exercises. Setting up or fixing a fault? Go to <a href={href('/night/')}>Crew</a>.</p>
-
-    <Procedure id="trim" title="Set TRIM in your headphones" level={2} kind="Every track" steps={[
-      { challenge: 'Channel fader', response: 'down' },
-      { challenge: 'TRIM, HI, MID and LOW', response: '12 o’clock' },
-      { challenge: 'Track', response: 'in your headphones, loudest part playing' },
-      { challenge: 'TRIM', response: 'first orange (0)', note: ZERO_MARK },
-      { challenge: 'Channel fader', response: 'up, when you mix it in' },
-    ]}>
-      <p>Set TRIM by the channel meter for every track. Tracks arrive at different levels; the knob’s position does not tell you the level.</p>
-      <p>A lower TRIM setting is fine. Ask crew for a louder room. A clean recording can be turned up afterwards.</p>
-      <details><summary>Why this target</summary><p>The XDJ-RX2 manual asks for orange at a track’s loudest part and warns against red. Our first-orange target leaves room for a blend. <a href={href('/learn/#red-top')}>Read the evidence and limits</a>.</p></details>
-    </Procedure>
-
-    <section class="section" aria-labelledby="meters">
-      <h2 id="meters">Read the right meter</h2>
-      <MeterAnatomy />
-      <p>The numbers between the lights are printed on the mixer, in dB.</p>
-      <p>Set each deck by its channel meter. During a blend, watch the MASTER meters as well. Lowering a fader reduces that track in the mix; it does not lower its channel meter.</p>
-      <p>If a channel reaches red, turn its TRIM down. If the MASTER meters’ top orange lights, use the blend fix below.</p>
+  <div class="flow page-body" id="playing">
+    <section class="page-section" aria-labelledby="meters">
+      <h2 id="meters">{section('meters').title}</h2>
+      <MeterTargets />
     </section>
 
-    <section class="section" aria-labelledby="blends">
-      <h2 id="blends">Keep blends out of the red</h2>
-      <Procedure title="MASTER meters: top orange lit" kind="Fix" steps={[
+    <KnowByHeart title="When you’re playing" rules={DJ_RULES} refs={false} />
+
+    <div class="page-group section-start">
+      <Procedure id="trim" title="Set TRIM in your headphones" level={2} kind="Every track" steps={[
+        { challenge: 'Channel fader', response: 'down' },
+        { challenge: 'TRIM, HI, MID and LOW', response: '12 o’clock' },
+        { challenge: 'Track', response: 'in your headphones, loudest part playing' },
+        { challenge: 'TRIM', response: 'channel meter on the first orange (0)', note: ZERO_MARK },
+        { challenge: 'Channel fader', response: 'up, when you mix it in' },
+      ]}>
+        <p>Tracks arrive at different levels, and the knob’s position does not tell you the level. A lower setting is fine: a clean recording can be turned up afterwards.</p>
+        <details><summary>Why this target</summary><p>The XDJ-RX2 manual asks for orange at a track’s loudest part and warns against red (p.&nbsp;31). For the MASTER meters it names a level: around 0&nbsp;dB at the peak (p.&nbsp;34). The first orange is that 0, and it leaves room for a blend. <a href={href('/learn/#red-top')}>Read the evidence and limits</a>.</p></details>
+      </Procedure>
+
+      <Procedure id="blends" title="MASTER meters: top orange lit" level={2} kind="In a blend" steps={[
         { challenge: 'A channel fader', response: 'down a little', note: 'Use the incoming track’s fader. If both are already up, either one works.' },
         { challenge: 'HI, MID and LOW', response: '12 o’clock or lower', note: 'Boosting EQ adds level too.' },
         { challenge: 'MASTER meters', response: 'top orange dark again' },
-      ]} />
-      <p>Two tracks add together. First orange on each channel leaves room for their combined peaks. Keep the MASTER meters’ top orange dark, even when both tracks are playing.</p>
-      <p><a href={href('/learn/#blends')}>Try a blend and see the meters change</a>.</p>
+      ]}>
+        <p>Two tracks add together, by up to two lights. If CLIP blinks, even slowly, do the same at once. <a href={href('/learn/#blends')}>Try a blend and see the meters change</a>.</p>
+      </Procedure>
+    </div>
+
+    <section class="page-section section-start" aria-labelledby="knobs">
+      <h2 id="knobs">{section('knobs').title}</h2>
+      <dl class="deflist">
+        <div>
+          <dt id="yours">Yours</dt>
+          <dd>TRIM (the top knob on each channel), HI, MID and LOW, the channel faders, BOOTH MONITOR (top right) and HEADPHONES LEVEL (bottom left).</dd>
+        </div>
+        <div>
+          <dt id="crews">The crew’s</dt>
+          <dd>MASTER LEVEL (top centre, above the meters). It sets the room and the recording together. For a louder room, ask the crew: they turn up the amps, and the recording stays as it is.</dd>
+        </div>
+      </dl>
     </section>
 
-    <section class="section" aria-labelledby="knobs">
-      <h2 id="knobs">Whose controls</h2>
-      <div class="whose">
-        <div><h3 id="yours">Yours</h3><dl>
-          <div><dt>TRIM, HI, MID and LOW</dt><dd>Each track’s level and EQ.</dd></div>
-          <div><dt>Channel faders</dt><dd>The blend.</dd></div>
-          <div><dt>BOOTH MONITOR</dt><dd>Your booth monitors only.</dd></div>
-          <div><dt>HEADPHONES LEVEL</dt><dd>Your headphones only.</dd></div>
-        </dl></div>
-        <div><h3 id="crews">The crew’s</h3><dl>
-          <div><dt>MASTER LEVEL</dt><dd>Leave it as you find it. It changes the room and recording together.</dd></div>
-          <div><dt>MASTER ATT and BOOTH ATT</dt><dd>The output settings in UTILITY.</dd></div>
-          <div><dt>Amp gain knobs</dt><dd>The room’s volume. They face the crowd, under the table.</dd></div>
-        </dl></div>
-      </div>
-      <p><strong>Warning.</strong> A night at club volume can damage your hearing. Keep BOOTH MONITOR and HEADPHONES LEVEL no louder than you need. Wear earplugs: flat-response ones keep the mix clear.</p>
-      <p>If you load MY SETTINGS from USB, tell the crew. It may change MASTER ATT and BOOTH ATT.</p>
-      <p>For a louder room, ask crew. Turning up the mixer may clip the recording without making the speakers louder. The DriveRack’s limiter is on the speaker path; the Howler records from a different output.</p>
-      <p><a href={href('/learn/#signal')}>See which control changes which output</a>.</p>
-    </section>
-    <aside class="finish">
-      <h2>Ready to play</h2>
-      <p>Use the meters at the loudest part of each track and during blends. If something still sounds wrong, ask crew and use <a href={href('/night/#fixes')}>the fault guide</a>.</p>
-      <p>For practice and explanations, continue to <a href={href('/learn/')}>Learn why and practise</a>. For files after the night, use <a href={href('/recordings/')}>Recordings</a>.</p>
-    </aside>
+    <p><a href={href('/learn/')}>Learn why and practise</a>, with listening tests and a blend to try.</p>
     <LegacyAnchors map={moved} />
   </div>
 </Base>
-
-<style>
-  .playing { row-gap: 1.5rem; padding-block-start: 1.5rem; }
-  .section, .finish { display: grid; gap: 1rem; margin-block-start: 1rem; }
-  .quick-links { display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; border-block: 1px solid var(--rule); }
-  .quick-links a { display: inline-flex; align-items: center; min-height: 2.75rem; font-weight: 700; }
-  .other-route, .zero { font-size: var(--text-sm); }
-  .whose { display: grid; gap: 1.5rem; }
-  .whose h3 { font-size: var(--text-rule); padding-bottom: 0.5rem; border-bottom: 2px solid var(--ink); }
-  .whose dl > div { padding-block: 0.5rem; border-bottom: 1px solid var(--rule); }
-  .whose dt { font-weight: 700; }
-  .whose dd { margin: 0.1rem 0 0; }
-  .finish { border-top: 2px solid var(--ink); padding-top: 1rem; }
-  @media (min-width: 40rem) { .whose { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-</style>

@@ -116,6 +116,12 @@ export const SOURCES: SourceGroup[] = [
         note: 'Reading a file’s peak, and Show Clipping, which is off until you turn it on.',
       },
       {
+        title: 'XDJ-RX3 Instruction Manual',
+        publisher: 'AlphaTheta (Pioneer DJ)',
+        url: 'https://downloads.support.alphatheta.com/manuals/all-in-one-dj-systems/XDJ-RX3/XDJ-RX3_DRI1702C_manual.pdf',
+        note: 'The model that followed the XDJ-RX2. Its channel meters read before the channel fader (p. 86). Pioneer does not say so for the XDJ-RX2.',
+      },
+      {
         title: 'XDJ-RX2 mixer layout',
         publisher: 'VirtualDJ',
         url: 'https://virtualdj.com/manuals/hardware/pioneer/xdjrx2/layout/mixer.html',
@@ -180,11 +186,6 @@ export const SOURCES: SourceGroup[] = [
         note: 'Why loud bass hides distortion, and how much speakers add.',
       },
       {
-        title: 'Global standard for safe listening venues and events',
-        publisher: 'World Health Organization, 2022',
-        url: 'https://www.who.int/publications/i/item/9789240043114',
-      },
-      {
         title: 'Will SoundCloud play my track at the level it’s mastered?',
         publisher: 'SoundCloud Help',
         url: 'https://help.soundcloud.com/hc/en-us/articles/360053660014-Will-SoundCloud-play-my-track-at-the-level-it-s-mastered',
@@ -195,12 +196,6 @@ export const SOURCES: SourceGroup[] = [
         publisher: 'DJ Times, 2020',
         url: 'https://www.djtimes.com/2020/03/dj-sound-redlining-booth-levels/',
         note: 'Monitoring, ear fatigue and why DJs push levels.',
-      },
-      {
-        title:
-          'Noise induced hearing loss in dance music disc jockeys and an examination of sound levels in nightclubs',
-        publisher: 'Bray et al., Journal of Laryngology and Otology, 2004',
-        url: 'https://pubmed.ncbi.nlm.nih.gov/14979949/',
       },
     ],
   },

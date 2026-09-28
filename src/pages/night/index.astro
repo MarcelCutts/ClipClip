@@ -16,6 +16,7 @@ import RackRearFigure from '../../components/figures/RackRearFigure.astro';
 import TableFigure from '../../components/figures/TableFigure.astro';
 import KnowByHeart from '../../components/KnowByHeart.astro';
 import LegacyAnchors from '../../components/LegacyAnchors.astro';
+import PageHeader from '../../components/PageHeader.astro';
 import Tabs, { type Tab } from '../../components/Tabs.astro';
 import Checklist from '../../islands/Checklist.svelte';
 import Base from '../../layouts/Base.astro';
@@ -59,22 +60,27 @@ const ROWS = 6;
   title="Crew on the night"
   description="Build the booth, set the levels by the meters, handle each changeover and find the right fault procedure."
 >
-  <header class="head flow">
-    <h1>Crew on the night</h1>
-    <p>Build the booth, set the levels and keep the recording running. For a problem during a set, go straight to <a href="#fixes">Something’s wrong</a>.</p>
-    <p class="secondary"><a href={href('/setup/')}>Rig reference</a> · <a href={href('/recordings/')}>Recordings after the night</a><span class="offline-link"> · <a href="#offline-guide">Save offline</a></span></p>
-  </header>
+  <PageHeader title="Crew on the night" lede="Build the booth, set the levels and keep the recording running.">
+    <p>For a problem during a set, go straight to <a href="#fixes">Something’s wrong</a>.</p>
+    <ul class="link-row">
+      <li><a href={href('/setup/')}>Rig reference</a></li>
+      <li><a href={href('/recordings/')}>Recordings</a></li>
+      <li><a href={href('/print/')}>Print kit</a></li>
+      <li class="offline-link"><a href="#offline-guide">Save offline</a></li>
+    </ul>
+  </PageHeader>
 
   <!-- Thumb tabs, as on the edge of a printed handbook: they stay at the top of the screen, and the one
-       for the part of the night on screen is filled (the script below). Plain links without JavaScript. -->
-  <Tabs label="Checklists and drills" tabs={tabs} data-night-tabs />
+       for the part of the night on screen is filled (the script below). Plain links without JavaScript.
+       On a wide screen the index in the rail does their job, as on every page with a rail. -->
+  <Tabs label="Checklists and drills" tabs={tabs} rail data-night-tabs />
 
-  <div class="night flow">
+  <div class="night flow page-body">
     <Contents entries={contents} rows={ROWS} />
 
-    <div class="block"><KnowByHeart title="Know by heart" rules={CREW_RULES} /></div>
+    <div><KnowByHeart title="Know by heart" rules={CREW_RULES} /></div>
 
-    <div class="block stage">
+    <div class="section-start">
       <Checklist list="doors" headingLevel={2} client:visible>
         <TableFigure slot="table" />
         <BoothFigure slot="booth" />
@@ -84,9 +90,9 @@ const ROWS = 6;
       </Checklist>
     </div>
 
-    <div class="block stage"><Checklist list="changeover" headingLevel={2} client:visible /></div>
+    <div class="section-start"><Checklist list="changeover" headingLevel={2} client:visible /></div>
 
-    <section class="drills stage" id="fixes">
+    <section class="drills section-start" id="fixes">
       <!-- Named "F: Something’s wrong", code first, as the tab is. The code is said in the hidden text, so
            no space creeps in before the colon. -->
       <h2 class="drills-title">
@@ -104,12 +110,12 @@ const ROWS = 6;
 ))}
         </ol>
       </nav>
-      {booth.map((f) => <DrillCard fix={f} level={3} />)}
+      <div class="page-group">{booth.map((f) => <DrillCard fix={f} level={3} />)}</div>
     </section>
 
-    <div class="block stage"><Checklist list="after" headingLevel={2} client:visible /></div>
+    <div class="section-start"><Checklist list="after" headingLevel={2} client:visible /></div>
 
-    <p class="block">Next: <a href={href('/recordings/')}>copy, check and prepare the recordings</a>.</p>
+    <p>Next: <a href={href('/recordings/')}>copy, check and prepare the recordings</a>.</p>
     <LegacyAnchors map={moved} />
   </div>
 </Base>
@@ -148,25 +154,8 @@ const ROWS = 6;
 </script>
 
 <style>
-  /* A tool page's name: enough to know where you are, and out of the way of the tabs. */
-  .head {
-    padding-block: clamp(1.25rem, 0.9rem + 1.5vw, 2.25rem) 0.9rem;
-  }
-
-  /* Which cards are current: small, under the title, never in the way of the checklists. */
-  .secondary {
-    max-width: var(--measure);
-    font-size: var(--text-sm);
-    color: var(--ink-2);
-  }
-
   @media print {
     .offline-link { display: none; }
-  }
-
-  h1 {
-    font-size: clamp(1.75rem, 1.45rem + 1.4vw, 2.5rem);
-    line-height: 1.1;
   }
 
   /* On the night a jump is instant: nobody in a hurry should watch the page glide past. Where it
@@ -175,21 +164,16 @@ const ROWS = 6;
     scroll-behavior: auto;
   }
 
-  .night {
-    row-gap: 1.25rem;
-    padding-block-start: 1rem;
-  }
-
-  /* A little more air between the night's stages than inside them. */
-  .stage {
-    margin-block-start: 1.25rem;
-  }
-
+  /* The drills: their heading and how to use them a text gap apart, then the index and the cards. */
   .drills {
     min-width: 0;
     grid-template-columns: minmax(0, 1fr);
     display: grid;
-    gap: 1.25rem;
+    row-gap: var(--gap-text);
+  }
+
+  .drills > .page-group {
+    margin-block-start: calc(var(--gap-block) - var(--gap-text));
   }
 
   .drills-title {
@@ -219,11 +203,6 @@ const ROWS = 6;
     width: 0.5rem;
     height: 0.5rem;
     background: var(--warning);
-  }
-
-  .index {
-    display: grid;
-    gap: 1rem;
   }
 
   .index ol {

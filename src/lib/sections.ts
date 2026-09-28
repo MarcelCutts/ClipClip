@@ -1,7 +1,9 @@
 /**
  * The guide's sections, in order, with the numbers a quick reference handbook gives them. One
  * list, so the index, the headings, the tabs and every "See 4.4" cross-reference agree. Playing's
- * sections (2.1 to 2.3) keep their numbers here, and show none: links to them use the title alone.
+ * sections carry no number: links to them use the title alone. Learn's parts number their own
+ * sections from 1, so part 2 starts at 2.1 (it started at 2.4 until 28 September 2026, when the
+ * three before it were Playing's).
  */
 export interface Section {
   id: string;
@@ -35,12 +37,12 @@ export const GUIDE: GuidePart[] = [
     tab: 'Playing',
     minutes: 7,
     sections: [
-      { id: 'trim', number: '2.1', title: 'Set TRIM in your headphones', short: 'Set TRIM' },
-      { id: 'meters', number: '2.2', title: 'Read the right meter', short: 'The meters' },
-      { id: 'knobs', number: '2.3', title: 'Whose controls' },
-      { id: 'blends', number: '2.4', title: 'Keep the MASTER meters’ top orange dark in a blend', short: 'Blends' },
-      { id: 'check', number: '2.5', title: 'Meter check' },
-      { id: 'myths', number: '2.6', title: 'What people say about the red', short: 'What people say' },
+      { id: 'trim', number: '', title: 'Set TRIM in your headphones', short: 'Set TRIM' },
+      { id: 'meters', number: '', title: 'What the meters should show', short: 'The meters' },
+      { id: 'knobs', number: '', title: 'Whose controls' },
+      { id: 'blends', number: '2.1', title: 'Keep the MASTER meters’ top orange dark in a blend', short: 'Blends' },
+      { id: 'check', number: '2.2', title: 'Meter check' },
+      { id: 'myths', number: '2.3', title: 'What people say about the red', short: 'What people say' },
     ],
   },
   {
@@ -119,7 +121,7 @@ export const LEARNING_TABS = LEARNING.map((p) => ({
 }));
 
 const PRACTICAL = new Set(['playing', 'trim', 'meters', 'knobs', 'blends', 'yours', 'crews']);
-/** A canonical address for shared references. Historic section numbers are not reused. */
+/** A canonical address for shared references: Playing's own sections on Playing, the rest on Learn. */
 export function sectionPath(anchor: string): string {
   const id = anchor.replace(/^#/, '');
   return `${PRACTICAL.has(id) ? '/' : '/learn/'}#${id}`;

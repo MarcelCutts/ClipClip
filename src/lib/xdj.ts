@@ -32,10 +32,12 @@ export const METER_SEGMENTS: readonly MeterSegment[] = [
 ];
 
 /**
- * A mark on the meter's scale as the panel prints it: −24 … −3, 0, +3 … +12, with a true minus
- * sign and a plus sign. Every meter on the site prints its scale with this.
+ * A mark on the meter's scale as the panel prints it: 12, 9, 6, 3, 0, −3 … −24, with a true minus
+ * sign and no plus sign (the panel drawing on p. 27 of the manual, and Pioneer's pictures of the
+ * unit). The knobs beside the meters do print plus signs. Every meter on the site prints its scale
+ * with this.
  */
-export const scaleLabel = (db: number): string => formatDb(db, { unit: '' });
+export const scaleLabel = (db: number): string => formatDb(db, { unit: '', signed: false });
 
 /** Control ranges printed on the panel (manual p. 27). */
 export const RANGES = {

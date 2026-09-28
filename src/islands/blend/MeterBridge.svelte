@@ -8,8 +8,8 @@
    * It draws its own ladders, not ui/LedMeter's, so that everything lines up in one grid: the
    * three meters' rows, the scale between them and the guess. It prints them as ui/LedMeter does:
    * the unit's colours, and for readers who can't tell green from orange, a break where the
-   * colours change (--zone-break, between −3 and 0 and between +9 and +12) and the 0 in bold. The
-   * scale prints as the panel does (xdj.ts scaleLabel): −24 … 0, +3 … +12. Each meter's reading
+   * colours change (--zone-break, between −3 and 0 and between 9 and 12) and the 0 in bold. The
+   * scale prints as the panel does (xdj.ts scaleLabel): −24 … 0, 3 … 12. Each meter's reading
    * also reaches screen readers, as a meter with its level in words.
    *
    * Sized from the lab's mixer (the `mixer` container): as big as a phone allows between the two

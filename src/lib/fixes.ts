@@ -18,10 +18,10 @@
  * step is a plain sentence before it. "Choose one" lists what you can see at that step, and each finding
  * ends the drill (■ ■ ■ ■) or goes to a step or another drill. Values, never "down a step".
  *
- * Signal words: "Warning." is only for injury, and no drill has one: the site's one warning is about
- * hearing, on Playing. The site uses no CAUTION: in ANSI Z535 and ISO 3864 it means minor injury, in
- * Boeing's QRH and ASD-STE100 damage to equipment, and ANSI's word for property damage is NOTICE. A
- * consequence that is not an injury is a plain sentence instead.
+ * Signal words: "Warning." is only for injury, and the site has none (the hearing warning on Playing
+ * was removed by the owner on 28 September 2026). The site uses no CAUTION: in ANSI Z535 and ISO 3864
+ * it means minor injury, in Boeing's QRH and ASD-STE100 damage to equipment, and ANSI's word for
+ * property damage is NOTICE. A consequence that is not an injury is a plain sentence instead.
  *
  * The rig, one way only: MASTER 1 (XLR) → DriveRack PA2 → two QSC GX7 amps → PA; MASTER 2 (RCA) → Howler;
  * BOOTH → booth monitors. MASTER LEVEL sets MASTER 1 and MASTER 2 (Pioneer manual p.27). The crew set it

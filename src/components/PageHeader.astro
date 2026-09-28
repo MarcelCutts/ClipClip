@@ -1,6 +1,9 @@
 ---
 /**
- * Compact title block for practical and reference pages.
+ * The title block, the same on every page: the page's name, one sentence on what it is for, then
+ * anything a reader needs before the page's first block (a way out to another page, a row of links).
+ * It sits one title space under the header's rule and ends one block gap above what follows, so no
+ * page sets those distances itself.
  * Pass the lede as a string, or in the "lede" slot when it needs markup such as <Term>.
  */
 interface Props {
@@ -20,18 +23,13 @@ const hasLede = Boolean(lede) || Astro.slots.has('lede');
 
 <style>
   .page-header {
-    padding-block: clamp(1.25rem, 1rem + 1vw, 2rem) 0;
-    row-gap: 1rem;
+    padding-block: var(--space-title) var(--gap-block);
+    row-gap: var(--gap-text);
   }
 
-  /* A tool page's name: big enough to know where you are, small enough to reach the tool. */
   h1 {
-    font-size: clamp(1.75rem, 1.45rem + 1.4vw, 2.5rem);
+    font-size: var(--text-page);
     line-height: 1.05;
     letter-spacing: -0.01em;
-  }
-
-  .lede {
-    max-width: 34rem;
   }
 </style>

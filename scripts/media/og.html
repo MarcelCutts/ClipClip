@@ -3,10 +3,11 @@
 <!-- The share image (public/og.png, 1200×630): what a link to the site shows in a group chat, often as a
      ~300px thumbnail in a dark chat theme. It's the cockpit display (render.mjs asks for the dark theme, so
      tokens.css gives the night values), which reads in dark and light chats alike: the title big enough for
-     the thumbnail, the page's description, and the hero's meter as the home page draws it: lit to the first
-     orange with the rest of the orange and the red dark, an "Aim" bracket over the 0 light, a printed break
-     where the colour changes, a bold 0, and each colour's zone named under the scale. The CLIP lamp sits past
-     the top light. -->
+     the thumbnail, what the page is for, and the drawing of the meters as Playing draws it
+     (src/components/MeterTargets.astro): CH1, the MASTER pair and CH2, lit as a blend at its loudest, with the
+     scale as the panel prints it (no plus signs), a break where the colour changes and a bold 0. A ring goes
+     round the lights the two meter rules are about, and each rule is beside its row in its own words: the
+     meter's name over the state of its light. Keep the two in step by hand. -->
 <link rel="stylesheet" href="/src/styles/tokens.css">
 <style>
 @font-face{font-family:B612;src:url(/node_modules/@fontsource/b612/files/b612-latin-400-normal.woff2) format("woff2");font-weight:400}
@@ -15,42 +16,71 @@
 :root{--font-body:B612,sans-serif;--font-label:Archivo,sans-serif}
 html,body{margin:0;width:1200px;height:630px;overflow:hidden}
 body{background:var(--paper);color:var(--ink);font-family:var(--font-body);-webkit-font-smoothing:antialiased}
-.title{position:absolute;left:68px;top:40px;margin:0;font-weight:700;font-size:140px;line-height:1;letter-spacing:-.015em;color:var(--ink-bright)}
-.lede{position:absolute;left:72px;top:198px;margin:0;font-size:32px;line-height:1.4;color:var(--ink-2)}
-/* The meter. Every row shares one grid: twelve lights, a narrow break column where the colour changes
-   (after −3 and after +9), and the CLIP lamp, so each mark and word sits under its light. */
-.meter{position:absolute;left:72px;right:72px;top:318px;display:grid;row-gap:10px}
-.row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr)) 6px repeat(4,minmax(0,1fr)) 6px minmax(0,1fr) minmax(0,1.3fr);column-gap:8px;padding-inline:14px}
-.aim{font-weight:700;font-size:24px;line-height:1;color:var(--ink)}
-.aim span{grid-column:9/10;display:grid;justify-items:center;row-gap:6px}
-.aim span::after{content:"";justify-self:stretch;height:11px;border:3px solid var(--ink);border-bottom:0}
-.leds{padding:10px 12px;border-radius:var(--radius-panel);background:var(--hw-sunk);border:2px solid var(--panel-edge)}
-.leds i{height:58px;border-radius:var(--radius-control);background:var(--led-g-off)}
-.leds i.g{background:var(--led-g)}
-.leds i.a{background:var(--led-a)}
-.leds i.ao{background:var(--led-a-off)}
-.leds i.r{background:var(--led-r-off);outline:2px solid var(--led-r-rim);outline-offset:-2px}
-.leds b{margin-left:10px;display:grid;place-items:center;border-radius:var(--radius-control);background:var(--led-r-off);font:800 23px/1 var(--font-label);font-stretch:75%;letter-spacing:.14em;text-indent:.14em;color:color-mix(in oklab,var(--led-r) 45%,var(--hw-label))}
-.scale span{text-align:center;font:600 22px/1 var(--font-label);font-stretch:75%;font-variant-numeric:tabular-nums;color:var(--ink-2)}
-.scale span.zero{font-weight:800;color:var(--ink)}
-.zones{row-gap:8px;align-items:start}
-.zones u{grid-row:1;height:10px;border:2px solid var(--ink-3);border-top:0}
-.zones p{grid-row:2;margin:0;font-size:22px;line-height:1.25}
-.zones p b{display:block;color:var(--ink)}
-.zones p span{display:block;color:var(--ink-2)}
-.zones p.red{text-align:end}
+.title{position:absolute;left:64px;top:150px;margin:0;font-weight:700;font-size:124px;line-height:1.02;letter-spacing:-.015em;color:var(--ink-bright)}
+.lede{position:absolute;left:68px;top:428px;margin:0;font-size:29px;line-height:1.45;color:var(--ink-2)}
+/* The drawing, as one grid: CH1, the scale, the MASTER pair, the scale again, CH2, then the brackets and the
+   names of the places beside their rows. */
+.drawing{position:absolute;left:568px;top:30px;display:grid;
+  grid-template-columns:[ch1] 62px [t1] 44px [ml] 46px [mr] 46px [mr-end t2] 44px [t2-end ch2] 62px [ch2-end] 16px [bracket] 12px [place] max-content;
+  grid-template-rows:[top] 4px [names] 28px [clip] 32px repeat(1,24px) 3px repeat(4,24px) 3px repeat(7,24px) [unit] 24px [bottom] 4px;
+  column-gap:8px;row-gap:9px;font-family:var(--font-label);font-stretch:75%;color:var(--ink)}
+.edge{grid-column:ch1/ch2-end;grid-row:top/-1;margin-inline:-16px;border:2px solid var(--ink);border-radius:var(--radius-panel);background:var(--paper-2)}
+.name{grid-row:names;justify-self:center;align-self:center;font-weight:700;font-size:22px;letter-spacing:.04em;line-height:1;white-space:nowrap}
+.clip{grid-row:clip;grid-column:ml/mr-end;display:grid;place-items:center;border:2px solid var(--led-r);border-radius:3px;background:var(--paper);font-weight:700;font-size:20px;letter-spacing:.06em;line-height:1}
+.led{border:1.5px solid var(--ink);border-radius:3px;background:var(--paper)}
+.led.r{border:2px solid var(--led-r)}
+.led.g.on{background:var(--led-g)}
+.led.a.on{background:var(--led-a)}
+.tick{align-self:center;text-align:center;font-weight:600;font-size:22px;line-height:1;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.tick.zero{font-weight:800;color:var(--ink)}
+.tick.unit{grid-row:unit}
+.bracket{grid-column:bracket;margin-block:-4px;border:3px solid var(--ink-2);border-left:0}
+.bracket.rule{border-width:4px;border-color:var(--ink)}
+.ring{margin:-6px;border:3px solid var(--ink);border-radius:7px}
+.place{grid-column:place;align-self:center;height:0;display:flex;align-items:center;font-family:var(--font-body);font-stretch:normal;font-size:24px;line-height:1.2;color:var(--ink-2);white-space:nowrap}
+.place.rule{font-weight:700;color:var(--ink)}
+.place.rule i{display:block;font-style:normal;color:var(--action)}
 </style></head><body>
-<h1 class="title">Out of the red</h1>
-<p class="lede">Every set here is recorded.<br>What to know by heart at the mixer.</p>
-<div class="meter">
-<div class="row aim"><span>Aim</span></div>
-<div class="row leds"><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><s></s><i class="a"></i><i class="ao"></i><i class="ao"></i><i class="ao"></i><s></s><i class="r"></i><b>CLIP</b></div>
-<div class="row scale"><span>−24</span><span>−18</span><span>−15</span><span>−12</span><span>−9</span><span>−6</span><span>−3</span><s></s><span class="zero">0</span><span>+3</span><span>+6</span><span>+9</span><s></s><span>+12</span><span></span></div>
-<div class="row zones">
-<u style="grid-column:1/8"></u><u style="grid-column:9/13"></u><u style="grid-column:14/15"></u>
-<p style="grid-column:1/8"><b>Green</b><span>headroom</span></p>
-<p style="grid-column:9/12"><b>Orange</b><span>loudest parts</span></p>
-<p class="red" style="grid-column:12/15"><b>Red</b><span>may distort</span></p>
-</div>
-</div>
+<h1 class="title">Out of<br>the red</h1>
+<p class="lede">Every set here is recorded.<br>What the meters should show.</p>
+<div class="drawing" id="drawing"></div>
+<script>
+// The lights, top down, as xdj.ts has them: red at 12, orange from 9 to 0, green from −3 to −24. The blend in
+// the picture is model.ts's: each channel on the first orange (0), the MASTER meters two lights higher (6).
+const marks = [12, 9, 6, 3, 0, -3, -6, -9, -12, -15, -18, -24];
+const zone = (db) => (db >= 12 ? 'r' : db >= 0 ? 'a' : 'g');
+const AIM = 0;
+const BLEND = 6;
+const FIRST_ROW = 4;
+const rowOf = new Map();
+let row = FIRST_ROW - 1;
+marks.forEach((db, i) => {
+  if (i > 0 && zone(marks[i - 1]) !== zone(db)) row++;
+  row++;
+  rowOf.set(db, row);
+});
+const el = (cls, style, text = '') => `<span class="${cls}" style="${style}">${text}</span>`;
+const label = (db) => String(db).replace('-', '−');
+let html = el('edge', '') + el('name', 'grid-column:ch1', 'CH1') + el('name', 'grid-column:t1/t2-end', 'MASTER') + el('name', 'grid-column:ch2', 'CH2') + el('clip', '', 'CLIP');
+for (const db of marks) {
+  const r = rowOf.get(db);
+  const led = (col, level) => el(`led ${zone(db)}${db <= level ? ' on' : ''}`, `grid-area:${r}/${col}`);
+  const tick = (col) => el(`tick${db === 0 ? ' zero' : ''}`, `grid-area:${r}/${col}`, label(db));
+  html += led('ch1', AIM) + tick('t1') + led('ml', BLEND) + led('mr', BLEND) + tick('t2') + led('ch2', AIM);
+}
+html += el('tick unit', 'grid-column:t1', 'dB') + el('tick unit', 'grid-column:t2', 'dB');
+// The two meter rules as rules.ts words them for the drawing, each with the columns its ring goes round.
+const places = [
+  { from: 12, to: 12, text: 'Red: may distort' },
+  { from: 9, to: 9, text: 'MASTER meters<i>top orange dark</i>', rings: ['ml/mr-end'] },
+  { from: 6, to: 3, text: 'Room for a blend' },
+  { from: 0, to: 0, text: 'Channel meters<i>first orange (0)</i>', rings: ['ch1', 'ch2'] },
+];
+for (const p of places) {
+  const rows = `grid-row:${rowOf.get(p.from)}/${rowOf.get(p.to) + 1}`;
+  for (const columns of p.rings ?? []) html += el('ring', `${rows};grid-column:${columns}`);
+  html += el(`bracket${p.rings ? ' rule' : ''}`, rows) + el(`place${p.rings ? ' rule' : ''}`, rows, `<span>${p.text}</span>`);
+}
+document.getElementById('drawing').innerHTML = html;
+</script>
 </body></html>

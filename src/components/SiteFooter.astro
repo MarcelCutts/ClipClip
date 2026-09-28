@@ -5,12 +5,15 @@ import OfflineGuide from './OfflineGuide.astro';
 
 // Only the guide has demos, so only the guide's footer says what they are.
 const onGuide = Astro.url.pathname.replace(/\/+$/, '') === href('/learn/').replace(/\/+$/, '');
+// Every page, by the name in its own title: the header's three, the crew's other three, then the sources.
 const links = [
-  { path: '/learn/', label: 'Learn why and practise' },
+  { path: '/', label: 'Playing' },
+  { path: '/night/', label: 'Crew' },
+  { path: '/learn/', label: 'Learn' },
   { path: '/setup/', label: 'Rig reference' },
   { path: '/recordings/', label: 'Recordings' },
-  { path: '/learn/#sources', label: 'Sources' },
   { path: '/print/', label: 'Print kit' },
+  { path: '/learn/#sources', label: 'Sources' },
 ];
 ---
 
@@ -23,7 +26,7 @@ const links = [
           ' The sounds on this page are synthesised in your browser. The demos use a simplified model of the mixer. It clips the way real gear does, only more neatly.'
       }
     </p>
-    <ul class="links">
+    <ul class="link-row">
       {links.map((l) => (
   <li><a href={href(l.path)}>{l.label}</a></li>
 ))}
@@ -46,18 +49,4 @@ const links = [
     gap: 0.75rem;
   }
 
-  /* Spaced apart, with nothing printed between them. */
-  .links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0 1.5rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .links a {
-    display: inline-block;
-    padding-block: 0.25rem;
-  }
 </style>

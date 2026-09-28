@@ -1,6 +1,7 @@
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { describe, expect, it } from 'vitest';
-import { GUIDE_PATH } from '../../lib/messages';
+import { CARD_METER_PLACES } from '../../lib/figures';
+import { CARD_PATH, GUIDE_PATH } from '../../lib/messages';
 import { DJ_RULES } from '../../lib/rules';
 
 // Loaded through Vite rather than a plain import, because svelte-check can't resolve .astro files.
@@ -55,17 +56,39 @@ describe('booth card', () => {
     expect(text).toContain(`Revised ${REVISED}`);
   });
 
-  it('marks the target on the meter drawing by position, not just colour, in the guide’s words', () => {
-    // Top down, one name per bracket: +12 May distort, +9 Fader down, +6 and +3 Blend room, 0 Aim.
-    const names = ['May distort', 'Fader down', 'Blend room', 'Aim'];
+  it('names each meter’s own light on the drawing, by position and not just colour', () => {
+    // Top down, one name per bracket: 12 May distort, 9 MASTER: dark, 6 and 3 Blend room, 0 CH1, CH2: aim.
+    const names = ['May distort', 'MASTER: dark', 'Blend room', 'CH1, CH2: aim'];
+    expect(Object.values(CARD_METER_PLACES)).toEqual(names);
     const at = names.map((n) => text.indexOf(` ${n} `));
     for (const [i, n] of names.entries()) expect(at[i], n).toBeGreaterThan(-1);
     expect([...at].sort((a, b) => a - b)).toEqual(at);
-    expect(text).not.toMatch(/Too hot|Loudest bits/);
-    expect(meterLabel).toContain('Aim for the first orange light, 0, at a track’s loudest part.');
-    expect(meterLabel).toContain('+3 and +6 are room for a blend');
-    expect(meterLabel).toContain('At +9, pull a channel fader down.');
-    expect(meterLabel).toContain('The red light at +12 may distort.');
+    expect(text).not.toMatch(/Too hot|Loudest bits|Fader down/);
+    expect(meterLabel).toContain(
+      'Channel meters, CH1 and CH2: aim for the first orange light, 0, at a track’s loudest part.',
+    );
+    expect(meterLabel).toContain('MASTER meters: keep the top orange light, 9, dark.');
+    expect(meterLabel).toContain(' 3 and 6 are room for a blend');
+    expect(meterLabel).toContain('The red light at 12 may distort.');
+  });
+
+  it('draws a blend at its loudest, with a ring round each meter’s own light', () => {
+    // Twelve rows of four lights. Lit: the channels up to 0 (eight lights each), the MASTER pair up to 6 (ten each).
+    const lights = [...html.matchAll(/<rect([^>]*)\sx="([\d.]+)"[^>]*height="2"/g)];
+    const lit = (x: string) =>
+      lights.filter(([, before, at]) => at === x && /class="[^"]*\bon\b/.test(before ?? '')).length;
+    expect(lights).toHaveLength(48);
+    expect([lit('2.5'), lit('12.4'), lit('15.4'), lit('24.5')]).toEqual([8, 10, 10, 8]);
+    // Three rings: CH1 and CH2 at the first orange, and one round the MASTER pair at the top orange.
+    const rings = [...html.matchAll(/class="ring"[^>]*\sx="([\d.]+)"[^>]*\sy="([\d.]+)"[^>]*width="([\d.]+)"/g)].map(
+      ([, x, y, w]) => ({ x: Number(x), y: Number(y), w: Number(w) }),
+    );
+    expect(rings).toHaveLength(3);
+    const [ch1, ch2, master] = rings as [(typeof rings)[0], (typeof rings)[0], (typeof rings)[0]];
+    expect(ch1.y).toBe(ch2.y);
+    expect(master.y).toBeLessThan(ch1.y);
+    expect(master.x).toBeGreaterThan(ch1.x);
+    expect(master.x + master.w).toBeLessThan(ch2.x);
   });
 
   it('brackets one light for the aim, two for a blend, and one each for the top orange and the red', () => {
@@ -81,13 +104,18 @@ describe('booth card', () => {
     expect(blend).toBeGreaterThan(aim + 3);
   });
 
-  it('prints the scale as the panel does, with a plus sign above 0', () => {
-    for (const mark of ['+12', '+9', '+6', '+3', '0', '−3', '−24']) expect(text).toContain(` ${mark} `);
+  it('prints the scale as the panel does: no plus sign, a true minus, and 0 in bold', () => {
+    // Pioneer's panel drawing (manual p. 27) prints 12, 9, 6, 3, 0, −3 … −24. Only the knobs print a plus.
+    for (const mark of ['12', '9', '6', '3', '0', '−3', '−24']) expect(text).toContain(` ${mark} `);
+    expect(text).not.toMatch(/\+\d/);
     expect(html).toMatch(/class="tick zero"/);
   });
 
-  it('sends the QR code to the guide, where playing a set starts, as the DJ briefing does', () => {
-    expect(qrLabel.endsWith(GUIDE_PATH)).toBe(true);
+  it('sends the QR code to setting TRIM, the first thing on Playing that the card does not carry', () => {
+    expect(CARD_PATH).toBe('/#trim');
+    expect(qrLabel.endsWith(CARD_PATH)).toBe(true);
+    // The chat's link goes to the top of Playing, for the drawing the chat cannot carry.
+    expect(GUIDE_PATH).toBe('/');
     expect(text).toMatch(/Scan for the guide/);
     expect(html).not.toMatch(/\/dj\//);
   });

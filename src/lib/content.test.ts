@@ -216,7 +216,7 @@ describe('content guards', () => {
     expect(terms).toEqual([...terms].sort());
   });
 
-  it('prints the meter’s scale as the panel does: a true minus, a plus sign, a bare 0', () => {
+  it('prints the meter’s scale as the panel does: a true minus, no plus sign, a bare 0', () => {
     expect(METER_SEGMENTS.map((s) => scaleLabel(s.db))).toEqual([
       '−24',
       '−18',
@@ -226,10 +226,10 @@ describe('content guards', () => {
       '−6',
       '−3',
       '0',
-      '+3',
-      '+6',
-      '+9',
-      '+12',
+      '3',
+      '6',
+      '9',
+      '12',
     ]);
   });
 

@@ -38,8 +38,17 @@ export type LinkTo = (path: string) => string;
  */
 export const MAX_WORDS = 90;
 
-/** Where the guide starts on playing a set: setting TRIM. The booth card's QR code goes here too. */
-export const GUIDE_PATH = `/#${section('trim').id}`;
+/**
+ * Where the DJ briefing's link lands: the top of Playing, which opens with the reason, the drawing of
+ * the meters and the three lines. The chat carries the lines, and cannot carry the drawing.
+ */
+export const GUIDE_PATH = '/';
+
+/**
+ * Where the booth card's QR code lands: setting TRIM, the first thing on Playing that the card does
+ * not carry. The card has the three lines and the drawing already.
+ */
+export const CARD_PATH = `/#${section('trim').id}`;
 
 /** The meter check's heading in the guide, so the link lands on its title, not its first question. */
 export const REVIEW_PATH = `/learn/#${section('check').id}`;
