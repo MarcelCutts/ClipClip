@@ -11,8 +11,8 @@
  * 0 dBFS is ceiling 2, so a recording peak in dBFS is how far below ceiling 2 the feed peaks.
  *
  * The recording level stands for whatever sets the level into the Howler. On this rig that is
- * MASTER LEVEL, taped fully up, and MASTER ATT in UTILITY if it reaches MASTER 2, which Pioneer
- * does not say (test T2 on /setup/ finds out). The lab folds them into one knob.
+ * MASTER LEVEL, set at soundcheck (C1), and MASTER ATT in UTILITY if it reaches MASTER 2, which
+ * Pioneer does not say. The lab folds them into one knob.
  */
 
 import { clip, peak, peakIndex, scaled } from '../dsp/analysis';

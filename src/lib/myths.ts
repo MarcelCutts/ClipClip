@@ -70,8 +70,8 @@ export const MYTHS: Myth[] = [
     id: 'limiter',
     claim: 'The limiter will catch it. Red just means it is working.',
     truth: 'The DriveRack’s limiter protects only the speakers.',
-    // The DriveRack's wizard only sets its limiters for an amp on its list; our QSC GX7s are (dbx manual p.43,
-    // PA2 tuning list). The limiters sit on its outputs, on the PA's branch; the Howler is on MASTER 2.
+    // The DriveRack's limiters sit on its outputs, on the PA's branch (dbx manual p.43); the Howler is on
+    // MASTER 2.
     // Pioneer's UTILITY settings (manual p.32) have MASTER and BOOTH attenuators and no limiter, and no
     // firmware up to 1.43 adds one. Pioneer never says there is none, so neither do we.
     answer:

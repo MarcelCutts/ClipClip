@@ -1,37 +1,47 @@
 ---
 /**
- * The crew's page for the night, set like a quick reference handbook. It opens on its tabs, in the
- * order the night runs: C1 Doors, C2 Changeover, F Something's wrong, C3 After. Then what the crew
- * know by heart, the checklists and the booth drills in that order, and last the next day's work on
- * the recordings (C4), with the drills for a recording that sounds wrong. Every card is linkable from
- * the group chat (/night/#changeover, /night/#fix-howler-red). Why any of it works is in the guide. On
- * wide screens an index rail sits left of the cards, as on the setup page, listing every drill.
+ * One event workflow: C1 Before doors, C2 Changeover, shared faults, C3 End.
+ * C4 and F9 live on Recordings; their old fragments forward there. The rack travels prewired.
+ *
+ * C1 carries its drawings inside the card, each before the line it serves: the table, the booth, the
+ * back of the rack, the back of the mixer and the front of the rack. They are drawn on the server and
+ * handed to the island as slots (checklists.ts names them).
  */
 import Contents, { type ContentsEntry } from '../../components/Contents.astro';
 import DrillCard from '../../components/DrillCard.astro';
+import BoothFigure from '../../components/figures/BoothFigure.astro';
+import MixerRearFigure from '../../components/figures/MixerRearFigure.astro';
+import RackFrontFigure from '../../components/figures/RackFrontFigure.astro';
+import RackRearFigure from '../../components/figures/RackRearFigure.astro';
+import TableFigure from '../../components/figures/TableFigure.astro';
 import KnowByHeart from '../../components/KnowByHeart.astro';
+import LegacyAnchors from '../../components/LegacyAnchors.astro';
 import Tabs, { type Tab } from '../../components/Tabs.astro';
 import Checklist from '../../islands/Checklist.svelte';
 import Base from '../../layouts/Base.astro';
 import { CHECKLISTS } from '../../lib/checklists';
 import { drillAnchor, FIXES } from '../../lib/fixes';
-import { REVISION } from '../../lib/revision';
 import { CREW_RULES } from '../../lib/rules';
 import { href } from '../../lib/url';
 
-const { doors, changeover, after, files } = CHECKLISTS;
-// Trouble comes during the sets, so the drills sit between the changeovers and the end of the night. The
-// next day's work comes after C3 and needs no tab of its own: its reader isn't in a hurry, and C3's tab
-// stays filled through it.
+const { doors, changeover, after } = CHECKLISTS;
 const tabs: Tab[] = [
-  { code: doors.code, label: 'Doors', href: `#${doors.anchor}`, target: doors.anchor, title: doors.title },
+  { code: doors.code, label: 'Before doors', href: `#${doors.anchor}`, target: doors.anchor, title: doors.title },
   { code: changeover.code, label: 'Changeover', href: `#${changeover.anchor}`, target: changeover.anchor },
-  { code: 'F', label: 'Something’s wrong', href: '#fixes', target: 'fixes', lamp: true },
+  { code: 'F', label: 'Faults', title: 'Something’s wrong', href: '#fixes', target: 'fixes', lamp: true },
   { code: after.code, label: 'End', href: `#${after.anchor}`, target: after.anchor, title: after.title },
 ];
-/** In the booth on the night, and on the recordings the next day. */
+/** The booth's drills. The next day's, found by listening, are with the recordings. */
 const booth = FIXES.filter((f) => f.where === 'booth');
-const recording = FIXES.filter((f) => f.where === 'recording');
+/** Old links to a drill that moved to Recordings, or to its steps, and to the hum drill, which was retired. */
+const moved = Object.fromEntries([
+  ['next-day', '/recordings/#next-day'],
+  ...FIXES.filter((f) => f.where === 'recording').flatMap((f) => [
+    [drillAnchor(f.id), `/recordings/#${drillAnchor(f.id)}`],
+    ...f.steps.map((_, i) => [drillAnchor(f.id, i + 1), `/recordings/#${drillAnchor(f.id, i + 1)}`]),
+  ]),
+  ['fix-hum', '/night/#fixes'],
+]);
 const subsOf = (drills: typeof FIXES) => drills.map((f) => ({ id: drillAnchor(f.id), label: `${f.code} ${f.short}` }));
 // Wide screens: the index in the rail, as on the setup page. The night in order, each drill by its code
 // under the part it's in, which opens while you're in it.
@@ -40,23 +50,19 @@ const contents: ContentsEntry[] = [
   { id: changeover.anchor, number: changeover.code, label: changeover.title },
   { id: 'fixes', number: 'F', label: 'Something’s wrong', lamp: true, subs: subsOf(booth) },
   { id: after.anchor, number: after.code, label: after.title },
-  { id: files.anchor, number: files.code, label: files.title, subs: subsOf(recording) },
 ];
-// The rail runs beside every row of the page's grid: the box, C1, C2, the drills, C3 and the next day.
+// The rail spans the crew box, three checklists, faults and the recordings link.
 const ROWS = 6;
 ---
 
 <Base
   title="Crew on the night"
-  description="For the crew: checklists for the doors, each changeover and the end of the night, drills for a red light or a recording that sounds wrong, and the next day’s work on the recordings."
+  description="Build the booth, set the levels by the meters, handle each changeover and find the right fault procedure."
 >
   <header class="head flow">
     <h1>Crew on the night</h1>
-    <p class="revision">
-      Cards printed now say “Revised {REVISION}”. If yours say anything else, print new ones from the
-      <a href={href('/print/')}>Print kit</a>. Save this page as a PDF on your phone before the night, in case the booth
-      has no signal.
-    </p>
+    <p>Build the booth, set the levels and keep the recording running. For a problem during a set, go straight to <a href="#fixes">Something’s wrong</a>.</p>
+    <p class="secondary"><a href={href('/setup/')}>Rig reference</a> · <a href={href('/recordings/')}>Recordings after the night</a><span class="offline-link"> · <a href="#offline-guide">Save offline</a></span></p>
   </header>
 
   <!-- Thumb tabs, as on the edge of a printed handbook: they stay at the top of the screen, and the one
@@ -68,7 +74,15 @@ const ROWS = 6;
 
     <div class="block"><KnowByHeart title="Know by heart" rules={CREW_RULES} /></div>
 
-    <div class="block stage"><Checklist list="doors" headingLevel={2} client:visible /></div>
+    <div class="block stage">
+      <Checklist list="doors" headingLevel={2} client:visible>
+        <TableFigure slot="table" />
+        <BoothFigure slot="booth" />
+        <RackRearFigure slot="rackRear" />
+        <MixerRearFigure slot="mixerRear" />
+        <RackFrontFigure slot="rackFront" />
+      </Checklist>
+    </div>
 
     <div class="block stage"><Checklist list="changeover" headingLevel={2} client:visible /></div>
 
@@ -95,11 +109,8 @@ const ROWS = 6;
 
     <div class="block stage"><Checklist list="after" headingLevel={2} client:visible /></div>
 
-    <div class="next-day stage">
-      <Checklist list="files" headingLevel={2} client:visible />
-      <h3 class="group-title">Something’s wrong in a recording</h3>
-      {recording.map((f) => <DrillCard fix={f} level={4} />)}
-    </div>
+    <p class="block">Next: <a href={href('/recordings/')}>copy, check and prepare the recordings</a>.</p>
+    <LegacyAnchors map={moved} />
   </div>
 </Base>
 
@@ -143,10 +154,14 @@ const ROWS = 6;
   }
 
   /* Which cards are current: small, under the title, never in the way of the checklists. */
-  .revision {
+  .secondary {
     max-width: var(--measure);
     font-size: var(--text-sm);
     color: var(--ink-2);
+  }
+
+  @media print {
+    .offline-link { display: none; }
   }
 
   h1 {
@@ -170,8 +185,9 @@ const ROWS = 6;
     margin-block-start: 1.25rem;
   }
 
-  .drills,
-  .next-day {
+  .drills {
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
     display: grid;
     gap: 1.25rem;
   }
@@ -247,11 +263,6 @@ const ROWS = 6;
   .index a:hover .index-label {
     text-decoration-color: currentColor;
     text-decoration-thickness: 0.14em;
-  }
-
-  .group-title {
-    margin-block-start: 1rem;
-    font-size: var(--text-rule);
   }
 
   /* The index is for wide screens only, in the rail. Narrower, the tabs and the drills' own index

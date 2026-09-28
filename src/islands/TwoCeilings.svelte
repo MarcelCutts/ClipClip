@@ -410,7 +410,7 @@
         {#if step > 1}
           <HwButton onclick={back}>{copy.NAV.back}</HwButton>
         {/if}
-        {#if step < STEP_COUNT}
+        {#if step < STEP_COUNT && !feedback?.next}
           <HwButton primary={navLit} onclick={next}>
             {step === 1 && !revealed ? copy.NAV.reveal : copy.NAV.next}
           </HwButton>
@@ -419,11 +419,14 @@
     </div>
   </div>
 
-  <div class="after">
+  <details class="other-stage">
+    <summary>Compare the other stage</summary>
+    <div class="after">
     <div class="locked">{@render control(lockedKind, true)}</div>
     <div class="other">{@render screen(focus === 'mixer' ? 'recording' : 'mixer')}</div>
-    <div class="sound">{@render transport()}</div>
-  </div>
+    </div>
+  </details>
+  <div class="sound">{@render transport()}</div>
 
   <p class="model">{copy.MODEL_NOTE.text} <a href={copy.MODEL_NOTE.href}>{copy.MODEL_NOTE.link}</a>.</p>
 
@@ -431,6 +434,7 @@
 </div>
 
 <style>
+  .other-stage > summary { cursor: pointer; padding-block: 0.75rem; font-weight: 700; }
   .two-ceilings {
     container: two-ceilings / inline-size;
     display: grid;
@@ -794,10 +798,7 @@
     }
 
     .after {
-      grid-template-rows: auto 1fr;
-      grid-template-areas:
-        'locked other'
-        'sound other';
+      grid-template-areas: 'locked other';
     }
 
     .locked {
@@ -808,9 +809,6 @@
       grid-area: other;
     }
 
-    .after .sound {
-      grid-area: sound;
-    }
   }
 
   @media (forced-colors: active) {

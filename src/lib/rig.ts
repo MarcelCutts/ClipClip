@@ -16,7 +16,7 @@
  *   attenuators in UTILITY (ATT) turn outputs down further. Pioneer says MASTER ATT "sets the master
  *   output attenuator" (p. 32) without naming the sockets. It probably lowers MASTER 1, and with it
  *   the room, but that is not published either. The drawing does not wire it, and the captions for
- *   MASTER 1 and MASTER 2 say it may lower each, that Pioneer does not say, and which test checks.
+ *   MASTER 1 and MASTER 2 say it may lower each, and that Pioneer does not say.
  * - The DriveRack's limiters sit on its outputs, and the amps after it: both on the PA branch only.
  * - Pioneer does not publish where the XDJ clips inside, so the whole mixer counts as ceiling 1.
  *   The Howler's limit is not published either; its input is ceiling 2.
@@ -81,8 +81,6 @@ export interface RigNode {
   /** Read after the label by screen readers: context that the drawing gives sighted readers. */
   context?: string;
   glyph: Glyph;
-  /** Taped on the real gear. The setup page's wiring table prints the tape. */
-  taped?: boolean;
   /** A place where the sound can clip: 1 inside the mixer, 2 at the Howler's input. */
   ceiling?: 1 | 2;
   /** Meters only: the controls people expect this meter to show, which it cannot see. */
@@ -127,14 +125,13 @@ export const NODES: Readonly<Record<NodeId, RigNode>> = {
     glyph: 'sum',
     ceiling: 1,
   },
-  // Fully up, as it's taped.
+  // Drawn well up. The crew set it by the MASTER meters at soundcheck (C1).
   masterLevel: {
     id: 'masterLevel',
     kind: 'control',
     label: 'MASTER LEVEL',
     printed: true,
     glyph: 'knob',
-    taped: true,
     angle: 135,
   },
   masterMeter: {
@@ -152,7 +149,6 @@ export const NODES: Readonly<Record<NodeId, RigNode>> = {
     label: 'BOOTH MONITOR',
     printed: true,
     glyph: 'knob',
-    taped: true,
     angle: 45,
   },
   master1: { id: 'master1', kind: 'output', label: 'MASTER 1', printed: true, sub: 'XLR', glyph: 'xlr' },
@@ -168,7 +164,7 @@ export const NODES: Readonly<Record<NodeId, RigNode>> = {
     glyph: 'limiter',
   },
   // A box, but what matters is its gain knobs: they set the room's volume.
-  amps: { id: 'amps', kind: 'control', label: 'Amps', printed: false, sub: 'QSC GX7', glyph: 'amp', taped: true },
+  amps: { id: 'amps', kind: 'control', label: 'Amps', printed: false, sub: 'QSC GX7', glyph: 'amp' },
   pa: { id: 'pa', kind: 'device', label: 'PA speakers', printed: false, glyph: 'pa' },
   monitor: { id: 'monitor', kind: 'device', label: 'Booth monitors', printed: false, glyph: 'monitor' },
   howler: {
@@ -375,10 +371,9 @@ export const COPY: Readonly<Record<NodeId, Caption>> = {
   masterLevel: { title: 'What MASTER LEVEL touches' },
   masterMeter: { title: 'What the MASTER meters can see' },
   booth: { title: 'What BOOTH MONITOR touches', text: 'It’s the DJ’s knob.' },
-  // Pioneer names no socket for MASTER ATT (p. 32), so both captions hedge, say so and point to the
-  // test on /setup/ that finds out, which also watches the room for MASTER 1.
-  master1: { title: 'What MASTER 1 feeds', text: 'MASTER ATT may lower it too. Pioneer does not say (test T2).' },
-  master2: { title: 'What MASTER 2 feeds', text: 'MASTER ATT may lower it too. Pioneer does not say (test T2).' },
+  // Pioneer names no socket for MASTER ATT (p. 32), so both captions hedge and say so.
+  master1: { title: 'What MASTER 1 feeds', text: 'MASTER ATT may lower it too. Pioneer does not say.' },
+  master2: { title: 'What MASTER 2 feeds', text: 'MASTER ATT may lower it too. Pioneer does not say.' },
   boothOut: { title: 'What the BOOTH sockets feed', text: 'BOOTH ATT, in UTILITY, also sets their level.' },
   driverack: { title: 'What the DriveRack does', text: 'It tunes the PA.' },
   limiter: { title: 'What the limiter protects', text: 'It works only when switched on.' },

@@ -8,10 +8,12 @@ It grew out of a one-page "Two ceilings" clipping lab. This version is written f
 
 | Path | What's there |
 |---|---|
-| `/` | The guide. What a DJ must know by heart, then four parts that get deeper as they go: why it matters (a blind listening test); playing a set (TRIM, the meters, whose knobs are whose, blends with a two-deck demo, a four-question meter check, what people say about the red); the rig and the recording (the signal path, the two-ceilings lab); how it works (why a recording sounds worse, why clipping cannot be undone, why a quiet recording loses nothing, what the makers publish and what we assume). Then the glossary and sources |
-| `/night/` | For crew on the night: the doors, changeover and end-of-night checklists, what to do when something's wrong, and the next day's work on the files |
-| `/setup/` | For whoever builds the rig at each event: the setup checklist in order (power and earthing included), the wiring table, the recording level, the DriveRack and amps, and the one-off MASTER ATT test and DriveRack wizard |
-| `/print/` | Booth card, tape tags, checklist cards, group-chat messages |
+| `/` | Playing: three rules, TRIM, meters, a blend fix and control ownership. No exercise is required to find an instruction |
+| `/night/` | Crew: Before doors as one list in the order of the work (table, leads, power, levels, recording), with its five drawings above the lines they serve. Then Changeover, the booth's eight fault drills (F1 to F8) and End |
+| `/setup/` | Rig reference: what feeds what, and how each unit is set. It carries no tests; an event's work is in Crew |
+| `/learn/` | Listening test, blend practice, meter check, signal path, Two ceilings, explanations, glossary and sources |
+| `/recordings/` | Copy, check and prepare files, plus the two drills for what is found by listening the day after: crunch (F9) and a hollow or one-sided recording (F11) |
+| `/print/` | Six A4 sheets: booth cards, optional tape labels, Before doors in two readable parts, its five drawings, then Changeover and End. Also group-chat messages |
 
 The old addresses `/dj/`, `/crew/`, `/lab/` and `/why/` forward to the same section in its new home, so printed QR codes and old links keep working.
 
@@ -35,6 +37,23 @@ pnpm verify   # lint, type-check, unit tests, build, end-to-end and accessibilit
 
 Or one at a time: `pnpm lint`, `pnpm check`, `pnpm test`, `pnpm build`, `pnpm test:e2e`.
 
+For the optional Safari-engine checks, install WebKit and run its phone profile against the build:
+
+```sh
+pnpm exec playwright install webkit
+CROSS_BROWSER=1 pnpm test:e2e --project=webkit-phone
+```
+
+Use the same `BASE_PATH` for building and testing. This profile checks the WebKit engine with iPhone emulation; field testing still needs the actual phones. Offline tests stop a dedicated local server and restart saved browser profiles. They avoid WebKit's broken offline-emulation flag in Playwright 1.63 ([upstream issue](https://github.com/microsoft/playwright/issues/42775)).
+
+## Offline use
+
+On a production build, choose **Save for offline use** in the footer (Crew also links to it near the top). The saved package includes every page, local font, diagram, interactive demo and the short MP4. External manuals still need a connection. Check the guide by closing its tabs and reopening in airplane mode before leaving; browser storage can be evicted. Keep the printed kit and Crew/Rig reference PDFs as a backup.
+
+`scripts/offline.ts` inventories the built output and writes a versioned, base-aware `sw.js`. Every download has a build-time integrity hash. Readiness requires all files, not just worker registration. Updates wait until old tabs close; a failed download retains the previous package. The save action can repair partially evicted data. Development does not install a worker. After a production build, use `pnpm preview` to test it locally.
+
+Checklist ticks retain their existing expiry/reset/undo behaviour. Their keys include the base path and a fingerprint of the instructions, so revised steps start unticked.
+
 ## Deploying to GitHub Pages
 
 1. Push the repo to GitHub.
@@ -55,8 +74,11 @@ Most of the copy lives in plain TypeScript data, so the rules stay identical eve
 | `src/lib/myths.ts` | "Things DJs say about the red" |
 | `src/lib/glossary.ts` | The tap-to-reveal definitions and the glossary |
 | `src/lib/sources.ts` | The sources list |
-| `src/lib/checklists.ts` | The checklists (shared by `/night/`, `/setup/` and the print cards) |
-| `src/lib/fixes.ts` | "Something's wrong" on `/night/` |
+| `src/lib/checklists.ts` | The checklists (shared by `/night/`, `/recordings/` and the print cards) |
+| `src/lib/fixes.ts` | Shared fault procedures on Crew and Recordings |
+| `src/lib/rack.ts` | Which amp feeds which speakers |
+| `src/lib/figures.ts` | The captions of C1's drawings, shared by Crew, the print kit and the printed revision |
+| `src/components/figures/` | C1's drawings: the table, the booth, the rack's rear and front, the mixer's rear and the Howler's IN end |
 | `src/lib/messages.ts` | The group-chat messages on `/print/` |
 | `src/pages/**` | Page prose |
 
@@ -68,7 +90,7 @@ The demos simulate the rig, so a few assumptions are baked in. They live in `src
 
 - **The meters** copy the XDJ-RX2: twelve LEDs from −24 to +12 dB, green to −3, orange from 0 to +9, red at +12. The channel meters show each channel before its fader; the MASTER meters show the mix.
 - **Ceiling 1**, inside the mixer, sits at the red light. Pioneer only says red "may" distort and doesn't publish the margin, so the site treats red as the top.
-- **Ceiling 2**, the Howler's input, isn't published anywhere. The demos assume it overloads 6 dB below the mixer's red with MASTER LEVEL fully up. The setup page has a test to find the real point.
+- **Ceiling 2**, the Howler's input, isn't published anywhere. The demos assume it overloads 6 dB below the mixer's red with the recording level fully up. The site carries no test for the real point: on the night the Howler's LEVEL light is the check.
 - **Knobs after the mix** (MASTER LEVEL, BOOTH MONITOR) run from off to unity and can't add gain.
 - **Sound** is synthesised in the browser (`src/lib/dsp/synth.ts`): two short 124 BPM loops (drums, a bass line, chord stabs) in the same key and tempo, so every device hears the same thing and nothing needs a licence. Clean and clipped versions are loudness-matched (ITU-R BS.1770 weighting) before any comparison.
 - **Blends** of the synth loops add the full 6 dB, because they share one kick in phase: the worst case. Released tracks add a little less (below), and the rules plan for all 6.
@@ -124,7 +146,7 @@ It looks for two marks:
 
 The report says what the file shows, then what that means for the rig if the file is as the Howler wrote it, and which drill on the site to follow. It also gives the file's levels against the guide's target (`TARGET` in `src/lib/model.ts`), and the minutes to listen to.
 
-What it cannot do: tell a track with flat tops of its own from a channel or the mixer in the red, when either sits at one level (the report names both, and F9 on the Crew page compares the track's own file); find light clipping (see the table below); find clipping that the mixer rounds off instead of flattening; or find a pile below the loudest level that is a small part of a long file's flat tops. A copy saved with dither keeps only some of the runs, so check the file as the Howler wrote it. The Howler MK1 splits a night into files of about 3.5 hours (4 GB), so check them all, and do not trust the MK1's file dates.
+What it cannot do: tell a track with flat tops of its own from a channel or the mixer in the red, when either sits at one level (the report names both, and F9 on the Recordings page compares the track's own file); find light clipping (see the table below); find clipping that the mixer rounds off instead of flattening; or find a pile below the loudest level that is a small part of a long file's flat tops. A copy saved with dither keeps only some of the runs, so check the file as the Howler wrote it. The Howler MK1 splits a night into files of about 3.5 hours (4 GB), so check them all, and do not trust the MK1's file dates.
 
 The code is in `src/lib/clipcheck/` and has no dependencies, so a page on the site could use it too.
 
@@ -172,11 +194,11 @@ docs/DESIGN.md  the design system
 
 ## Open questions for the crew
 
-A few answers change the advice, and only the kit can give them:
+The guide is for the field, so it carries no tests that need a laptop (the owner, 28 September 2026). These are the things the makers don't publish. The site says so where they matter, and no checklist or drill depends on the answer:
 
-- Does MASTER ATT reach MASTER 2, MASTER 1, and the MASTER meters? Pioneer doesn't say which sockets it acts on. The setup page's test T2 checks all three.
-- Do the channel meters read after the EQ, and before the fader? Pioneer doesn't say; only VirtualDJ's layout page does. The setup page's "Check it yourself" tests the fader.
-- Are the amps' RIG marks and limiters set? dbx sets the DriveRack's limiters "based on where you have set your amplifier attenuators", but doesn't say what its wizard assumes for the GX7s. So S6 on the setup page sets them once by dbx's own procedure (pp. 19–21): pink noise, the speakers disconnected, each amp's gain up until its CLIP light comes on, marked, then each limiter down until the lights go out. The top speakers' limiter goes 2 dB lower again, because the GX7 gives more than the Yamahas' programme rating: that margin is our inference from the published figures.
-- Where does the mixer's ceiling land in the Howler's file? Record a test that goes into the red on purpose (setup S3) and run `pnpm clipcheck` on it: the level its flat tops pile up at is the mixer's ceiling as the Howler sees it, which the demos currently assume (`HOWLER_BELOW_RED_DB` in `src/lib/model.ts`).
-- How much hiss does the Howler add? Howler publishes no noise figure, and the guide's 4.3 assumes it is not unusually noisy. Record a minute with the decks stopped at the S3 recording level, normalise it as C4 does, and listen on headphones.
+- Does MASTER ATT reach MASTER 2, MASTER 1, and the MASTER meters? The XDJ-RX2 has one MASTER ATT setting (−12 dB, −6 dB or 0 dB, manual p. 32), and its manual doesn't say which sockets it acts on. Pioneer's help pages for the DJM-V10, DJM-750MK2 and DJM-450 say theirs acts on MASTER 1 and MASTER 2 together, which is the likely answer here. No card changes it: F1 turns the recording down at MASTER LEVEL, and the room is made up at the amps.
+- Do the channel meters read after the EQ, and before the fader? Pioneer doesn't say; only VirtualDJ's layout page does. Learn 4.4 says how to check both on the mixer alone.
+- Are the DriveRack's limiters set for these amps? dbx sets the DriveRack's limiters "based on where you have set your amplifier attenuators" (pp. 19–21), but doesn't say what its wizard assumes for the GX7s. On the night the amps are set by ear with their CLIP lights dark, and the gear carries no marks.
+- Where does the mixer's ceiling land in the Howler's file? The demos assume it (`HOWLER_BELOW_RED_DB` in `src/lib/model.ts`). `pnpm clipcheck` on a night's file shows it, if the mixer reached red: the level its flat tops pile up at is the mixer's ceiling as the Howler sees it.
+- How much hiss does the Howler add? Howler publishes no noise figure, and the guide's 4.3 assumes it is not unusually noisy.
 - Does swapping the LOWs lower a blend's peak on the XDJ-RX2? The site no longer offers it as a fix, because of a simulation on 10 released tracks: a LOW cut made a blend quieter but left its peak where it was, and only a fader brought it down (`LOW` in `src/lib/blend/model.ts`). Pioneer publishes the EQ's range but not its curves, or how fast the meters respond. Record the same blend twice on the Howler, once with both LOWs at 12 o'clock and once with the incoming LOW fully down, and compare the peaks in Audacity's Amplify. Watch the MASTER meters too: if they drop and the file's peak doesn't, the meters are hiding peaks.

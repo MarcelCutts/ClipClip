@@ -6,7 +6,7 @@
    *
    * Each question is a fieldset: the question as its legend, a picture of the booth where it
    * helps, two or three answers (the wrong ones are real habits), then the confidence scale.
-   * Saying how sure commits the answer; the feedback says right or wrong in words, gives the
+   * Checking an answer, or optionally saying how sure, commits it; the feedback says right or wrong in words, gives the
    * one-line why and links to the guide section that covers it. At the end: the count, how many
    * wrong answers were certain, and the sections to read again. No points, badges or timers. The
    * group chat links to the guide's heading above this card, which carries the anchor.
@@ -53,7 +53,7 @@
   const sure = $derived(sureLine(summary));
   const review = $derived(reviewLinks(CARDS, summary));
 
-  async function commit(confidence: Confidence) {
+  async function commit(confidence?: Confidence) {
     const card = CARDS[index];
     const choice = picks[index];
     if (!card || choice === undefined) return;
@@ -61,6 +61,15 @@
     announcement = feedbackFor(card, choice);
     // The feedback appears under the button just pressed, often below the fold on a phone.
     // Show it, and the way on, without moving focus.
+    await tick();
+    showBelow(navEl);
+  }
+
+  async function reveal() {
+    const card = CARDS[index];
+    if (!card) return;
+    answers[index] = { choice: null };
+    announcement = `Answer revealed. ${correctChoice(card).feedback}`;
     await tick();
     showBelow(navEl);
   }
@@ -108,8 +117,6 @@
                 <div class="plate">
                   {#if card.scene.kind === 'meters'}
                     <MeterBridge ch1={card.scene.ch1} master={card.scene.master} ch2={card.scene.ch2} />
-                  {:else if card.scene.tag}
-                    <BoothKnob tape={card.scene.tag.name} owner={card.scene.tag.owner} />
                   {:else}
                     <BoothKnob />
                   {/if}
@@ -126,17 +133,28 @@
                 correct={answer ? correctChoice(card).id : undefined}
               />
               {#if picks[index] !== undefined || answer}
-                <Sure picked={answer?.confidence} locked={answer !== undefined} onpick={commit} />
+                <details>
+                  <summary>Confidence (optional)</summary>
+                  <Sure picked={answer?.confidence} locked={answer !== undefined} onpick={commit} />
+                </details>
+              {/if}
+              {#if !answer}
+                <div class="answer-actions">
+                  {#if picks[index] !== undefined}<Key primary onclick={() => commit()}>Check answer</Key>{/if}
+                  <Key onclick={reveal}>Reveal without answering</Key>
+                </div>
               {/if}
             </div>
           </div>
 
           {#if answer}
-            {@const right = isCorrect(card, answer.choice)}
-            {@const chosen = card.choices.find((c) => c.id === answer.choice)}
+            {@const right = answer.choice !== null && isCorrect(card, answer.choice)}
+            {@const chosen = answer.choice === null ? correctChoice(card) : card.choices.find((c) => c.id === answer.choice)}
             <div class="feedback">
               <p class="verdict">
-                {#if right}
+                {#if answer.choice === null}
+                  Answer revealed.
+                {:else if right}
                   <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.6l3.1 3.1L13 4.8" /></svg>
                   Right.
                 {:else}
@@ -162,7 +180,7 @@
           {#if answer}
             <span class="next">
               <Key primary onclick={() => go(index + 1)}>
-                {index === CARDS.length - 1 ? 'See your score' : 'Next question'}
+                {index === CARDS.length - 1 ? 'See results' : 'Next question'}
                 <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" /></svg>
               </Key>
             </span>
@@ -192,6 +210,8 @@
 </section>
 
 <style>
+  summary { cursor: pointer; padding-block: 0.75rem; }
+  .answer-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.75rem; }
   /*
    * A printed card, like the checklists: a 2px ink frame whose top edge is the strip's (by night
    * it lifts the strip off the display), the page's paper and ink, hairlines between the answers.

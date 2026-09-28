@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CHECKLISTS } from './checklists';
+import { FIXES } from './fixes';
 import { DJ_RULES } from './rules';
 import { MASTER_TAG, MONITOR_TAG, REC_TAG, RIG_TAG, SHORT_TAGS } from './tags';
 
@@ -12,8 +13,8 @@ const words = [
 
 describe('knob tags', () => {
   it('lead the MASTER LEVEL tag with what to do', () => {
-    // Where the crew left it: the REC mark sits at fully up unless T3 or S3 moved it.
-    expect(MASTER_TAG.name).toBe('LEAVE ON THE REC MARK');
+    // The crew set it by the MASTER meters at soundcheck (C1). The tag names no mark: there is none.
+    expect(MASTER_TAG.name).toBe('LEAVE IT AS YOU FIND IT');
     expect(MASTER_TAG.lines[0]).toBe('It sets the speakers and the recording.');
   });
 
@@ -34,17 +35,22 @@ describe('knob tags', () => {
     }
   });
 
-  it('mark the RIG tape as the amps’ limit: the knobs go no higher than the RIG marks', () => {
-    expect(RIG_TAG.rule).toBe('No higher than the marks');
-    // S6 draws them once, by dbx's procedure with the speakers disconnected.
-    expect(RIG_TAG.where).toMatch(/\bS6\b draws the RIG marks/);
-    // The others carry no rule: REC has its blanks, and MONITOR is the DJ's to turn.
+  it('give the RIG tag the amps’ limit as the crew can see it: their CLIP lights', () => {
+    expect(RIG_TAG.rule).toBe('CLIP lights dark');
+    expect(RIG_TAG.where).toBe('On both amps, beside the gain knobs.');
+    // The others carry no rule: REC and MONITOR only say whose the knob is.
     expect(SHORT_TAGS.filter((t) => t.rule)).toEqual([RIG_TAG]);
+    expect(SHORT_TAGS.filter((t) => t.blanks)).toEqual([]);
   });
 
-  it('give the REC tape a blank for each attenuator the night’s checklists compare with it', () => {
-    expect(REC_TAG.blanks).toEqual(['MASTER ATT', 'BOOTH ATT']);
-    const checks = [...CHECKLISTS.doors.items, ...CHECKLISTS.changeover.items].map((i) => `${i.check} ${i.target}`);
-    expect(checks.some((c) => /ATT.*as on the (REC )?tape/.test(c))).toBe(true);
+  it('are labels nothing depends on: no list or drill names a tag, a tape or a mark', () => {
+    // The owner, 28 September 2026: tape tags are not a necessity, and the gear carries no marks.
+    const lines = [
+      ...Object.values(CHECKLISTS).flatMap((l) => l.items.flatMap((i) => [i.check, i.target, i.note ?? ''])),
+      ...FIXES.map((f) => f.objective),
+    ];
+    // "Marks" the verb is Audacity's, in C4: the guard is for the nouns.
+    expect(lines.join(' ')).not.toMatch(/\btags?\b|\b(?:the|REC|RIG) tape\b|\b(?:the|REC|RIG) marks?\b/i);
+    expect(words.join(' ')).not.toMatch(/\bmarks?\b/i);
   });
 });

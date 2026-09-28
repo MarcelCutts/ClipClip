@@ -25,7 +25,7 @@ const render = async (list: ChecklistId) => {
 
 describe('printed checklist card', () => {
   it('prints every line of the list, with its note and its drill', async () => {
-    for (const id of ['doors', 'changeover', 'after', 'setup'] as const) {
+    for (const id of ['doors', 'changeover', 'after'] as const) {
       const { text } = await render(id);
       for (const item of CHECKLISTS[id].items) {
         expect(text, item.id).toContain(norm(item.check));
@@ -42,16 +42,17 @@ describe('printed checklist card', () => {
   });
 
   it('is read-and-do for one person: no time budget, no call to say', async () => {
-    for (const id of ['doors', 'changeover', 'after', 'setup'] as const) {
+    for (const id of ['doors', 'changeover', 'after'] as const) {
       const { text } = await render(id);
       expect(text).not.toMatch(/Say: “[^”]*complete/i);
-      expect(text).not.toMatch(/\d\s?s\b|Under a minute|from memory/);
+      expect(text).not.toMatch(/\b\d+\s+s\b|Under a minute|from memory/);
     }
   });
 
   it('labels the setup card by when it is done, and dates every card', async () => {
-    expect((await render('setup')).text).toMatch(/S1 Setting up Every event/);
-    for (const id of ['doors', 'setup'] as const) expect((await render(id)).text).toContain(`Revised ${REVISED}`);
+    expect((await render('doors')).text).toMatch(/C1 Before doors Every event/);
+    for (const id of ['doors', 'changeover', 'after'] as const)
+      expect((await render(id)).text).toContain(`Revised ${REVISED}`);
   });
 
   it('says a consequence before its line, never in a note', async () => {

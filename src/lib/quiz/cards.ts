@@ -5,13 +5,12 @@
  *
  * Every wrong option is a real habit, and its feedback states what happens instead. Scenes are
  * drawn from the same model as the labs (src/lib/model.ts), so a reading on a card agrees with
- * the rest of the site. Each card links to the guide section that covers it, named as the index
- * names it (src/lib/sections.ts).
+ * the rest of the site. Each card links to the section of Playing that covers it, named as its
+ * heading names it (src/lib/sections.ts).
  */
 import { formatDb } from '../dsp/db';
 import { KICKS_TOGETHER_DB, TARGET_PEAK_DB } from '../model';
 import { section } from '../sections';
-import { MONITOR_TAG, REC_TAG, type ShortTag } from '../tags';
 
 export type Confidence = 'guessing' | 'fairly' | 'certain';
 
@@ -25,8 +24,8 @@ export const CONFIDENCE: ReadonlyArray<{ id: Confidence; label: string }> = [
 /** What a card shows beside its question. Levels are on the XDJ-RX2 meter's own dB scale. */
 export type Scene =
   | { kind: 'meters'; ch1: number; master: number; ch2: number }
-  /** The BOOTH MONITOR knob, with the print kit's tag beside it. */
-  | { kind: 'booth'; tag?: ShortTag };
+  /** The BOOTH MONITOR knob, as it is on the mixer: the gear carries no tags. */
+  | { kind: 'booth' };
 
 export interface Choice {
   id: string;
@@ -46,10 +45,9 @@ export interface Card {
   learn: { path: string; text: string };
 }
 
-/** A guide section as a link: "2.1 Set TRIM …". */
+/** A section of Playing as a link, by the name its heading shows. Playing's sections carry no numbers. */
 function learnAt(id: string): Card['learn'] {
-  const { number, title } = section(id);
-  return { path: `/#${id}`, text: `${number} ${title}` };
+  return { path: `/#${id}`, text: section(id).title };
 }
 
 /** The most two equal kicks landing together can add: "6 dB, two lights". */
@@ -57,7 +55,7 @@ const BLEND_ADDS = `${formatDb(KICKS_TOGETHER_DB, { signed: false })}, two light
 
 /** The same two facts on both volume cards, in the same words. */
 const PUSH_CHANNELS = 'Louder channels drive the MASTER meters towards the red.';
-const MASTER_LEVEL = `MASTER LEVEL stays on its ${REC_TAG.name} mark. It sets the speakers and the recording together.`;
+const MASTER_LEVEL = 'Leave MASTER LEVEL as you find it. It sets the speakers and the recording together.';
 
 export const CARDS: readonly Card[] = [
   {
@@ -135,16 +133,15 @@ export const CARDS: readonly Card[] = [
   },
   {
     id: 'monitor',
-    // BOOTH MONITOR sets only the BOOTH output (Pioneer manual p. 27), so it's the DJ's: the print
-    // kit tags it MONITOR, yours.
+    // BOOTH MONITOR sets only the BOOTH output (Pioneer manual p. 27), so it's the DJ's.
     question: 'The booth monitors are too quiet. What do you do?',
-    scene: { kind: 'booth', tag: MONITOR_TAG },
+    scene: { kind: 'booth' },
     choices: [
       {
         id: 'booth',
         label: 'Turn up BOOTH MONITOR',
         correct: true,
-        feedback: `BOOTH MONITOR sets the booth monitors only. The ${MONITOR_TAG.name} tag marks it as yours.`,
+        feedback: 'BOOTH MONITOR sets the booth monitors only. It is yours to turn.',
       },
       { id: 'master', label: 'Turn up MASTER LEVEL', feedback: MASTER_LEVEL },
       {
@@ -158,8 +155,8 @@ export const CARDS: readonly Card[] = [
 ];
 
 export interface Answer {
-  choice: string;
-  confidence: Confidence;
+  choice: string | null;
+  confidence?: Confidence | undefined;
 }
 
 /** The right choice on a card. Every card has exactly one (the tests hold us to it). */
@@ -200,19 +197,19 @@ export function summarise(cards: readonly Card[], answers: ReadonlyArray<Answer 
   const missed: string[] = [];
   cards.forEach((card, i) => {
     const answer = answers[i];
-    if (answer && isCorrect(card, answer.choice)) {
+    if (answer?.choice && isCorrect(card, answer.choice)) {
       right++;
       return;
     }
     missed.push(card.id);
     if (answer?.confidence === 'certain') sureButWrong.push(card.id);
   });
-  return { right, total: cards.length, sureButWrong, missed };
+  return { right, total: cards.filter((_, i) => answers[i]?.choice != null).length, sureButWrong, missed };
 }
 
 /** "You got 3 of 4." No points, no badges: just the count. */
 export function scoreLine({ right, total }: Summary): string {
-  return `You got ${right} of ${total}.`;
+  return total ? `You got ${right} of ${total}.` : 'You revealed the answers without a score.';
 }
 
 const COUNT_WORDS = ['no', 'one', 'two', 'three', 'four', 'five'];

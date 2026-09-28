@@ -359,10 +359,13 @@
       </div>
 
       <!-- Each deck's TRIM and LOW under its fader, so the meters stay in view while they turn. -->
-      <div class="tray">
+      <details class="extra-controls">
+        <summary class="disclose">TRIM and EQ</summary>
+        <div class="tray">
         <Knobs n={1} bind:trim={settings.deck1.trim} bind:low={settings.deck1.low} peak={meters.ch1} {uid} />
         <Knobs n={2} bind:trim={settings.deck2.trim} bind:low={settings.deck2.low} peak={meters.ch2} {uid} />
-      </div>
+        </div>
+      </details>
 
       <div class="listen">
         <ListenKey

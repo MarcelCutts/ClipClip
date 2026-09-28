@@ -54,7 +54,7 @@ beforeEach(() => {
 });
 
 /**
- * The Clear ticks key's name: "Clear ticks, Doors open". The list's name is in a visually hidden span,
+ * The Clear ticks key's name: "Clear ticks, Before doors". The list's name is in a visually hidden span,
  * which Chromium sets apart with a space, as it does the site's other "See 2.1, …" names.
  */
 const clearTicks = (title: string) => new RegExp(`^Clear ticks ?, ${title}$`);
@@ -86,7 +86,7 @@ test('its title strip carries the list’s code, and the line under it says when
   expect(strip.querySelector('.code')?.textContent).toBe('C1');
   // Read-and-do, for one person: no time budget on the strip, no method to learn, no call to say.
   expect(strip.textContent?.trim()).toBe(`C1 ${CHECKLISTS.doors.title}`);
-  expect(screen.container.querySelector('.when')?.textContent).toBe('Before the doors open.');
+  expect(screen.container.querySelector('.when')?.textContent).toBe(CHECKLISTS.doors.when);
   expect(screen.container.textContent).not.toMatch(/from memory|read down|Under a minute|Say: “[^”]*complete/);
 });
 
@@ -204,18 +204,18 @@ test('Clear ticks can be undone: Undo takes its place, focus and all, and says s
   const before = saved('doors');
 
   screen
-    .getByRole('button', { name: clearTicks('Doors open') })
+    .getByRole('button', { name: clearTicks('Before doors') })
     .element()
     .focus();
   await userEvent.keyboard('{Enter}');
   await expect.element(screen.getByText(progressText(0, total))).toBeVisible();
-  await expect.element(screen.getByRole('button', { name: 'Undo clear ticks, Doors open' })).toHaveFocus();
+  await expect.element(screen.getByRole('button', { name: 'Undo clear ticks, Before doors' })).toHaveFocus();
   await expect.element(screen.getByText('Ticks cleared.')).toHaveAttribute('role', 'status');
   expect(saved('doors')).toBeNull();
 
   await userEvent.keyboard('{Enter}');
   await expect.element(screen.getByText(progressText(2, total))).toBeVisible();
-  await expect.element(screen.getByRole('button', { name: clearTicks('Doors open') })).toHaveFocus();
+  await expect.element(screen.getByRole('button', { name: clearTicks('Before doors') })).toHaveFocus();
   // Their time comes back too, so the ticks' lifetime doesn't start again.
   expect(saved('doors')).toEqual(before);
   expect(screen.getByText('Ticks cleared.').query()).toBeNull();
@@ -223,8 +223,8 @@ test('Clear ticks can be undone: Undo takes its place, focus and all, and says s
 
 test('Undo has no time limit: it stays until the next tick', async () => {
   const screen = await render(Checklist, { list: 'doors' });
-  const undo = screen.getByRole('button', { name: 'Undo clear ticks, Doors open' });
-  const clear = screen.getByRole('button', { name: clearTicks('Doors open') });
+  const undo = screen.getByRole('button', { name: 'Undo clear ticks, Before doors' });
+  const clear = screen.getByRole('button', { name: clearTicks('Before doors') });
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   try {
     (screen.getByRole('checkbox').first().element() as HTMLElement).click();
@@ -283,12 +283,27 @@ test('the Howler line gives the first action for a red light, then sends the cre
   expect(link.element().closest('label')).toBeNull();
 });
 
-test('a line with two drills sets each one apart as its own sentence', async () => {
-  const screen = await render(Checklist, { list: 'setup' });
-  const note = [...screen.container.querySelectorAll('.item-note')].at(-1);
-  expect(note?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
-    'If it hums, go to F10. If a side is missing, go to F11.',
+test('a note and its drill are set apart as sentences of their own', async () => {
+  const screen = await render(Checklist, { list: 'changeover' });
+  const note = [...screen.container.querySelectorAll('.item-note')].find((el) =>
+    el.textContent?.includes('MY SETTINGS'),
   );
+  expect(note?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+    'Say: “Keep the channel meters on the first orange (0) at the loudest part. For a louder room, ask the crew.” If the DJ loads MY SETTINGS, go to F7.',
+  );
+});
+
+test('C1 shows a drawing only where the page hands one in, before the line it serves', async () => {
+  // The island draws nothing of its own: on the night page each drawing arrives as a slot (night/index.astro).
+  const screen = await render(Checklist, { list: 'doors' });
+  expect(screen.container.querySelectorAll('.figure')).toHaveLength(0);
+  expect([...screen.container.querySelectorAll('.group')].map((el) => el.textContent)).toEqual([
+    'Table',
+    'Leads',
+    'Power',
+    'Levels',
+    'Record',
+  ]);
 });
 
 test('says what a line costs before it, at full strength, outside the row, and never as a note', async () => {
@@ -304,7 +319,7 @@ test('says what a line costs before it, at full strength, outside the row, and n
 });
 
 test('notes read at an instruction’s strength and 15px or more, until their line is ticked', async () => {
-  const screen = await render(Checklist, { list: 'setup' });
+  const screen = await render(Checklist, { list: 'doors' });
   const instruction = token('--ink-2');
   const notes = [...screen.container.querySelectorAll<HTMLElement>('.item-note')];
   expect(notes.length).toBeGreaterThan(1);
@@ -328,42 +343,15 @@ test('notes read at an instruction’s strength and 15px or more, until their li
   expect(getComputedStyle(next!.querySelector('.item-note')!).color).toBe(instruction);
 });
 
-test('a response too long for its check’s line takes its own line, at the right, like a printed checklist', async () => {
-  const screen = await render(Checklist, { list: 'setup' });
-  // Fixed-width type, big enough that the longest responses wrap.
-  screen.container.style.width = '36rem';
-  screen.container.style.font = '22px monospace';
-  /** Where each line of an element's text ends. */
-  const lineEnds = (element: Element) => {
-    const range = document.createRange();
-    range.selectNodeContents(element);
-    const ends = new Map<number, number>();
-    for (const box of range.getClientRects()) {
-      const top = Math.round(box.top);
-      ends.set(top, Math.max(ends.get(top) ?? box.right, box.right));
-    }
-    return [...ends.values()];
-  };
-  const seen = { beside: 0, ownLine: 0, wrapped: 0 };
-  for (const target of screen.container.querySelectorAll('.target')) {
-    const text = target.closest('.text')!.getBoundingClientRect();
-    const check = target.parentElement!.querySelector('.check')!.getBoundingClientRect();
-    const leader = target.parentElement!.querySelector('.leader')!.getBoundingClientRect();
-    const ends = lineEnds(target);
-    // Every line of a response ends at the right-hand edge, so the eye finds them all in one place.
-    for (const end of ends) expect(end).toBeCloseTo(text.right, 0);
-    if (target.getBoundingClientRect().top >= check.bottom - 1) {
-      seen.ownLine += 1;
-      if (ends.length > 1) seen.wrapped += 1;
-      // The dots run on to the end of the check's line.
-      expect(leader.right).toBeCloseTo(text.right, 0);
-    } else {
-      // Beside its check, at the end of the dots.
-      seen.beside += 1;
-      expect(leader.right).toBeLessThanOrEqual(target.getBoundingClientRect().left);
-    }
+test('phone checklist responses stack below their checks and align left', async () => {
+  const screen = await render(Checklist, { list: 'doors' });
+  screen.container.style.width = '20rem';
+  for (const text of screen.container.querySelectorAll('.text')) {
+    const check = text.querySelector('.check')!;
+    const target = text.querySelector('.target')!;
+    expect(getComputedStyle(target).textAlign).toBe('left');
+    expect(getComputedStyle(text.querySelector('.leader')!).display).toBe('none');
+    expect(target.getBoundingClientRect().top).toBeGreaterThanOrEqual(check.getBoundingClientRect().bottom);
+    expect(target.getBoundingClientRect().left).toBeCloseTo(check.getBoundingClientRect().left, 0);
   }
-  expect(seen.beside).toBeGreaterThan(0);
-  expect(seen.ownLine).toBeGreaterThan(seen.wrapped);
-  expect(seen.wrapped).toBeGreaterThan(0);
 });

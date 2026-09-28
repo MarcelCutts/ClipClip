@@ -4,16 +4,17 @@
  * the code tells them apart: a laminated card in the booth shows it, and the web pages show the code
  * the cards should have.
  *
- * The code is a hash of every string the kit prints: the DJ box, the four printed checklists and the
- * tape tags. revision.test.ts fails when those words change and PRINTED does not. Then set the date to
+ * The code is a hash of every string the kit prints: the DJ box, the three printed checklists, the
+ * tape tags and the captions of C1's drawings. A drawing's own labels are not in it. revision.test.ts fails when those words change and PRINTED does not. Then set the date to
  * the day, and the code to the one the test prints.
  */
 import { CHECKLISTS, type ChecklistId, drillText } from './checklists';
+import { FIGURE_ORDER, FIGURES } from './figures';
 import { DJ_RULES } from './rules';
 import { MASTER_TAG, SHORT_TAGS } from './tags';
 
-/** The checklists the print kit carries (print.astro): C1, C2 and C3 for the booth, S1 for setting up. */
-export const PRINTED_LISTS: readonly ChecklistId[] = ['doors', 'changeover', 'after', 'setup'];
+/** The checklists the print kit carries (print.astro): C1, C2 and C3. */
+export const PRINTED_LISTS: readonly ChecklistId[] = ['doors', 'changeover', 'after'];
 
 /** Every string the print kit carries, in a fixed order. */
 export function printedWords(): string[] {
@@ -25,10 +26,12 @@ export function printedWords(): string[] {
       list.title,
       list.when,
       ...list.items.flatMap((i) => [
+        i.group ?? '',
         i.check,
         i.target,
         i.before ?? '',
         i.note ?? '',
+        i.help?.label ?? '',
         i.drill ? drillText(i.drill) : '',
       ]),
     ];
@@ -38,7 +41,8 @@ export function printedWords(): string[] {
     MASTER_TAG.name,
     ...MASTER_TAG.lines,
   ];
-  return [...rules, ...lists, ...tags];
+  const drawings = FIGURE_ORDER.flatMap((id) => [FIGURES[id].title, FIGURES[id].note]);
+  return [...rules, ...lists, ...tags, 'Continue with C1, part 2.', ...drawings];
 }
 
 /** FNV-1a over the words, 32 bits, as six hex digits: short enough to print and to read out. */
@@ -52,7 +56,7 @@ export function wordsCode(words: readonly string[]): string {
 }
 
 /** The revision the cards carry. Change both when the test says the printed words changed. */
-export const PRINTED = { date: '27 September 2026', code: '08D9E7' } as const;
+export const PRINTED = { date: '28 September 2026', code: 'AA7150' } as const;
 
 /** As a card prints it after "Revised": "27 September 2026 (3F9A2C)". */
 export const REVISION = `${PRINTED.date} (${PRINTED.code})`;

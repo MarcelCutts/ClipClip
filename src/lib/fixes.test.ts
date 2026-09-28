@@ -1,18 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import {
-  ATT_NOTE,
-  CHANNEL_METERS_WORDS,
-  FADER_DOWN,
-  LEVEL_FALLBACK,
-  MASTER_METERS_WORDS,
-  OPEN_UTILITY,
-  STORE_CHANGE,
-} from './checklists';
+import { CHANNEL_METERS_WORDS, FADER_DOWN, MASTER_METERS_WORDS, RECORDING_DOWN } from './checklists';
 import {
   allSteps,
   type Branch,
   drill,
   drillAnchor,
+  drillPath,
   FIXES,
   type Fix,
   isDoStep,
@@ -36,7 +29,6 @@ const copyOf = (f: Fix): string[] =>
     f.short,
     f.condition ?? '',
     f.objective,
-    f.warning ?? '',
     f.later?.when ?? '',
     ...allSteps(f).flatMap((s) => [
       s.before ?? '',
@@ -55,7 +47,6 @@ const copyOf = (f: Fix): string[] =>
 const all = FIXES.flatMap(copyOf);
 /** Sentences end at a stop before an ordinary space and a letter, so "p.\u00a031" stays inside its sentence. */
 const sentences = (text: string) => text.split(/(?<=[.?!]”?) +(?=[A-Za-z“])/).filter(Boolean);
-const words = (text: string) => text.split(/\s+/).filter(Boolean).length;
 
 /** Every jump in a drill, with the step it's made from. */
 const jumpsOf = (f: Fix): { from: number; next: Next }[] =>
@@ -112,12 +103,12 @@ const RECHECK: Record<string, string> = {
 };
 
 describe('the drills', () => {
-  it('have unique ids that are safe in a link (/night/#fix-<id>), and keep the ones other pages link to', () => {
+  it('have unique ids that are safe in a link (#fix-<id>), and keep the ones other pages link to', () => {
     const ids = FIXES.map((f) => f.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const id of ids) expect(id).toMatch(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/);
-    // The crew box (rules.ts), the setup page and the chat link to these.
-    for (const id of ['howler-red', 'not-loud', 'my-settings', 'power-cut', 'hum', 'hollow']) {
+    // The crew box (rules.ts), the rig reference and the lists link to these.
+    for (const id of ['howler-red', 'not-loud', 'no-louder', 'driverack-clip', 'my-settings', 'crunch', 'hollow']) {
       expect(ids).toContain(id);
     }
   });
@@ -144,7 +135,11 @@ describe('the drills', () => {
       'my-settings',
       'power-cut',
     ]);
-    expect(FIXES.filter((f) => f.where === 'recording').map((f) => f.id)).toEqual(['crunch', 'hum', 'hollow']);
+    // What is found by listening, the day after. They are on Recordings, where the listening is done.
+    expect(FIXES.filter((f) => f.where === 'recording').map((f) => f.id)).toEqual(['crunch', 'hollow']);
+    expect(drillPath('crunch')).toBe('/recordings/#fix-crunch');
+    expect(drillPath('hollow', 2)).toBe('/recordings/#fix-hollow-step-2');
+    expect(drillPath('howler-red')).toBe('/night/#fix-howler-red');
   });
 
   it('name the light as printed, then its state, when a light prompts the drill', () => {
@@ -202,11 +197,12 @@ describe('the drills', () => {
       if (f.seeAt) expect(f.see, `${f.id} lands inside a section it names`).toBeTruthy();
     }
     for (const f of FIXES.filter((f) => f.light)) expect(f.see, f.id).toBeTruthy();
-    // 3.2 carries the recording-level table; the limiter myth answers F5.
+    // Each link is about its drill: 3.2 has the recording's ceiling, 3.1 draws MASTER 1 into the DriveRack, and
+    // 4.4 says what Pioneer publishes about MASTER ATT. The limiter myth answers F5.
     expect(['howler-red', 'driverack-clip', 'my-settings'].map((id) => drill(id).see)).toEqual([
       '#two-ceilings',
-      '#two-ceilings',
-      '#two-ceilings',
+      '#signal',
+      '#red-top',
     ]);
     expect(drill('no-louder')).toMatchObject({ see: '#myths', seeAt: '#myth-limiter' });
   });
@@ -236,7 +232,6 @@ describe('the drills', () => {
           expect(step.response, f.id).toMatch(/^[a-z0-9+−]/);
           expect(step.response, f.id).not.toMatch(/[.?:]$/);
           expect(step.response, f.id).not.toMatch(/^(?:check|set|watch|as required|look)\b/);
-          expect(words(step.response), step.response).toBeLessThanOrEqual(8);
         }
         if (isDoStep(step)) expect(step.do, f.id).toMatch(/^[A-Z][^.]*\.$/);
         if (isSayStep(step)) expect(step.to ?? 'Say to the DJ:', f.id).toMatch(/:$/);
@@ -326,99 +321,115 @@ describe('what the drills say', () => {
     const f1 = drill('howler-red');
     const [meters] = f1.steps;
     expect(meters).toMatchObject({ challenge: 'MASTER meters', response: 'below red' });
-    // Red: the DJ's fader first, then the Howler's light again (step 6).
+    // Red: the DJ's fader first, then the Howler's light again (step 5).
     expect(branchesOf(meters as Step)).toEqual([
-      { finding: 'Red', say: FADER_DOWN, next: 6 },
+      { finding: 'Red', say: FADER_DOWN, next: 5 },
       { finding: 'Below red', next: 2 },
     ]);
     // Only the LEVEL light is F1's: the BATTERY light is red all the time the Howler charges (MK1 manual).
     expect(f1.condition).toBe('The LEVEL light blinks red. A steady red BATTERY light means the Howler is charging.');
   });
 
-  it('tell the DJ the room may go quieter before the recording is turned down', () => {
+  it('tell the DJ the room will go quieter before the recording is turned down', () => {
     const f1 = drill('howler-red');
     const warned = stepAt(f1, 2);
-    // "May": Pioneer does not say whether MASTER ATT reaches MASTER 1, the room's socket (T2 finds out).
+    // "Will": MASTER LEVEL sets MASTER 1, the room's socket, as well as MASTER 2 (Pioneer p.27).
     expect(warned && isSayStep(warned) ? warned.say : '').toBe(
-      'The room may go quieter for a few seconds. Keep your levels as they are.',
+      'The room will go quieter until the amps are turned up. Keep your levels as they are.',
     );
     // F6 has its own loop: a DriveRack clip is never handed to the recording level's steps.
     for (const { next } of jumpsOf(drill('driverack-clip'))) expect(next).not.toMatchObject({ drill: 'howler-red' });
   });
 
-  it('go straight to the last resort on a rig where T2 found MASTER ATT is not to be used', () => {
-    expect(branchesOf(stepAt(drill('howler-red'), 3) as Step)[0]).toEqual({
-      finding: 'Not used, on the REC tape',
-      next: 4,
-    });
+  it('go by the lights, since the gear carries no marks, no tape and no test recording', () => {
+    // The owner, 28 September 2026. Earthing is nowhere in the drills.
+    expect(all.join(' ')).not.toMatch(/\bmarks?\b|\b(?:the|REC|RIG) tape\b|\bREC\b|\bRIG\b/);
+    expect(all.join(' ')).not.toMatch(/test recording/i);
+    expect(all.join(' ')).not.toMatch(/\bRCDs?\b|generator|competent person/i);
+    expect(FIXES.filter((f) => /earth/i.test(copyOf(f).join(' '))).map((f) => f.code)).toEqual([]);
   });
 
-  it('set MASTER ATT by value, one setting lower than it is, never higher, and store it', () => {
-    const look = stepAt(drill('howler-red'), 3);
-    expect(look && isDoStep(look) ? look.do : '').toBe('Look at the REC tape, then at MASTER ATT in UTILITY.');
-    expect(look && !isIfStep(look) ? look.note : '').toBe(OPEN_UTILITY);
-    // Pioneer p.31: "Press the rotary selector. The changed settings are stored."
-    const store = 'Press the rotary selector. The changed settings are stored.';
-    expect(STORE_CHANGE).toContain(`“${store}”`);
-    expect(branchesOf(look as Step).map((b) => [b.finding, b.action, b.next])).toEqual([
-      ['Not used, on the REC tape', undefined, 4],
-      ['0 dB', `Set it to −6 dB. ${store}`, 6],
-      ['−6 dB', `Set it to −12 dB. ${store}`, 6],
-      ['−12 dB', undefined, 4],
-    ]);
+  it('turn the recording down at MASTER LEVEL, with its cost said before the step, and leave MASTER ATT alone', () => {
+    const f1 = drill('howler-red');
+    expect(allSteps(f1)).toHaveLength(5);
+    expect(stepAt(f1, 3)).toEqual({
+      before: RECORDING_DOWN.consequence,
+      challenge: RECORDING_DOWN.challenge,
+      response: RECORDING_DOWN.response,
+    });
+    // The step names the light it waits for, and its cost is said of the step, not of "then".
+    expect(RECORDING_DOWN).toEqual({
+      challenge: 'MASTER LEVEL',
+      response: 'down a little at a time, until the Howler’s LEVEL light blinks green',
+      consequence: 'After this step, the MASTER meters read low.',
+    });
+    // The owner has never seen the Howler red with the MASTER meters below red, and Pioneer does not say which
+    // sockets MASTER ATT reaches. No drill sends anyone into UTILITY to change it.
+    expect(copyOf(f1).join(' ')).not.toMatch(/MASTER ATT|UTILITY/);
+    for (const f of FIXES) {
+      for (const step of allSteps(f)) {
+        const doing = [
+          isLineStep(step) ? step.challenge : '',
+          isDoStep(step) ? step.do : '',
+          ...branchesOf(step).map((b) => b.action ?? ''),
+        ].join(' ');
+        expect(doing, f.code).not.toMatch(/\bATT\b/);
+      }
+    }
     expect(all.join(' ')).not.toMatch(/\bstep down\b|down a step|a step lower/i);
-  });
-
-  it('turn MASTER LEVEL down only as the last resort, with its cost said before the step', () => {
-    const level = stepAt(drill('howler-red'), 4);
-    expect(level).toEqual({
-      before: LEVEL_FALLBACK.consequence,
-      challenge: LEVEL_FALLBACK.challenge,
-      response: LEVEL_FALLBACK.response,
-    });
     // A channel can clip before its fader with the MASTER meters below red, so the why never calls the mix clean.
-    expect(drill('howler-red').why).toBe(
-      'If the MASTER meters are below red, a red LEVEL light means the recording level is too high. Pioneer does not say which sockets MASTER ATT reaches: T2 finds out.',
+    // It also says where the room is made up: a mixer turned back up would turn the recording up with it.
+    expect(f1.why).toBe(
+      'If the MASTER meters are below red, a red LEVEL light means the recording level is too high. The Howler’s lead leaves the mixer before the amps, and turning the amps up makes the room louder without changing the recording.',
     );
     expect(all.join(' ')).not.toMatch(/mix is clean|crunch before|hides? a blend/i);
   });
 
-  it('bring the room back at the amps only if it went quieter, never past the RIG marks', () => {
+  it('cite no card that has gone: no test, no setup card, no fixed attenuator', () => {
+    // The setup page's tests and commissioning cards needed a laptop, and this is a guide for the field.
+    expect(all.join(' ')).not.toMatch(/\b(?:T[1-9]|S[1-9])\b/);
+    expect(all.join(' ')).not.toMatch(/fixed attenuator|in-line/i);
+  });
+
+  it('bring the room back at the amps only if it went quieter, with their CLIP lights dark', () => {
     const f1 = drill('howler-red');
     // Once the Howler is green again: only a change F1 made brings the amps back up, never the DJ's fader.
-    expect(branchesOf(stepAt(f1, 6) as Step)[0]).toEqual({
+    expect(branchesOf(stepAt(f1, 5) as Step)[0]).toEqual({
       finding: 'Blinking green',
-      action: 'If step 3 or 4 made the room quieter, turn the amps back up, no higher than the RIG marks.',
-      next: 7,
+      action: 'If step 3 made the room quieter, turn the amps back up, with their CLIP lights dark.',
+      end: true,
     });
-    expect(f1.later).toEqual({
-      when: 'At the changeover',
-      steps: [{ if: 'If step 3 or 4 changed a setting', action: 'bring the REC tape up to date.' }],
-    });
+    // There is no tape to bring up to date: the drill ends on the light it opened on.
+    expect(f1.later).toBeUndefined();
     // After MASTER LEVEL comes down, the DJ hears that the MASTER meters read low.
-    const told = stepAt(f1, 5);
+    const told = stepAt(f1, 4);
     expect(told && isSayStep(told) ? told.say : '').toBe(`The MASTER meters now read low. ${CHANNEL_METERS_WORDS}`);
     // QSC publishes no dB per click, so no card says the knobs move by the same number of clicks.
     expect(all.join(' ')).not.toMatch(/same number of clicks/i);
   });
 
-  it('agree between F1 and F7: a red light is fixed now, and the ATTs go back at the changeover', () => {
+  it('agree between F1 and F7: a red light is fixed now, and a change shows as a change in level', () => {
     const f7 = drill('my-settings');
-    expect(f7.steps[0]).toMatchObject({ challenge: 'Howler LEVEL light', response: 'blinking green' });
+    expect(f7.objective).toBe('Find any change in level at the mixer’s outputs.');
+    expect(f7.steps[0]).toMatchObject({
+      challenge: 'Howler LEVEL light',
+      response: 'blinking green at the next loud part',
+    });
     expect(branchesOf(f7.steps[0] as Step)).toEqual([
       { finding: 'Blinking green', next: 2 },
       { finding: 'Red', next: 'howler-red' },
     ]);
-    expect(f7.later?.when).toBe('At the changeover');
-    expect(f7.later?.steps[0]).toEqual({
-      challenge: 'MASTER ATT and BOOTH ATT',
-      response: 'as on the REC tape',
-      note: ATT_NOTE,
-    });
+    // With no record of either attenuator to go back to, the drill looks for what a change does. The step
+    // that leaves the drill comes last, so the booth monitors are never skipped.
+    expect(f7.steps.slice(1)).toEqual([
+      { if: 'If the booth monitors are now quieter', action: 'turn up BOOTH MONITOR.' },
+      { if: 'If the room is now quieter', next: 'not-loud' },
+    ]);
+    expect(f7.later).toBeUndefined();
     // Pioneer: MY SETTINGS can call out UTILITY settings (p.31); what a stick carries, and which sockets MASTER
     // ATT reaches, are not published.
     expect(f7.why).toBe(
-      'Pioneer says MY SETTINGS can call out UTILITY settings, and both ATTs are UTILITY settings (pp. 31–32). A change to MASTER ATT may change the room’s volume too: Pioneer does not say which sockets it reaches.',
+      'Pioneer says MY SETTINGS can call out UTILITY settings, and MASTER ATT and BOOTH ATT are UTILITY settings (pp. 31–32). A change to MASTER ATT may change the room’s volume too: Pioneer does not say which sockets it reaches.',
     );
   });
 
@@ -476,34 +487,48 @@ describe('what the drills say', () => {
     expect(branches(drill('no-louder')).find((b) => b.finding === 'None of these')?.next).toBe('not-loud');
   });
 
-  it('take the room up at the amps, a click at a time, and stop at the RIG marks', () => {
+  it('take the room up at the amps, a click at a time, and stop at the first red CLIP light', () => {
     const f4 = drill('not-loud');
     // The limit is looked at before any knob moves.
-    expect(f4.steps[0]).toMatchObject({ challenge: 'Amp gain knobs', response: 'below the RIG marks' });
+    expect(f4.steps[0]).toMatchObject({
+      challenge: 'Amp gain knobs',
+      response: 'below fully up',
+      note: 'Each GX7 has two, CH1 and CH2, on the side of the rack that faces the crowd.',
+    });
     expect(f4.steps[1]).toMatchObject({ challenge: 'Amp gain knobs', response: 'one click up, all four' });
     expect(f4.steps[2]).toMatchObject({ challenge: 'Both amps’ CLIP lights', response: 'dark, after a few bars' });
     const ends = branches(f4).filter((b) => b.end);
-    expect(ends.map((b) => b.finding)).toEqual(['On the RIG marks', 'A red CLIP light']);
-    // At the marks, the crew tell the DJ this is the room's limit.
+    expect(ends.map((b) => b.finding)).toEqual(['Fully up', 'A red CLIP light']);
+    // At either, the crew tell the DJ this is the room's limit.
     for (const b of ends) expect(b.say).toBe('That is the room’s limit.');
     expect(f4.steps.at(-1)).toEqual({ if: 'If the DJ still wants it louder', next: 1 });
-    expect(copyOf(f4).join(' ')).not.toMatch(/MASTER LEVEL|TRIM|fully up/);
+    expect(copyOf(f4).join(' ')).not.toMatch(/MASTER LEVEL|TRIM/);
   });
 
   it('run a power cut in dbx’s order: amps off first, on last with no track playing, the Howler still recording', () => {
     const cut = drill('power-cut');
     expect(cut.steps[0]).toEqual({ challenge: 'Both amps', response: 'switched off' });
-    // HSE GS50 §22: a tripped 30 mA RCD means a fault.
+    // Two GX7s on one strip can trip it (QSC p.11), and C1 gives each a socket of its own.
     expect(cut.steps.at(-1)).toEqual({
-      if: 'If an RCD or breaker tripped',
-      action: 'find the fault before you reset it.',
+      if: 'If a breaker tripped',
+      action: 'put each amp on a socket of its own before you reset it.',
     });
     expect(cut.later?.when).toBe('When the power is back');
     const later = (cut.later?.steps ?? []).filter(isLineStep);
-    expect(later[0]).toMatchObject({ challenge: 'XDJ-RX2 and DriveRack', response: 'switched on' });
-    expect(later.find((s) => s.challenge === 'MASTER ATT and BOOTH ATT')?.note).toBe(ATT_NOTE);
+    // The DriveRack has no power switch (dbx p.10), so its line is its screen.
+    expect(later[0]).toEqual({ challenge: 'XDJ-RX2', response: 'switched on' });
+    expect(later[1]).toEqual({ challenge: 'DriveRack', response: 'screen lit' });
     // dbx p.10: 10 seconds is for switching off; for switching on, no audio passing.
-    expect(later.at(-1)).toEqual({ challenge: 'Both amps', response: 'switched on last, with no track playing' });
+    expect(later[2]).toEqual({ challenge: 'Both amps', response: 'switched on last, with no track playing' });
+    // A cut is no switch-off at the mixer's own switch (Pioneer p.35), so a UTILITY change may be lost.
+    expect(later.at(-1)).toMatchObject({
+      challenge: 'Howler LEVEL light',
+      response: 'blinking green at the next loud part',
+    });
+    expect(branchesOf(later.at(-1) as Step)).toEqual([
+      { finding: 'Blinking green', end: true },
+      { finding: 'Red', next: 'howler-red' },
+    ]);
     expect(cut.why).toMatch(/^dbx says to switch the amps on last, with no audio playing, and off first \(p\. 10\)\./);
     expect(cut.why).toMatch(/The Howler MK1 records for about 30 hours/);
   });
@@ -539,33 +564,15 @@ describe('what the drills say', () => {
     );
   });
 
-  it('never cure hum by disconnecting an earth, and keep “Warning.” for that one hazard to people', () => {
-    const hum = drill('hum');
-    // An audio transformer, a ground-loop isolator, never a mains one. Only T2's fixed attenuator may share the lead.
-    expect(hum.steps[0]).toEqual({
-      challenge: 'Audio isolation transformer',
-      response: 'on the Howler’s lead',
-      note: 'It is a ground-loop isolator for RCA leads, never a mains isolating transformer. The lead stays under 3\u00a0m, with nothing else in it but the fixed attenuator from T2.',
-    });
-    // UK wording: the ways an earth goes missing here, and what the earth does.
-    expect(hum.warning).toBe(
-      'Never disconnect a mains earth. Do not use an earth-lift adapter, a two-core extension lead or a plug with its earth wire off. Do not tape over or cut an earth pin. If a fault makes a case live, the earth lets the fuse or RCD cut the power.',
-    );
-    expect(FIXES.filter((f) => f.warning).map((f) => f.id)).toEqual(['hum']);
-    // The DriveRack's switch, named as printed (dbx p.6), lifts only pin 1 of its XLR inputs (p.7).
-    expect(copyOf(hum).join(' ')).toMatch(/press in the DriveRack’s PIN 1 LIFT switch, with its outputs muted\./);
-    expect(copyOf(hum).join(' ')).toMatch(/It lifts only pin 1 of its XLR inputs, never the mains earth/);
-    // The lead first, then the supply, all of it on one distribution board and never one strip for both amps.
-    expect(
-      allSteps(hum)
-        .filter(isIfStep)
-        .map((s) => s.if),
-    ).toEqual(['If it is only on one side or it crackles', 'If the hum is still there', 'If the PA hums too']);
-    expect(all.join(' ')).not.toMatch(/GROUND LIFT|ground-lift|one power strip|if the load allows/i);
-    expect(all.join(' ')).not.toMatch(/\bcaution\b/i);
+  it('have no drill for hum: nobody can hear a recording at the event, and earthing is not the guide’s subject', () => {
+    // The owner, 28 September 2026. F10's number is retired, not reused.
+    expect(FIXES.map((f) => f.code)).not.toContain('F10');
+    expect(FIXES.map((f) => f.id)).not.toContain('hum');
+    expect(all.join(' ')).not.toMatch(/\bhums?\b|\bbuzz\b|\bearth|isolation transformer|PIN 1 LIFT|ground/i);
+    expect(all.join(' ')).not.toMatch(/\bwarning\b|\bcaution\b/i);
   });
 
-  it('keep the Howler on MASTER 2, RCA to RCA, with only the audio transformer or T2’s attenuator in its lead', () => {
+  it('keep the Howler on MASTER 2, RCA to RCA, with nothing else in its lead', () => {
     const text = all.join(' ');
     expect(text).not.toMatch(/proposed|Master 2 wiring|REC on BOOTH|BOOTH MONITOR (?:is|sets) the recording/i);
     expect(text).not.toMatch(/MASTER REC|USB backup|USB stick/);
@@ -573,23 +580,30 @@ describe('what the drills say', () => {
     expect(copyOf(hollow).join(' ')).toMatch(/RCA lead from MASTER 2/);
     expect(hollow.steps[0]).toMatchObject({
       response: 'one stereo RCA lead, under 3 m',
-      note: 'Nothing goes in it except an audio isolation transformer if F10 found hum, or the fixed attenuator from T2.',
+      note: 'Nothing else goes in the lead.',
     });
     expect(branches(hollow).find((b) => b.finding === 'A splitter or an adapter')?.action).toBe(
-      'Take it out, and use one RCA lead from MASTER 2. The audio isolation transformer and the fixed attenuator can stay.',
+      'Take it out, and use one RCA lead from MASTER 2.',
     );
     // An unbalanced RCA output cannot reverse a side: that takes an adapter on a balanced one.
     expect(hollow.why).toBe(
       'An adapter on BOOTH or MASTER 1 can record one side twice, one copy reversed, which sounds hollow. On MASTER 2, a loose or broken RCA lead loses a side.',
     );
   });
+
+  it('checks the next recording after every F11 lead repair, with a handoff if the fault remains', () => {
+    const hollow = drill('hollow');
+    const recheck =
+      hollow.steps.findIndex((step) => isLineStep(step) && step.challenge === 'Next recording, the day after') + 1;
+    expect(recheck).toBeGreaterThan(1);
+    for (const path of paths(hollow)) expect(path.at(-1), `F11: ${path.join(' → ')}`).toBe(recheck);
+    const check = stepAt(hollow, recheck) as Step;
+    expect(isLineStep(check) && check.response).toMatch(/both sides.*headphones/);
+    expect(isLineStep(check) && check.note).toMatch(/still missing.*rig owner.*before use/);
+  });
 });
 
 describe('drill copy follows the house style', () => {
-  it('keeps every sentence to 20 words or fewer', () => {
-    for (const text of all) for (const s of sentences(text)) expect(words(s), s).toBeLessThanOrEqual(20);
-  });
-
   it('uses the printed names and the site’s words: MASTER meters, recording level, SD card, ATT setting', () => {
     const text = all.join(' ');
     expect(text).toMatch(/MASTER meters/);

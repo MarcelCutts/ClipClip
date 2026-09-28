@@ -10,7 +10,7 @@ import { COPY, type NodeId, summaryFor } from '../../src/lib/rig';
 // or more and fits.
 
 async function openDrawing(page: Page): Promise<Locator> {
-  await page.goto('');
+  await page.goto('learn/');
   const drawing = page.locator('.signal-path');
   await drawing.scrollIntoViewIfNeeded();
   // Islands hydrate as they scroll into view, and Astro drops `ssr` once this one has.
@@ -63,6 +63,7 @@ for (const viewport of [
 ]) {
   test(`the drawing is one Tab stop, and the arrow keys walk every part in sight at ${viewport.width}×${viewport.height}`, async ({
     page,
+    browserName,
   }) => {
     await page.setViewportSize(viewport);
     // Instant scrolling, so each check sees where focus scrolling ends up.
@@ -77,11 +78,14 @@ for (const viewport of [
     // Tab lands on the picked part, and the next Tab leaves the parts (for the drawing's note link).
     const picked = drawing.locator('input:checked');
     const pickedName = await picked.getAttribute('aria-label');
+    // macOS Safari uses Option-Tab to include all controls when full keyboard access is off.
+    const tab = browserName === 'webkit' && process.platform === 'darwin' ? 'Alt+Tab' : 'Tab';
+    const back = browserName === 'webkit' && process.platform === 'darwin' ? 'Alt+Shift+Tab' : 'Shift+Tab';
     await picked.focus();
-    await page.keyboard.press('Shift+Tab');
-    await page.keyboard.press('Tab');
+    await page.keyboard.press(back);
+    await page.keyboard.press(tab);
     await expect.poll(() => focusedPart(page)).toMatchObject({ name: pickedName, picked: true });
-    await page.keyboard.press('Tab');
+    await page.keyboard.press(tab);
     expect(await page.evaluate(() => (document.activeElement as HTMLInputElement | null)?.type)).not.toBe('radio');
 
     // Home, then the arrow keys, pick each part in turn. Each is announced and stays in sight.
@@ -92,7 +96,7 @@ for (const viewport of [
       offScreen: false,
       underReadout: false,
     });
-    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press(back);
     await page.keyboard.press('Home');
     await expect.poll(() => focusedPart(page)).toEqual(inSight(0));
     for (let i = 1; i < all.length; i++) {
@@ -125,8 +129,9 @@ test('on a phone, a tapped part’s explanation is on screen beside it, with dra
       return {
         sticky: getComputedStyle(el).position === 'sticky',
         onScreen: sheet.top >= 0 && sheet.bottom <= innerHeight + 0.5,
-        // The drawing keeps at least 40% of the screen between the tabs and the readout.
-        room: (sheet.top - tabs) / innerHeight,
+        // The readout leaves at least 40% for the drawing when pinned to the viewport bottom.
+        // Near the drawing's end it returns to normal flow, so its current y is not its footprint.
+        room: (innerHeight - sheet.height - tabs) / innerHeight,
       };
     });
     const card = drawing.locator('.readout .card:not(.sizer)');

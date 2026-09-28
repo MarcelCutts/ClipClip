@@ -11,7 +11,7 @@
  * column's width: nothing in it needs more.
  */
 import { TARGET_PEAK_DB } from '../lib/model';
-import { section } from '../lib/sections';
+import { href } from '../lib/url';
 import { litCount, METER_SEGMENTS, scaleLabel } from '../lib/xdj';
 
 // The blend in the picture: both decks on the aim, the mix where lined-up kicks put it (model.ts).
@@ -55,6 +55,8 @@ const label = `The XDJ-RX2’s meters at a blend’s loudest moment. CH1 and CH2
     orange stays dark.
   </figcaption>
   <div class="layout">
+    <!-- biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users must be able to pan the magnified diagram. -->
+    <section class="drawing-scroll" aria-label="Meter diagram; scroll sideways if needed" tabindex="0">
     <div
       class="drawing"
       role="img"
@@ -86,13 +88,14 @@ const label = `The XDJ-RX2’s meters at a blend’s loudest moment. CH1 and CH2
       <span class="call" style="grid-row: calls; grid-column: ch2">1</span>
       <span class="call beside" style="grid-row: clip; grid-column: call">3</span>
     </div>
+    </section>
     <ol class="keys">
       <li>
         <span class="call" aria-hidden="true">1</span>
         <p>
           <strong>Channel meters, CH1 and CH2.</strong> Each shows one deck. Set TRIM by these. VirtualDJ’s manual for
-          the unit says they read before the fader: moving the fader does not move the meter (<a href="#red-top"
-            >{section('red-top').number}</a
+          the unit says they read before the fader: moving the fader does not move the meter (<a href={href('/learn/#red-top')}
+            >meter reference</a
           >).
         </p>
       </li>
@@ -135,8 +138,17 @@ const label = `The XDJ-RX2’s meters at a blend’s loudest moment. CH1 and CH2
 
   .layout {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
     gap: 1.25rem;
     justify-items: start;
+  }
+
+  /* Keep magnified labels readable in this two-dimensional drawing. Its written key reflows. */
+  .drawing-scroll {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
   }
 
   /* The drawing, as one grid: the aim bracket, CH1, the scale, the middle pair, the scale again,
@@ -148,6 +160,7 @@ const label = `The XDJ-RX2’s meters at a blend’s loudest moment. CH1 and CH2
     --row-gap: 4px;
     --pad: 0.7rem;
     display: grid;
+    width: max-content;
     grid-template-columns:
       [aim] auto [ch1] 1.75rem [t1] 1.9rem [ml] 0.85rem [mr] 0.85rem [mr-end t2] 1.9rem [t2-end ch2] 1.75rem
       [ch2-end] 1.1rem [call] 1.5rem;

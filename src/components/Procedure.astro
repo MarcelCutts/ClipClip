@@ -76,6 +76,7 @@ const titleId = id ? `${id}-title` : undefined;
   .strip {
     display: flex;
     justify-content: space-between;
+    flex-wrap: wrap;
     align-items: baseline;
     gap: 1rem;
     padding: 0.55rem 0.8rem;
@@ -90,7 +91,7 @@ const titleId = id ? `${id}-title` : undefined;
   }
 
   .kind {
-    flex: none;
+    flex: 0 1 auto;
     font-family: var(--font-body);
     font-weight: 400;
     font-size: var(--text-sm);
@@ -192,5 +193,17 @@ const titleId = id ? `${id}-title` : undefined;
       background: CanvasText;
       color: Canvas;
     }
+  }
+  @media print {
+    /* Let long procedures fragment as document flow, without grid row-height artefacts. */
+    .proc, .body, .steps { display: block; }
+    .body > :global(* + *) { margin-block-start: 0.75rem; }
+    .step { break-inside: avoid-page; }
+    .steps > .step + .step { margin-block-start: 0.15rem; }
+  }
+  @media screen and (max-width: 40rem) {
+    .line { display: grid; gap: 0.15rem; text-align: left; }
+    .dots { display: none; }
+    .response { margin-inline-start: 0; text-align: left; text-wrap: pretty; }
   }
 </style>

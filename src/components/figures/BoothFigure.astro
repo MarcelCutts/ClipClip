@@ -1,0 +1,77 @@
+---
+/**
+ * Figure: where everything goes, from above and from the side. The owner's booth: the trolley is the
+ * table, the rack rides on its bed with its knobs to the crowd and its sockets to the DJ, the subs
+ * stand in front and the tops on stands at each side. Not to scale.
+ */
+import { FIGURES } from '../../lib/figures';
+import Fig from './Fig.astro';
+
+interface Props {
+  /** False where the drawing is not a link's target, as on the print kit's card. */
+  anchor?: boolean;
+}
+const { anchor = true } = Astro.props;
+const caption = FIGURES.booth;
+---
+
+<Fig id={anchor ? caption.anchor : undefined} title={caption.title} note={caption.note}>
+  <svg viewBox="0 0 300 396" role="img" aria-labelledby="fig-booth-title fig-booth-desc">
+    <title id="fig-booth-title">The booth from above and from the side</title>
+    <desc id="fig-booth-desc">
+      From above: the table has the XDJ-RX2 in the middle and a booth monitor at each end. Two subs stand on the
+      ground in front of the table, on the crowd’s side. A top stands on a stand at each side. Speaker leads run from
+      under the table to both subs and both tops. From the side: the rack sits on the trolley’s bed under the table
+      top, with its knobs towards the crowd and its sockets towards the DJ, and a sub stands in front.
+    </desc>
+
+    <!-- From above -->
+    <text class="b" x="6" y="18">From above</text>
+    <text class="m" x="150" y="40" text-anchor="middle">Crowd</text>
+    <rect class="is solid" x="84" y="50" width="62" height="46" rx="2" />
+    <rect class="is solid" x="154" y="50" width="62" height="46" rx="2" />
+    <text x="115" y="78" text-anchor="middle">Sub</text>
+    <text x="185" y="78" text-anchor="middle">Sub</text>
+    <rect class="is solid" x="6" y="62" width="44" height="40" rx="2" />
+    <rect class="is solid" x="250" y="62" width="44" height="40" rx="2" />
+    <text x="28" y="87" text-anchor="middle">Top</text>
+    <text x="272" y="87" text-anchor="middle">Top</text>
+    <!-- The leads, from under the table -->
+    <path class="lead" d="M138 114L122 96M162 114L178 96M64 126L42 102M236 126L258 102" />
+    <rect class="is" x="62" y="114" width="176" height="56" rx="2" />
+    <rect class="is solid" x="106" y="122" width="88" height="40" rx="2" />
+    <text x="150" y="147" text-anchor="middle">XDJ-RX2</text>
+    <rect class="is solid" x="68" y="126" width="30" height="30" rx="2" />
+    <rect class="is solid" x="202" y="126" width="30" height="30" rx="2" />
+    <text x="83" y="188" text-anchor="middle">Monitor</text>
+    <text x="217" y="188" text-anchor="middle">Monitor</text>
+    <text class="m" x="150" y="200" text-anchor="middle">DJ</text>
+
+    <!-- From the side -->
+    <text class="b" x="6" y="224">From the side</text>
+    <text class="m" x="6" y="250">Crowd</text>
+    <text class="m" x="294" y="250" text-anchor="end">DJ</text>
+    <path class="ground" d="M8 384H292" />
+    <rect class="is solid" x="20" y="324" width="70" height="60" rx="2" />
+    <text x="55" y="359" text-anchor="middle">Sub</text>
+    <!-- The trolley, end on: a handle, the bed and two wheels -->
+    <path class="is" d="M152 362V286a8 8 0 0 1 8-8h40a8 8 0 0 1 8 8v76" />
+    <circle class="is solid" cx="150" cy="372" r="12" />
+    <circle class="is solid" cx="210" cy="372" r="12" />
+    <rect class="is solid" x="146" y="356" width="68" height="7" rx="2" />
+    <rect class="is solid" x="150" y="306" width="60" height="50" rx="2" />
+    <text x="180" y="336" text-anchor="middle">Rack</text>
+    <rect class="is solid" x="130" y="268" width="100" height="9" rx="2" />
+    <rect class="is solid" x="138" y="244" width="84" height="24" rx="2" />
+    <text x="180" y="261" text-anchor="middle">XDJ-RX2</text>
+    <!-- Knobs to the crowd, sockets to the DJ -->
+    <circle class="do" cx="150" cy="320" r="4" />
+    <circle class="do" cx="150" cy="342" r="4" />
+    <rect class="do" x="206" y="315" width="8" height="10" rx="1" />
+    <rect class="do" x="206" y="337" width="8" height="10" rx="1" />
+    <text x="142" y="310" text-anchor="end">Knobs</text>
+    <text x="220" y="310">Sockets</text>
+    <!-- A speaker lead, from the rack's sockets round to the sub -->
+    <path class="lead" d="M214 342h16v36H96v-14h-6" />
+  </svg>
+</Fig>

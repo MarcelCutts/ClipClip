@@ -6,7 +6,12 @@
  *
  * Each line is set like a quick reference handbook's: the name printed on the gear, leader dots,
  * then the state you can see. Its note says what to do if it isn't so, in one sentence that starts
- * with the condition. A box holds three lines: UK CAA CAP 676 prefers fewer than four (Ch. 7 §2.6).
+ * with the condition. A box holds three lines at most: UK CAA CAP 676 prefers fewer than four
+ * (Ch. 7 §2.6).
+ *
+ * The gear carries no tape and no marks (the owner, 28 September 2026), so no line names one. The
+ * crew set MASTER LEVEL by the MASTER meters at soundcheck, as Pioneer's manual does (p. 31, and
+ * p. 34: "around [0 dB] at the peak level"), and the amps by their CLIP lights.
  */
 
 export interface Rule {
@@ -22,7 +27,7 @@ export interface Rule {
   drill?: string;
   /** The rule as one sentence, for the tape tag that prints it. */
   text?: string;
-  /** The tape tag the print kit finds it by: TRIM, MIX, RIG. */
+  /** A short key the code finds the line by: TRIM, MIX, RIG. It is not printed. */
   label?: string;
 }
 
@@ -51,9 +56,8 @@ const masterMeters: Rule = {
 /** The deal, as a DJ hears it: MASTER LEVEL is the crew's, and so is the room's volume. */
 const masterLevel: Rule = {
   challenge: 'MASTER LEVEL',
-  // The same words as the tape on the knob: LEAVE ON THE REC MARK. The mark is at fully up unless the
-  // crew's tests (T3, S3) moved it, and a DJ needs to know only where it is.
-  response: 'leave it on the REC mark',
+  // The crew set it by the MASTER meters at soundcheck (C1). A DJ needs to know only that it stays.
+  response: 'leave it as you find it',
   note: 'For a louder room, ask the crew. For a louder booth, turn up BOOTH MONITOR.',
   text: 'For a louder room, ask the crew.',
   label: 'RIG',
@@ -61,13 +65,13 @@ const masterLevel: Rule = {
 };
 
 /**
- * The same deal, as the crew keep it: the room's volume comes from the amps, never above the RIG
- * marks that S6 finds (F4).
+ * The same deal, as the crew keep it: the room's volume comes from the amps, and an amp's CLIP
+ * light is its limit (QSC GX manual p. 5; F4).
  */
 const crewMasterLevel: Rule = {
   challenge: 'MASTER LEVEL',
-  response: 'on the REC mark',
-  note: 'If a DJ wants a louder room, turn up the amps, no higher than the RIG marks.',
+  response: 'as soundcheck left it',
+  note: 'If a DJ wants a louder room, turn up the amps, with their CLIP lights dark.',
   drill: 'not-loud',
 };
 
@@ -79,19 +83,18 @@ const howlerLight: Rule = {
 };
 
 /**
- * Pioneer says MY SETTINGS can call out UTILITY settings from a USB stick (manual p. 31), and both
- * ATTs are UTILITY settings (p. 32). It does not list which settings a stick carries, so the crew
- * compare both with the tape.
+ * The amps' own limit, on the side of the rack that faces the crowd. QSC: the red CLIP LEDs flash
+ * when the amp is overdriven (GX manual p. 5).
  */
-const atts: Rule = {
-  challenge: 'MASTER ATT and BOOTH ATT',
-  response: 'as on the REC tape',
-  note: 'If a DJ loads MY SETTINGS, compare both with the tape.',
-  drill: 'my-settings',
+const ampClip: Rule = {
+  challenge: 'Amp CLIP lights',
+  response: 'dark',
+  note: 'If one flashes, turn all four gain knobs back one click.',
+  drill: 'no-louder',
 };
 
 /** For the guide's box, the booth card and the DJ briefing. */
 export const DJ_RULES: Rule[] = [channelMeters, masterMeters, masterLevel];
 
 /** For the crew's box on the night page. */
-export const CREW_RULES: Rule[] = [crewMasterLevel, howlerLight, atts];
+export const CREW_RULES: Rule[] = [crewMasterLevel, howlerLight, ampClip];

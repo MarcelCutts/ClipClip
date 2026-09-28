@@ -1,0 +1,33 @@
+---
+/** Historic fragment URLs keep working, including an explicit link without JavaScript. */
+import { href } from '../lib/url';
+
+interface Props { map: Record<string, string> }
+const destinations = Object.entries(Astro.props.map).map(([id, path]) => ({ id, path: href(path) }));
+---
+<div class="legacy-anchors" data-legacy-map={JSON.stringify(destinations)}>
+  {destinations.map(({ id, path }) => <p id={id} class="legacy"><a href={path}>Open this section in its new location</a>.</p>)}
+</div>
+<script>
+  const forward = () => {
+    let id = '';
+    try { id = decodeURIComponent(location.hash.slice(1)); } catch { return; }
+    for (const element of document.querySelectorAll<HTMLElement>('[data-legacy-map]')) {
+      const map = JSON.parse(element.dataset.legacyMap ?? '[]') as Array<{ id: string; path: string }>;
+      const destination = map.find((entry) => entry.id === id);
+      if (!destination) continue;
+      const url = new URL(destination.path, location.href);
+      url.search = location.search;
+      location.replace(url.href);
+      return;
+    }
+  };
+  forward();
+  window.addEventListener('hashchange', forward);
+</script>
+<style>
+  .legacy-anchors { display: none; }
+  .legacy-anchors:has(.legacy:target) { display: block; }
+  .legacy { display: none; }
+  .legacy:target { display: block; padding: 1rem; border: 2px solid var(--ink); }
+</style>

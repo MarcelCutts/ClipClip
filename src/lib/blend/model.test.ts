@@ -347,7 +347,7 @@ describe('presets', () => {
   });
 
   it('come in two sets: blends that light the top orange, then ways to keep it dark', () => {
-    expect(presetsIn('push').map((p) => p.label)).toEqual(['Top orange', 'Boost the LOW']);
+    expect(presetsIn('push').map((p) => p.label)).toEqual(['Both decks on top orange', 'Boost the LOW']);
     expect(presetsIn('out').map((p) => p.label)).toEqual(['Pull a fader down', 'First orange']);
     expect(presetsIn('push').length + presetsIn('out').length).toBe(PRESETS.length);
     expect(challengeStatus(settingsOf('hot'), analyseBlend(settingsOf('hot')))).toBe('red');

@@ -3,13 +3,14 @@
  * A "Know by heart" box: the few things to know without looking, set like a quick reference
  * handbook's boxed items, numbered from 1 in every box. Each line is a challenge and its response,
  * joined by leader dots (a screen reader hears a comma), with a note on what to do if it isn't so,
- * then a link: the drill for it on the crew page ("See F1"), or where the guide explains it
- * ("See 2.1"). A long response drops to its own line, right-aligned, as on a printed checklist.
+ * then a link: the drill for it on the crew page, by its code and title ("F1: Howler LEVEL light:
+ * red"), or the section of Playing that explains it, by a short name ("Set TRIM"). A long response
+ * drops to its own line, right-aligned, as on a printed checklist.
  * Pale yellow by day, dim yellow edged in yellow on the dark display.
  */
 import { drillAnchor, FIXES } from '../lib/fixes';
 import type { Rule } from '../lib/rules';
-import { section } from '../lib/sections';
+import { section, sectionPath } from '../lib/sections';
 import { href } from '../lib/url';
 
 interface Props {
@@ -27,11 +28,12 @@ function refFor(rule: Rule): { code: string; title: string; path: string } | und
   if (rule.drill) {
     const fix = FIXES.find((f) => f.id === rule.drill);
     if (!fix) throw new Error(`No drill with the id "${rule.drill}"`);
-    return { code: fix.code, title: fix.title, path: `/night/#${drillAnchor(fix.id)}` };
+    // The code comes first, as the drills' own list has it, so the link cannot read as part of the note.
+    return { code: fix.code, title: `${fix.code}: ${fix.title}`, path: `/night/#${drillAnchor(fix.id)}` };
   }
   if (rule.why) {
     const { number, title } = section(rule.why);
-    return { code: number, title, path: `/${rule.why}` };
+    return { code: number, title: ({ trim: 'Set TRIM', blends: 'Fix a blend', knobs: 'Whose controls' } as Record<string, string>)[rule.why.replace(/^#/, '')] ?? title, path: sectionPath(rule.why) };
   }
   return undefined;
 }
@@ -53,7 +55,7 @@ function refFor(rule: Rule): { code: string; title: string; path: string } | und
       {r.note}
       {ref && (
       <Fragment>
-        {' '}<a class="ref" href={href(ref.path)}>See {ref.code}<span class="visually-hidden">, {ref.title}</span></a>
+        {' '}<a class="ref" href={href(ref.path)}>{ref.title}</a>
       </Fragment>
     )}
     </p>
@@ -140,8 +142,9 @@ function refFor(rule: Rule): { code: string; title: string; path: string } | und
   }
 
   .ref {
+    white-space: normal;
     font-weight: 700;
-    white-space: nowrap;
+
   }
 
   @media (forced-colors: active) {
@@ -159,5 +162,10 @@ function refFor(rule: Rule): { code: string; title: string; path: string } | und
     .ref {
       display: none;
     }
+  }
+  @media screen and (max-width: 40rem) {
+    .line { display: grid; gap: 0.15rem; text-align: left; }
+    .dots { display: none; }
+    .response { margin-inline-start: 0; text-align: left; text-wrap: pretty; }
   }
 </style>

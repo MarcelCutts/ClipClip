@@ -1,12 +1,11 @@
 /**
- * The knob tags crew stick on the gear, in one place, so the printed tags and the setup page's
- * wiring table say the same thing.
+ * The knob tags crew can stick on the gear, for the print kit. They are labels, and nothing depends
+ * on them: the gear carries no marks, and no list, drill or quiz card asks for a tag (the owner, 28
+ * September 2026).
  *
- * One wiring: MASTER LEVEL sets MASTER 1 (the PA) and MASTER 2 (the Howler) together, so it stays on
- * its REC mark and carries REC. The mark is at fully up unless T3 or S3 moved it. BOOTH MONITOR sets
- * only the booth monitors, so it's the DJ's: MONITOR. The room's volume comes from the amps' gain
- * knobs, no higher than the RIG marks: the lines S6 draws on the RIG tape where each amp starts to
- * clip on pink noise, with the speakers disconnected (dbx pp. 19–21).
+ * One wiring: MASTER LEVEL sets MASTER 1 (the PA) and MASTER 2 (the Howler) together, so it is the
+ * crew's and carries REC. BOOTH MONITOR sets only the booth monitors, so it's the DJ's: MONITOR. The
+ * room's volume comes from the amps' gain knobs, with their CLIP lights dark: RIG.
  *
  * A short tag is a word and whose it is, in one form for all three: "crew" or "yours". The long tag
  * under MASTER LEVEL leads with what to do, as a label a hand already on the knob reads first.
@@ -22,20 +21,15 @@ export interface ShortTag {
   where: string;
   /** Settings the crew write on the tape by hand, printed as labelled blanks. */
   blanks?: readonly string[];
-  /** A rule printed small under the word, for a tape that marks a limit. */
+  /** A rule printed small under the word. */
   rule?: string;
 }
 
-/**
- * On MASTER LEVEL: the recording (and the PA) are the crew's. The night's checklists compare both
- * attenuators with this tape, so it has a blank for each.
- */
+/** On MASTER LEVEL: the recording (and the PA) are the crew's. */
 export const REC_TAG: ShortTag = {
   name: 'REC',
   owner: 'crew',
-  where:
-    'Next to MASTER LEVEL. Write the MASTER ATT (MASTER ATTENUATOR in UTILITY) and BOOTH ATT settings in its blanks.',
-  blanks: ['MASTER ATT', 'BOOTH ATT'],
+  where: 'Next to MASTER LEVEL, which sets the speakers and the recording.',
 };
 
 /** On BOOTH MONITOR: the DJ's own knob for the booth monitors. */
@@ -45,16 +39,12 @@ export const MONITOR_TAG: ShortTag = {
   where: 'Next to BOOTH MONITOR, the DJ’s own knob for the booth monitors.',
 };
 
-/**
- * On the amps: the room's volume, turned up by the crew when a DJ asks, no higher than the RIG marks.
- * The marks are the lines drawn across each gain knob onto this tape in S6, so the tape says what
- * they are for.
- */
+/** On the amps: the room's volume, turned up by the crew when a DJ asks, with the CLIP lights dark. */
 export const RIG_TAG: ShortTag = {
   name: 'RIG',
   owner: 'crew',
-  rule: 'No higher than the marks',
-  where: 'On both amps, beside the gain knobs, where S6 draws the RIG marks.',
+  rule: 'CLIP lights dark',
+  where: 'On both amps, beside the gain knobs.',
 };
 
 export const SHORT_TAGS: readonly ShortTag[] = [REC_TAG, MONITOR_TAG, RIG_TAG];
@@ -65,7 +55,7 @@ if (!ASK_THE_CREW) throw new Error('The DJ rule for a louder room (RIG) needs it
 
 /** The long tag under MASTER LEVEL: what to do with the knob, what it sets, and who to ask for more. */
 export const MASTER_TAG = {
-  name: 'LEAVE ON THE REC MARK',
+  name: 'LEAVE IT AS YOU FIND IT',
   lines: ['It sets the speakers and the recording.', ASK_THE_CREW],
   /** Printed width in millimetres. */
   width: 90,

@@ -6,6 +6,7 @@ import MeterPicture from '../../src/islands/quiz/MeterBridge.svelte';
 test('a meter check answer commits on "How sure are you?", then locks and marks itself in words', async () => {
   const screen = await render(MeterCheck);
   await screen.getByRole('radio', { name: 'The second orange, on every kick' }).click();
+  await screen.getByText('Confidence (optional)', { exact: true }).click();
   const certain = screen.getByRole('button', { name: 'Certain' });
   await expect.element(certain).toHaveAttribute('aria-pressed', 'false');
   await certain.click();
@@ -37,16 +38,21 @@ test('the meter check links each answer to its section, and ends on the score an
     'Ask the crew',
     'Turn up BOOTH MONITOR',
   ];
+  const sections = ['Set TRIM in your headphones', 'Read the right meter', 'Whose controls', 'Whose controls'];
   for (const [i, answer] of answers.entries()) {
     await screen.getByRole('radio', { name: answer }).click();
+    await screen.getByText('Confidence (optional)', { exact: true }).click();
     await screen.getByRole('button', { name: i === 0 ? 'Certain' : 'Fairly sure' }).click();
-    await expect.element(screen.getByRole('link', { name: /^2\.\d / })).toBeVisible();
-    await screen.getByRole('button', { name: i === answers.length - 1 ? 'See your score' : 'Next question' }).click();
+    // Each answer links to the section of Playing that teaches it, by the name its heading shows.
+    await expect.element(screen.getByRole('link', { name: sections[i] as string, exact: true })).toBeVisible();
+    await screen.getByRole('button', { name: i === answers.length - 1 ? 'See results' : 'Next question' }).click();
   }
   await expect.element(screen.getByText('You got 3 of 4.')).toBeVisible();
   await expect.element(screen.getByText('You were certain of one wrong answer.')).toBeVisible();
   await expect.element(screen.getByText('Read these again')).toBeVisible();
-  await expect.element(screen.getByRole('link', { name: /^2\.1 / })).toBeVisible();
+  await expect.element(screen.getByRole('link', { name: 'Set TRIM in your headphones', exact: true })).toBeVisible();
+  // Playing's headings carry no numbers, so no link cites one.
+  expect(screen.container.textContent).not.toMatch(/\b2\.[1-3] /);
 });
 
 test('the meter check is a printed card, with black kept for the gear', async () => {
@@ -54,7 +60,7 @@ test('the meter check is a printed card, with black kept for the gear', async ()
   expect(check.container.querySelector('.panel')).toBeNull();
   // The meters are gear, so on the second card they sit on a scrap of black faceplate.
   await check.getByRole('radio', { name: 'The first orange (0)' }).click();
-  await check.getByRole('button', { name: 'Guessing' }).click();
+  await check.getByRole('button', { name: 'Check answer', exact: true }).click();
   await check.getByRole('button', { name: 'Next question' }).click();
   await expect.element(check.getByRole('meter', { name: 'MASTER level' })).toBeInTheDocument();
   expect(check.container.querySelector('.plate [role="group"]')).not.toBeNull();
@@ -63,7 +69,7 @@ test('the meter check is a printed card, with black kept for the gear', async ()
 test('a chosen answer says so in words and shapes once it’s in, not by colour alone', async () => {
   const screen = await render(MeterCheck);
   await screen.getByRole('radio', { name: 'The first orange (0)' }).click();
-  await screen.getByRole('button', { name: 'Guessing' }).click();
+  await screen.getByRole('button', { name: 'Check answer', exact: true }).click();
   // The right answer's row carries its mark in words, and the radio's name says it too.
   await expect.element(screen.getByRole('radio', { name: /first orange \(0\).*Right answer/ })).toBeChecked();
   expect(screen.container.textContent).not.toContain('Your answer');

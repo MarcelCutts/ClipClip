@@ -1,6 +1,7 @@
 import sitemap from '@astrojs/sitemap';
 import svelte from '@astrojs/svelte';
 import { defineConfig, fontProviders } from 'astro/config';
+import { offlineGuide } from './scripts/offline';
 
 // GitHub Pages serves a project site from /<repo>/. The deploy workflow passes the real origin
 // and base path in; locally the site runs at the root.
@@ -23,6 +24,7 @@ export default defineConfig({
   integrations: [
     svelte(),
     sitemap({ filter: (page) => !page.includes('/dev/') && !/\/(dj|crew|lab|why)\/$/.test(page) }),
+    offlineGuide(base),
   ],
   devToolbar: { enabled: false },
   fonts: [

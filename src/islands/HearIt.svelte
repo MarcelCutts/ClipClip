@@ -4,7 +4,7 @@
    * the same loop, clean against clipped (pushed 12, 6, then 3 dB past the mixer's red), with the
    * clipped copy always turned down to the same measured loudness, so volume does not give it away.
    * Speakers that drop the bass upset the match a little in round 1, and the device tips say so.
-   * Pick the clipped one, say how sure you are, then see both waveforms. A device switch changes
+   * Predict the clipped one, optionally record confidence, then compare waveforms. Reveal without scoring is also available. A device switch changes
    * the words, never the sound.
    *
    * One surface: the panel, divided by printed lines. The only boxes in it are the two screens.
@@ -160,12 +160,10 @@
       focusGroup(`${id}-pick`);
       return;
     }
-    if (!answer.sure) {
-      message = copy.MISSING_SURE;
-      live = message;
-      focusGroup(`${id}-sure`);
-      return;
-    }
+    await reveal();
+  }
+
+  async function reveal(): Promise<void> {
     message = '';
     live = '';
     revealed[index] = true;
@@ -251,8 +249,12 @@
     {#if !done}
       <div class="controls">
         <div class="device">
-          {@render deviceChoice()}
-          <p class="tip">{copy.DEVICE_TIPS[device]}</p>
+          <details>
+            <summary>Listening advice</summary>
+            {@render deviceChoice()}
+            <p class="tip">{copy.DEVICE_TIPS[device]}</p>
+          </details>
+          <p class="tip">Start with your volume low. Try headphones for the clearest comparison.</p>
           {#if showWarning}
             <p class="warning" id="{id}-warn">{copy.HEADPHONE_WARNING}</p>
           {/if}
@@ -286,6 +288,8 @@
             disabled={isRevealed}
             onchange={setPick}
           />
+          <details>
+          <summary>How sure are you? (optional)</summary>
           <Choice
             name="{id}-sure"
             legend={copy.LEGENDS.sure}
@@ -295,13 +299,14 @@
             disabled={isRevealed}
             onchange={setSure}
           />
+          </details>
         </div>
       </div>
 
       <div class="screens" data-revealed={isRevealed} bind:this={screens}>
         {#if isRevealed && view}
           <p class="verdict" tabindex="-1" bind:this={verdict}>
-            <strong>{copy.verdictLine(isSpotted(round, answer))}</strong>
+            <strong>{answer.pick ? copy.verdictLine(isSpotted(round, answer)) : 'Answer revealed.'}</strong>
             {copy.revealLine(round)}
           </p>
         {/if}
@@ -341,6 +346,7 @@
         <HwButton primary onclick={isRevealed ? next : check}>
           {isRevealed ? copy.nextLabel(index, ROUND_COUNT) : copy.CHECK}
         </HwButton>
+        {#if !isRevealed}<HwButton onclick={() => { answers[index] = { ...EMPTY_ANSWER }; void reveal(); }}>Reveal without answering</HwButton>{/if}
         {#if message}<p class="message">{message}</p>{/if}
       </div>
     {:else}
@@ -361,7 +367,7 @@
               <tr data-spotted={isSpotted(r, a)}>
                 <th scope="row">{i + 1}</th>
                 <td>{copy.dbText(r.pushDb)}</td>
-                <td>{copy.resultWord(isSpotted(r, a))}</td>
+                <td>{a.pick ? copy.resultWord(isSpotted(r, a)) : 'Revealed'}</td>
                 <td>{a.sure ? copy.CONFIDENCE_LABELS[a.sure] : '–'}</td>
               </tr>
             {/each}
@@ -383,6 +389,8 @@
 </div>
 
 <style>
+  summary { cursor: pointer; padding-block: 0.65rem; }
+  details[open] > summary { margin-bottom: 0.5rem; }
   .hear {
     --rule-gap: 1.1rem;
     container: hear / inline-size;

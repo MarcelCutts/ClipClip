@@ -42,9 +42,8 @@
         type="radio"
         {name}
         value={choice.id}
-        checked={value === choice.id}
+        bind:group={value}
         disabled={locked}
-        onchange={() => (value = choice.id)}
       />
       <span class="text">{choice.label}</span>
       {#if mark}

@@ -1,16 +1,17 @@
 ---
 /**
  * The print kit. On screen: the site's header, each printable once with where it goes (the crew
- * cards by one sample, C1), and the chat messages with copy buttons. On paper: four A4 sheets laid
+ * cards by one sample, C1), and the chat messages with copy buttons. On paper: six A4 sheets laid
  * out for cutting and laminating: the booth cards, the tape tags, then the crew's checklists as quick
- * reference cards, C1 and C3 on one sheet and C2 and S1 on the next.
- * One wiring throughout: MASTER LEVEL feeds the PA and the Howler (REC), BOOTH the booth monitors.
+ * reference cards, C1 across two sheets with its drawings on a third, and C2 and C3 on the last.
+ * One wiring throughout: MASTER LEVEL feeds the PA and the Howler, BOOTH the booth monitors.
  * The two views are separate trees, so each can be laid out for its own medium. Its sections are
  * left unnamed, so they aren't landmarks: the headings are how to move round.
  */
 import PageHeader from '../components/PageHeader.astro';
 import BoothCard from '../components/print/BoothCard.astro';
 import ChecklistCard from '../components/print/ChecklistCard.astro';
+import DrawingsCard from '../components/print/DrawingsCard.astro';
 import KnobTag from '../components/print/KnobTag.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import CopyText from '../islands/CopyText.svelte';
@@ -30,12 +31,6 @@ const messages = chatMessages((path) => new URL(href(path), site).toString());
  */
 const REVISED = REVISION;
 
-/**
- * The setup list is the longest, so its card sets the lines smaller, in two columns: 0.82 prints
- * them at about 10.3 pt, over the 10 pt floor, and leaves C2 and S1 room to share their A4 sheet.
- */
-const SETUP_CARD = { list: 'setup', scale: 0.82, columns: 2, revised: REVISED } as const;
-
 const shortTags = SHORT_TAGS;
 const masterTag = MASTER_TAG;
 const copies = (n: number) => Array.from({ length: n }, (_, i) => i);
@@ -44,13 +39,13 @@ const trim = section('trim');
 
 <Base
   title="Print kit"
-  description="A booth card, tape tags and the crew’s checklists as laminated cards, to print for the XDJ-RX2 booth, plus messages to paste into the group chat."
+  description="A booth card, tape tags, the crew’s checklists and their drawings as laminated cards, to print for the XDJ-RX2 booth, plus messages to paste into the group chat."
   bare
 >
   <div class="screen-view">
     <SiteHeader />
 
-    <PageHeader title="Print kit" lede="Four A4 sheets: the booth card, tape tags and the crew’s checklist cards.">
+    <PageHeader title="Print kit" lede="Six A4 sheets: the booth card, tape tags, the crew’s checklist cards and their drawings.">
       <ol class="steps">
         <li>Print on A4 at 100% scale, with “Fit to page” turned off.</li>
         <li>Cut on the dashed lines.</li>
@@ -72,8 +67,8 @@ const trim = section('trim');
     <section class="block flow">
       <h2 id="booth-title">Booth card</h2>
       <p>
-        Page 1 prints two, each A6. Put one by the meters, where the DJ looks while mixing. Its QR code opens the guide
-        at {trim.number} {trim.title}. Write tonight’s crew on its line with a dry-wipe marker.
+        Page 1 prints two, each A6. Put one by the meters, where the DJ looks while mixing. Its QR code opens Playing
+        at “{trim.title}”. Write tonight’s crew on its line with a dry-wipe marker.
       </p>
       <div class="wide stage">
         <div data-paper class="paper cuts booth-cuts">
@@ -85,8 +80,8 @@ const trim = section('trim');
     <section class="block flow">
       <h2 id="tags-title">Tape tags</h2>
       <p>
-        Page 2 prints six of each short tag and four of the long one. Each fits a strip of 19&nbsp;mm console tape.
-        Stick it on the tape, or print the page on sticker paper.
+        The tags are labels that say whose knob it is. Nothing in the checklists needs them. Page 2 prints six of each
+        short tag and four of the long one. Each fits a strip of 19&nbsp;mm console tape.
       </p>
       <ul class="wide tag-list">
         {
@@ -106,23 +101,22 @@ const trim = section('trim');
           <p>{masterTag.where}</p>
         </li>
       </ul>
-      <p>
-        Then draw a line across each knob and onto the panel. If a knob turns, its line breaks. On the amps, each line is
-        that knob’s RIG mark: the knob can sit below it, and goes no higher.
-      </p>
     </section>
 
     <section class="block flow">
       <h2 id="crew-title">Crew cards</h2>
-      <p>Pages 3 and 4 print the checklists as cards: C1 to C3 for the booth, and S1 for setting up. This is C1.</p>
       <p>
-        The cards send you to drills and setup cards that are not in the kit. Before the night, print
-        <a href={href('/night/')}>Crew on the night</a> and <a href={href('/setup/')}>Setting up</a>, or save them as
-        PDFs on your phone, in case the booth has no signal.
+        Pages 3 and 4 are C1 Before doors: table, leads and power, then levels and recording. Page 5 is C1’s
+        drawings, the five on the <a href={href('/night/#doors')}>Crew</a> page. Page 6 is C2 Changeover and C3 End.
+      </p>
+      <p>
+        The cards send you to drills that are not in the kit. Before the night, print
+        <a href={href('/night/')}>Crew</a>, or save it as a PDF on your phone, in case the booth has no signal.
       </p>
       <div class="wide crew-list">
         <div data-paper class="sheet-preview">
-          <ChecklistCard list="doors" revised={REVISED} />
+          <ChecklistCard list="doors" part={1} columns={2} revised={REVISED} />
+          <ChecklistCard list="doors" part={2} revised={REVISED} />
         </div>
       </div>
     </section>
@@ -184,19 +178,26 @@ const trim = section('trim');
         {copies(4).map(() => <KnobTag name={masterTag.name} lines={masterTag.lines} width={masterTag.width} />)}
       </div>
     </section>
-    <!-- Paired by size, so the four cards fit two sheets. Cut out, they stack by their tabs. -->
+    <!-- C1 has two readable parts and a card of drawings; C2 and C3 share the last sheet. -->
     <section class="sheet">
-      <p class="sheet-head">Out of the red: crew cards C1 and C3, for every night. Cut round the cards and tabs.</p>
+      <p class="sheet-head">Out of the red: C1 Before doors, part 1 of 2. Table, leads and power. Cut round the card and tab.</p>
       <div class="crew-cards">
-        <ChecklistCard list="doors" revised={REVISED} />
-        <ChecklistCard list="after" revised={REVISED} />
+        <ChecklistCard list="doors" part={1} columns={2} revised={REVISED} />
       </div>
     </section>
     <section class="sheet">
-      <p class="sheet-head">Out of the red: crew cards C2, for every night, and S1, for setting up. Cut round the cards and tabs.</p>
+      <p class="sheet-head">Out of the red: C1 Before doors, part 2 of 2. Levels and recording. Cut round the card and tab.</p>
+      <div class="crew-cards"><ChecklistCard list="doors" part={2} revised={REVISED} /></div>
+    </section>
+    <section class="sheet">
+      <p class="sheet-head">Out of the red: C1 Before doors, drawings. Keep it with the two C1 cards. Cut round the card and tab.</p>
+      <div class="crew-cards"><DrawingsCard revised={REVISED} /></div>
+    </section>
+    <section class="sheet">
+      <p class="sheet-head">Out of the red: C2 Changeover and C3 End, for every night. Cut round the cards and tabs.</p>
       <div class="crew-cards">
         <ChecklistCard list="changeover" revised={REVISED} />
-        <ChecklistCard {...SETUP_CARD} />
+        <ChecklistCard list="after" revised={REVISED} />
       </div>
     </section>
   </div>

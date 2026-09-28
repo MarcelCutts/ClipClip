@@ -1,0 +1,95 @@
+---
+/**
+ * Figure: the trolley as it travels, and as the table, with what each bolt holds. A RocknRoller R12
+ * from the side: a telescoping frame, two big wheels at one end and two swivel casters with brakes at
+ * the other, and two sides that fold up, each with a hole in its top bar (the maker's sheet, 2017).
+ *
+ * The owner's table: a plywood top across the two handles. At each end one M8 bolt goes, from the top
+ * down, through its washer, the foot of a booth monitor's L-shaped bracket, the top and the handle, to
+ * a wingnut underneath. Each monitor is screwed to its bracket's upright. Not to scale.
+ */
+import { FIGURES } from '../../lib/figures';
+import Fig from './Fig.astro';
+
+interface Props {
+  /** False where the drawing is not a link's target, as on the print kit's card. */
+  anchor?: boolean;
+}
+const { anchor = true } = Astro.props;
+const caption = FIGURES.table;
+
+/** What one bolt holds, from the top down. */
+const stack = ['Bolt and washer', 'Monitor’s bracket', 'Table top', 'Handle', 'Wingnut'];
+---
+
+<Fig id={anchor ? caption.anchor : undefined} title={caption.title} note={caption.note}>
+  <svg viewBox="0 0 300 470" role="img" aria-labelledby="fig-table-title fig-table-desc">
+    <title id="fig-table-title">The trolley for the road, as the table, and what each bolt holds</title>
+    <desc id="fig-table-desc">
+      Three drawings. For the road, the trolley’s frame is long, both handles are up and the table top lies on the
+      bed between them. For the night, its frame is shorter, the table top lies across the tops of both handles, a
+      booth monitor stands on a bracket at each end, the rack sits on the bed and the caster brakes are on. At each
+      end, from the top down: the bolt and its washer, the foot of the monitor’s bracket, the table top, the handle,
+      and the wingnut.
+    </desc>
+
+    <!-- For the road -->
+    <text class="b" x="4" y="16">For the road</text>
+    <path class="ground" d="M6 126H294"></path>
+    <rect class="is solid" x="37" y="26" width="6" height="74" rx="3"></rect>
+    <rect class="is solid" x="257" y="26" width="6" height="74" rx="3"></rect>
+    <rect class="is solid" x="34" y="98" width="232" height="7" rx="2"></rect>
+    <circle class="is solid" cx="56" cy="116" r="10"></circle>
+    <circle class="is solid" cx="244" cy="112" r="14"></circle>
+    <rect class="do" x="48" y="87" width="204" height="9" rx="2"></rect>
+    <text x="150" y="78" text-anchor="middle">Table top, on the bed</text>
+    <text class="m" x="150" y="122" text-anchor="middle">Frame long</text>
+
+    <!-- For the night -->
+    <text class="b" x="4" y="160">For the night</text>
+    <path class="ground" d="M6 300H294"></path>
+    <rect class="is solid" x="69" y="202" width="6" height="72" rx="3"></rect>
+    <rect class="is solid" x="225" y="202" width="6" height="72" rx="3"></rect>
+    <rect class="is solid" x="66" y="272" width="168" height="7" rx="2"></rect>
+    <circle class="is solid" cx="86" cy="290" r="10"></circle>
+    <circle class="is solid" cx="214" cy="286" r="14"></circle>
+    <rect class="is solid" x="114" y="232" width="72" height="40" rx="2"></rect>
+    <text x="150" y="258" text-anchor="middle">Rack</text>
+    <rect class="do" x="44" y="193" width="212" height="9" rx="2"></rect>
+    <!-- A monitor on its bracket at each end: the bracket's foot lies on the top, under the bolt -->
+    <path class="do" d="M82 191H50V170M218 191h32V170"></path>
+    <rect class="is solid" x="54" y="166" width="28" height="22" rx="2"></rect>
+    <rect class="is solid" x="218" y="166" width="28" height="22" rx="2"></rect>
+    <!-- A bolt through bracket, top and handle -->
+    <path class="pin" d="M70 186h4v26h-4zM226 186h4v26h-4z"></path>
+    <text x="150" y="183" text-anchor="middle">Monitors</text>
+    <path class="is" d="M116 178H88M184 178h28"></path>
+    <!-- The frame came in from both ends -->
+    <path class="arrow" d="M38 275H58M52 270l6 5-6 5M262 275H242M248 270l-6 5 6 5"></path>
+    <text class="m" x="150" y="296" text-anchor="middle">Frame short</text>
+    <text class="b" x="4" y="318">Brakes on</text>
+
+    <!-- What each bolt holds, from the top down -->
+    <text class="b" x="4" y="352">At each end, one bolt</text>
+    <!-- the bolt's shank -->
+    <path class="pin" d="M47 364h6v96h-6z"></path>
+    <!-- head and washer -->
+    <path class="pin" d="M38 360h24v6H38z"></path>
+    <rect class="is solid" x="32" y="368" width="36" height="4" rx="1"></rect>
+    <!-- the bracket's foot, with its upright -->
+    <path class="do" d="M92 384H14V360"></path>
+    <!-- the table top -->
+    <rect class="do" x="6" y="396" width="92" height="14" rx="2"></rect>
+    <!-- the handle's top bar -->
+    <rect class="is solid" x="22" y="420" width="56" height="12" rx="6"></rect>
+    <!-- the wingnut -->
+    <path class="pin" d="M40 444h20v6H40zM34 440l6 4v6l-6-4zM66 440l-6 4v6l6-4z"></path>
+    {
+      stack.map((name, i) => (
+        <text x="112" y={374 + i * 18.500}>
+          {name}
+        </text>
+      ))
+    }
+  </svg>
+</Fig>

@@ -59,14 +59,13 @@ export const TARGET_PEAK_DB = {
 } as const;
 
 /**
- * Where the Howler's file should land, in dBFS (audio-science §13), once S3 has set the recording
- * level: single tracks around −18, normal blends around −12, the loudest blend no higher than −6,
- * and the Howler light green throughout. The band is the window a night's peaks should sit in.
+ * Where the Howler's file should land, in dBFS (audio-science §13), with the recording level set
+ * at soundcheck (C1): single tracks around −18, normal blends around −12, the loudest blend no higher than −6,
+ * and the Howler light green throughout.
  */
 export const TARGET = {
   /** A normal blend (+6 on the MASTER meters): the "normal peak" of a night. */
   normal: -12,
   /** The loudest blend may go no higher than this. */
   blendMax: -6,
-  band: { top: -6, bottom: -18 },
 } as const;

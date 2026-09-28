@@ -17,9 +17,20 @@
    * The boxes work before the island wakes up. Whatever is ticked by then is kept: bind:checked takes
    * each box's state as it hydrates, load() reads the boxes and adds the saved run, and the styles read
    * the boxes too, so the count and the ticked lines can't disagree with them.
+   *
+   * A line can come with a drawing (its `figures`). The page hands each drawing in as a slot named for
+   * it, already drawn on the server, and the card sets it before the line it serves. A pilot's list
+   * confirms what a flow has done; here the drawings are the flow, and the lines confirm it.
    */
-  import { onMount, tick } from 'svelte';
-  import { CHECKLISTS, type ChecklistId, progressText, serialiseTicks, storageKey } from '../lib/checklists';
+  import { onMount, type Snippet, tick } from 'svelte';
+  import {
+    CHECKLISTS,
+    type ChecklistId,
+    type FigureId,
+    progressText,
+    serialiseTicks,
+    storageKey,
+  } from '../lib/checklists';
   import {
     clockTime,
     lifetimeText,
@@ -29,17 +40,21 @@
     startingTicks,
     TICK_LIFETIMES,
   } from '../lib/checklistTimes';
-  import { drillAnchor } from '../lib/fixes';
+  import { drillPath } from '../lib/fixes';
   import { href } from '../lib/url';
 
-  interface Props {
-    /** Which list: 'setup', 'doors', 'changeover', 'after' or 'files'. */
+  type Figures = Partial<Record<FigureId, Snippet>>;
+
+  interface Props extends Figures {
+    /** The drawings arrive as named slots; the page's markup counts them as children. */
+    children?: Snippet;
+    /** Which list: 'doors', 'changeover', 'after' or 'files'. */
     list: ChecklistId;
     /** Heading level for the list's title, to fit the page's outline. */
     headingLevel?: 2 | 3 | 4;
   }
 
-  let { list: listId, headingLevel = 3 }: Props = $props();
+  let { list: listId, headingLevel = 3, children: _children, ...figures }: Props = $props();
 
   const uid = $props.id();
   const list = $derived(CHECKLISTS[listId]);
@@ -245,6 +260,11 @@
       {#each list.items as item (item.id)}
         {@const inputId = `${uid}-${item.id}`}
         <li class="item">
+          {#if item.group}<p class="group">{item.group}</p>{/if}
+          {#each item.figures ?? [] as name (name)}
+            {@const figure = (figures as Figures)[name]}
+            {#if figure}<div class="figure">{@render figure()}</div>{/if}
+          {/each}
           {#if item.before}
             <!-- What doing the line costs, said before it at full strength, outside the row's label. -->
             <p class="before">{item.before}</p>
@@ -256,7 +276,7 @@
               id={inputId}
               data-item={item.id}
               bind:checked={ticked[item.id]}
-              aria-describedby={item.note || item.drill ? `${inputId}-note` : undefined}
+              aria-describedby={item.note || item.drill || item.help ? `${inputId}-note` : undefined}
               onchange={(event) => changed(item.id, event.currentTarget.checked)}
             />
             <svg class="tick" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
@@ -269,13 +289,14 @@
               <span class="target">{item.target}</span>
             </span>
           </label>
-          {#if item.note || item.drill}
+          {#if item.note || item.drill || item.help}
             <!-- What to do if the line isn't so: the note, then the drill that covers it. The link
                  sits outside the row's label, so following it never ticks the box. -->
             <p class="item-note" id="{inputId}-note">
               <!-- Each drill starts a sentence of its own, so it's set apart from what comes before it. -->
               {#if item.note}{item.note}{/if}{#each [item.drill ?? []].flat() as ref (ref.id)}{' '}{ref.if},
-                <a class="ref" href={href(`/night/#${drillAnchor(ref.id)}`)}>go to {ref.code}</a>.{/each}
+                <a class="ref" href={href(drillPath(ref.id))}>go to {ref.code}</a>.{/each}
+              {#if item.help}{' '}<a class="ref" href={href(item.help.path)}>{item.help.label}</a>.{/if}
             </p>
           {/if}
         </li>
@@ -306,6 +327,26 @@
 </section>
 
 <style>
+  /* A section of a long list: its name set as a small strip's would be, so the eye finds the break. */
+  .group {
+    margin: 0.35rem 0 0;
+    padding-block: 0.55rem 0.35rem;
+    border-bottom: 2px solid var(--ink);
+    font-family: var(--font-display);
+    font-size: var(--text-rule);
+    font-weight: 700;
+    color: var(--ink-bright);
+  }
+
+  .item:has(> .group) {
+    border-top: 0;
+  }
+
+  /* A drawing before the line it serves, with a hairline under it so the line reads as the next thing. */
+  .figure {
+    padding-block: 0.6rem 0.35rem;
+    border-bottom: 1px solid var(--rule);
+  }
   /* A printed checklist card: a 2px frame, a title strip, hairlines between the lines. */
   .checklist {
     display: grid;
@@ -503,7 +544,7 @@
   /* "go to F1": a link to the drill, underlined like any link on the page. */
   .ref {
     font-weight: 700;
-    white-space: nowrap;
+    white-space: normal;
   }
 
   /* A ticked line steps back, so the eye lands on the next one. The styles read the box itself, so
@@ -617,6 +658,10 @@
 
   /* On paper: black on white, empty boxes, nothing that only makes sense on a screen. */
   @media print {
+    .item {
+      break-inside: avoid-page;
+    }
+
     .checklist {
       border: 0.3mm solid CanvasText;
       break-inside: avoid;
@@ -638,5 +683,10 @@
     .foot {
       display: none;
     }
+  }
+  @media screen and (max-width: 40rem) {
+    .text { display: grid; gap: 0.15rem; text-align: left; }
+    .leader { display: none; }
+    .target { margin-inline-start: 0; text-align: left; text-wrap: pretty; }
   }
 </style>

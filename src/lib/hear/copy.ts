@@ -96,12 +96,12 @@ export const FLAT_KEY = 'Flat tops, heard as crunch';
 export const CEILING_KEY = 'Where the mixer clips';
 
 /** On the blank screens before the answer is in. */
-export const SCOPE_WAITING = 'Shows after you answer';
+export const SCOPE_WAITING = 'Shows after reveal';
 
-export const nextLabel = (index: number, total: number): string =>
-  index < total - 1 ? 'Next round' : 'See your score';
+export const nextLabel = (index: number, total: number): string => (index < total - 1 ? 'Next round' : 'See results');
 
-export const scoreLine = (summary: Summary): string => `You spotted ${summary.spotted} of ${summary.total}.`;
+export const scoreLine = (summary: Summary): string =>
+  summary.total ? `You spotted ${summary.spotted} of ${summary.total}.` : 'You revealed the answers without a score.';
 
 export const resultWord = (spotted: boolean): string => (spotted ? 'Spotted' : 'Missed');
 

@@ -1,7 +1,7 @@
 /**
  * Plain meanings for the technical words on the site, each 15 words or fewer, in alphabetical
- * order. Shown on tap wherever a term appears, and listed in full in the guide's reference
- * (/#glossary). Everyday words and DJ words every DJ knows aren't here.
+ * order. Shown on tap wherever a term appears, and listed in full under Words
+ * (/learn/#glossary). Everyday words and DJ words every DJ knows aren't here.
  *
  * Written for the one wiring: MASTER LEVEL feeds the speakers and the Howler, BOOTH the booth monitors.
  */
@@ -58,10 +58,6 @@ export const GLOSSARY = {
     term: 'DriveRack PA2',
     gloss: 'Sits between the mixer and the amps. Tunes the speakers, and can protect them.',
   },
-  earthLoop: {
-    term: 'Earth loop',
-    gloss: 'Hum from gear earthed along two paths, such as the mains and an audio lead.',
-  },
   eq: {
     term: 'EQ',
     gloss: 'HI, MID and LOW knobs. Turning one up adds level too, up to 6 dB.',
@@ -80,7 +76,7 @@ export const GLOSSARY = {
   },
   masterLevel: {
     term: 'MASTER LEVEL',
-    gloss: 'Sets the speakers and the recording together. It stays on the REC mark.',
+    gloss: 'Sets the speakers and the recording together. It stays as soundcheck left it.',
   },
   masterMeters: {
     term: 'MASTER meters',

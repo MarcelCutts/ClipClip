@@ -95,7 +95,7 @@ export function formatReport(
       fullScale
         ? '  If this is the file as the Howler wrote it, the Howler’s input clipped.'
         : '  If this is a normalised copy of the Howler’s file, the Howler’s input clipped.',
-      '  Set the recording level again with S3 on the Setting up page before the next event.',
+      '  Tell the crew before the next event. C1 checks the Howler’s light on a loud blend, and F1 turns the recording down.',
     );
     if (piles.length > 0) {
       const levels = piles.map((p) => dbfs(p.levelDb)).join(' and ');
@@ -119,7 +119,7 @@ export function formatReport(
     lines.push(
       '  If this is the file as the Howler wrote it, the tops were flattened before the Howler.',
       `  ${causes(piles)}`,
-      '  To find which, go to F9 on the Crew page.',
+      '  To find which, go to F9 on the Recordings page.',
       '  If the same level comes back in other DJs’ sets, the ceiling is in the rig, most likely the mixer.',
       '  The changeover times noted at C2 show where each set starts.',
     );
@@ -138,7 +138,7 @@ export function formatReport(
     }
     lines.push(
       '  This check can miss light clipping, and clipping that rounds the tops off.',
-      '  If you hear crunch, go to F9 on the Crew page.',
+      '  If you hear crunch, go to F9 on the Recordings page.',
     );
   }
   if (r.overs > 0) lines.push(`  ${plural(r.overs, 'sample')} go past full scale. Only a float file can hold them.`);

@@ -10,7 +10,7 @@
    * `locked` keeps it on screen, pressed-looking and quiet once it has done its job, without
    * pulling focus away (aria-disabled, out of the tab order).
    */
-  import type { Snippet } from 'svelte';
+  import { onMount, type Snippet } from 'svelte';
 
   interface Props {
     onclick: () => void;
@@ -23,6 +23,8 @@
   }
 
   let { onclick, primary = false, locked = false, element = $bindable(), children }: Props = $props();
+  let ready = $state(false);
+  onMount(() => { ready = true; });
 </script>
 
 <button
@@ -30,6 +32,7 @@
   type="button"
   class="key"
   class:primary={primary}
+  disabled={!ready}
   aria-disabled={locked ? 'true' : undefined}
   tabindex={locked ? -1 : undefined}
   onclick={() => {

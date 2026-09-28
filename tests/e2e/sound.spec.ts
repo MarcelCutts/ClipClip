@@ -12,7 +12,7 @@ async function firstListen(page: Page) {
 
 // The one page with sound, the guide: pressing Listen shows the page-wide Stop bar, and Stop or
 // Escape silences everything. Nothing plays on load.
-for (const path of ['']) {
+for (const path of ['learn/']) {
   test(`sound on /${path} starts only on a press and always stops`, async ({ page }) => {
     await page.goto(path);
     const bar = page.locator('.sound-bar');
@@ -40,7 +40,7 @@ for (const path of ['']) {
 // The Stop bar covers the bottom of the screen, and scroll padding can't scroll past the end of
 // the page, so the page makes room for the bar: the footer's links still show when focused.
 test('the Stop bar never hides a focused link at the foot of the page', async ({ page }) => {
-  await page.goto('');
+  await page.goto('learn/');
   const listen = await firstListen(page);
   await listen.click();
   const bar = page.locator('.sound-bar');
@@ -60,7 +60,7 @@ test('the Stop bar never hides a focused link at the foot of the page', async ({
 });
 
 test('nothing makes a sound on page load', async ({ page }) => {
-  await page.goto('');
+  await page.goto('learn/');
   await page.waitForLoadState('networkidle');
   await expect(page.locator('.sound-bar')).toBeHidden();
 });

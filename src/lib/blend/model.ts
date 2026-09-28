@@ -303,7 +303,7 @@ export interface Preset {
 export const PRESETS: readonly Preset[] = [
   {
     id: 'hot',
-    label: 'Top orange',
+    label: 'Both decks on top orange',
     group: 'push',
     settings: { deck1: deck(TARGET_PEAK_DB.top, 0, 10), deck2: deck(TARGET_PEAK_DB.top, 0, 10), aligned: true },
   },

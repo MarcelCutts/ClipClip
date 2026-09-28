@@ -1,0 +1,26 @@
+---
+import DrillCard from '../../components/DrillCard.astro';
+import PageHeader from '../../components/PageHeader.astro';
+import Checklist from '../../islands/Checklist.svelte';
+import Base from '../../layouts/Base.astro';
+import { FIXES } from '../../lib/fixes';
+import { href } from '../../lib/url';
+
+/** The drills for what you find by listening, the day after. */
+const drills = FIXES.filter((f) => f.where === 'recording');
+---
+<Base title="Recordings" description="Copy, check and prepare the Howler recordings after the night. Keep an untouched original and diagnose clipping before normalising.">
+  <PageHeader title="Recordings" lede="Copy and check the files before editing. Keep one untouched original.">
+    <p>For a problem during soundcheck or a set, use <a href={href('/night/#fixes')}>Crew’s fault guide</a>.</p>
+  </PageHeader>
+  <div class="recordings flow">
+    <nav aria-label="Recording tasks"><a href="#next-day">Copy and prepare files</a> · <a href="#fix-crunch">Crunch in a recording</a> · <a href="#fix-hollow">Hollow or one-sided sound</a></nav>
+    <div><Checklist list="files" headingLevel={2} client:visible /></div>
+    {drills.map((fix) => <DrillCard fix={fix} level={2} />)}
+    <p><a href={href('/learn/#quiet')}>Why a quiet recording is fine</a></p>
+  </div>
+</Base>
+<style>
+  .recordings { row-gap: 1.5rem; padding-top: 1.5rem; }
+  nav a { display: inline-flex; align-items: center; min-height: 2.75rem; }
+</style>

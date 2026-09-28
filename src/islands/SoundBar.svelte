@@ -8,6 +8,7 @@
   import { audio } from '../lib/audio/engine.svelte';
 
   let height = $state(0);
+  let bar = $state<HTMLDivElement>();
   const playing = $derived(audio.owner !== null);
 
   // Keep focused elements from hiding behind the bar (WCAG 2.4.11), including the control that
@@ -15,24 +16,33 @@
   $effect(() => {
     const root = document.documentElement;
     const body = document.body;
-    root.style.scrollPaddingBottom = playing ? `${height + 16}px` : '';
+    // Measure on opening too: the size observer may still hold the hidden bar's zero height.
+    const measured = height || bar?.offsetHeight || 0;
+    root.style.scrollPaddingBottom = playing ? `${measured + 16}px` : '';
     // Anything that rides along the bottom of the screen (the signal path's readout on a phone)
     // sits on top of the bar instead of under it.
-    if (playing) root.style.setProperty('--sound-bar', `${height}px`);
+    if (playing) root.style.setProperty('--sound-bar', `${measured}px`);
     else root.style.removeProperty('--sound-bar');
-    if (playing && height > 0) {
+    function showFocus() {
+      const el = document.activeElement;
+      if (!(el instanceof HTMLElement) || el === body || bar?.contains(el)) return;
+      if (el.getBoundingClientRect().bottom > window.innerHeight - measured) {
+        el.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+      }
+    }
+    if (playing && measured > 0) {
       // Scroll padding can't scroll past the end of the page, so leave room for the bar there too,
       // or the footer's links sit under it. The bar's own padding already covers the safe area.
-      body.style.paddingBottom = `${height}px`;
-      const el = document.activeElement;
-      if (el instanceof HTMLElement && el.getBoundingClientRect().bottom > window.innerHeight - height) {
-        el.scrollIntoView({ block: 'nearest' });
-      }
+      body.style.paddingBottom = `${measured}px`;
+      showFocus();
+      // On mobile WebKit programmatic/keyboard focus alone does not reliably scroll into view.
+      document.addEventListener('focusin', showFocus);
     }
     return () => {
       root.style.scrollPaddingBottom = '';
       root.style.removeProperty('--sound-bar');
       body.style.paddingBottom = '';
+      document.removeEventListener('focusin', showFocus);
     };
   });
 
@@ -70,7 +80,7 @@
 </script>
 
 <!-- offsetHeight, not clientHeight: the room kept for the bar must include its top border. -->
-<div class="sound-bar" bind:offsetHeight={height} hidden={!playing}>
+<div class="sound-bar" bind:this={bar} bind:offsetHeight={height} hidden={!playing}>
   <p class="what">Playing{audio.ownerLabel ? `: ${audio.ownerLabel}` : ''}</p>
   <label class="volume">
     <span class="volume-label">Volume</span>

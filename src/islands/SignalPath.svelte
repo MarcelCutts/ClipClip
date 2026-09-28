@@ -12,7 +12,8 @@
    * On a phone the drawing is taller than the screen, so the readout (what the pick is, and what it
    * reaches) rides along the bottom of the screen while the drawing scrolls under it: whichever
    * part you tap, its explanation is in sight. Part names are 15 px or more at every width.
-   */
+  */
+  import { tick } from 'svelte';
   import {
     accessibleName,
     type Caption,
@@ -52,15 +53,46 @@
     return focus.nodes.has(id) ? 'on' : 'off';
   }
 
-  /** The arrow keys are the browser's own. Home and End pick the first and last part. */
-  function jump(event: KeyboardEvent) {
-    if (event.key !== 'Home' && event.key !== 'End') return;
+  /** Walk the signal in order, keeping focus scrolling clear of the sticky readout. */
+  async function jump(event: KeyboardEvent) {
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-    const id = event.key === 'Home' ? FLOW[0] : FLOW.at(-1);
+    const directions: Record<string, number> = { ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1 };
+    const delta = directions[event.key];
+    let index = FLOW.indexOf(selected);
+    if (event.key === 'Home') index = 0;
+    else if (event.key === 'End') index = FLOW.length - 1;
+    else if (delta !== undefined) index = (index + delta + FLOW.length) % FLOW.length;
+    else return;
+    const id = FLOW[index];
     if (!id) return;
     event.preventDefault();
     selected = id;
-    document.getElementById(`${uid}-${id}`)?.focus();
+    await tick();
+    const input = document.getElementById(`${uid}-${id}`);
+    if (input instanceof HTMLInputElement) {
+      input.focus({ preventScroll: true });
+      keepInView(input);
+    }
+  }
+
+  /** Mobile WebKit can move keyboard focus without scrolling the newly focused control. */
+  function showFocus(event: FocusEvent) {
+    keepInView(event.currentTarget as HTMLInputElement);
+  }
+
+  function keepInView(input: HTMLInputElement) {
+    if (document.activeElement !== input) return;
+    const root = getComputedStyle(document.documentElement);
+    const top = Number.parseFloat(root.scrollPaddingTop) || 0;
+    let bottom = innerHeight - (Number.parseFloat(root.scrollPaddingBottom) || 0) - 8;
+    const bounds = input.getBoundingClientRect();
+    const readout = input.closest('.signal-path')?.querySelector<HTMLElement>('.readout');
+    if (readout && getComputedStyle(readout).position === 'sticky') {
+      const sheet = readout.getBoundingClientRect();
+      if (bounds.left < sheet.right && bounds.right > sheet.left) bottom -= sheet.height + 16;
+    }
+    const movement = bounds.top - 6 < top ? bounds.top - 6 - top : Math.max(0, bounds.bottom + 6 - bottom);
+    if (movement) window.scrollBy({ top: movement, behavior: 'instant' });
   }
 </script>
 
@@ -152,9 +184,9 @@
             id="{uid}-{id}"
             name="{uid}-part"
             value={id}
-            checked={selected === id}
+            bind:group={selected}
             aria-label={accessibleName(id)}
-            onchange={() => (selected = id)}
+            onfocus={showFocus}
             onkeydown={jump}
           />
           {#if node.glyph === 'eq'}

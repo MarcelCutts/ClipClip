@@ -105,10 +105,11 @@ describe('house style', () => {
 });
 
 describe('the words the guide uses', () => {
-  it('calls the knob the recording level, and never names the knobs taped on the night', () => {
+  it('calls the knob the recording level, and never names the mixer’s own output controls', () => {
     expect(copy.CONTROLS.knob.label).toBe('Recording level');
     expect(copy.CHAIN.knob).toEqual({ name: 'Recording level' });
-    // MASTER LEVEL stays taped fully up, so the lab never turns it, and never has to explain why.
+    // On the rig the recording level is MASTER LEVEL, set at soundcheck. The lab folds whatever sets the level
+    // into one knob, and never has to explain which.
     const all = `${JSON.stringify(copy)} ${allText().join(' ')}`;
     expect(all).not.toMatch(/MASTER LEVEL|MASTER ATT|UTILITY|BOOTH|\brecord level\b|middle meters/);
   });

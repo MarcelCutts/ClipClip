@@ -19,6 +19,7 @@ import {
   type Branch,
   drill,
   drillAnchor,
+  drillPath,
   type Fix,
   isDoStep,
   isIfStep,
@@ -27,7 +28,7 @@ import {
   SAY_TO,
   type Step,
 } from '../lib/fixes';
-import { section } from '../lib/sections';
+import { section, sectionPath } from '../lib/sections';
 import { href } from '../lib/url';
 
 interface Props {
@@ -44,7 +45,7 @@ const see = fix.see ? section(fix.see) : undefined;
 
 /** The drill's blocks of steps, numbered on from each other: "Now", then what waits. */
 const blocks = [
-  { label: fix.where === 'booth' ? 'Now' : undefined, steps: fix.steps, start: 1 },
+  { label: fix.later ? 'Now' : undefined, steps: fix.steps, start: 1 },
   ...(fix.later ? [{ label: fix.later.when, steps: fix.later.steps, start: fix.steps.length + 1 }] : []),
 ];
 
@@ -56,11 +57,11 @@ function jump(next: Next): { to: string; text: string; title?: string } {
   if (typeof next === 'number') return { to: `#${drillAnchor(fix.id, next)}`, text: `Go to step ${next}` };
   if (typeof next === 'string') {
     const target = drill(next);
-    return { to: `#${drillAnchor(target.id)}`, text: `Go to ${target.code}`, title: target.title };
+    return { to: href(drillPath(target.id)), text: `Go to ${target.code}`, title: target.title };
   }
   const target = drill(next.drill);
   return {
-    to: `#${drillAnchor(target.id, next.step)}`,
+    to: href(drillPath(target.id, next.step)),
     text: `Go to ${target.code}, step ${next.step}`,
     title: target.title,
   };
@@ -107,12 +108,9 @@ const chooseOf = (step: Step): readonly Branch[] | undefined => (isIfStep(step) 
 
   <div class="body">
     <div class="lines">
-      {fix.condition && <p><em>Condition.</em> {fix.condition}</p>}
-      <p><em>Objective.</em> {fix.objective}</p>
+      {fix.condition && <p>{fix.condition}</p>}
+      {['howler-red', 'power-cut'].includes(fix.id) && <p>{fix.objective}</p>}
     </div>
-    {fix.warning && (
-  <p class="warning"><strong>Warning.</strong> {fix.warning}</p>
-)}
 
     {blocks.map((block) => (
   <div class="block">
@@ -189,14 +187,16 @@ const chooseOf = (step: Step): readonly Branch[] | undefined => (isIfStep(step) 
 
     <p class="end"><span class="visually-hidden">End of {fix.code}.</span><span class="marks" aria-hidden="true"><span /><span /><span /><span /></span></p>
 
-    <p class="why">
-      <strong>Why.</strong> {fix.why}
+    <details class="why">
+      <summary>Why this works</summary>
+      <p>{fix.why}
       {see && (
       <Fragment>
-        {' '}<a class="ref" href={href(`/${fix.seeAt ?? fix.see}`)}>See {see.number} in the guide<span class="visually-hidden">: {see.title}</span></a>
+        {' '}<a class="ref" href={href(sectionPath(fix.seeAt ?? fix.see ?? ''))}>{see.title}</a>
       </Fragment>
     )}
-    </p>
+      </p>
+    </details>
   </div>
 </article>
 
@@ -209,6 +209,7 @@ const chooseOf = (step: Step): readonly Branch[] | undefined => (isIfStep(step) 
   /* The title strip: black by day, a raised display header by night. */
   .strip {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.7rem;
     padding: 0.55rem 0.8rem;
@@ -217,7 +218,8 @@ const chooseOf = (step: Step): readonly Branch[] | undefined => (isIfStep(step) 
   }
 
   .title {
-    flex: 1;
+    flex: 1 1 8rem;
+    min-width: 0;
     margin: 0;
     font-family: var(--font-display);
     font-size: var(--text-rule);
@@ -299,12 +301,16 @@ const chooseOf = (step: Step): readonly Branch[] | undefined => (isIfStep(step) 
 
   .body {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
     gap: 0.7rem;
     padding: 0.7rem 0.8rem 0.8rem;
   }
 
   .lines {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
     gap: 0.2rem;
     line-height: 1.5;
   }
@@ -313,13 +319,11 @@ const chooseOf = (step: Step): readonly Branch[] | undefined => (isIfStep(step) 
     font-style: italic;
   }
 
-  .warning strong {
-    color: var(--warning);
-  }
-
   /* A block of steps: "Now", or what waits. The first sits under a hairline, like a card's steps. */
   .block {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
     gap: 0.35rem;
     padding-block-start: 0.6rem;
     border-top: 1px solid var(--rule);
@@ -368,6 +372,8 @@ const chooseOf = (step: Step): readonly Branch[] | undefined => (isIfStep(step) 
 
   .action {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
     gap: 0.25rem;
   }
 
@@ -467,7 +473,7 @@ const chooseOf = (step: Step): readonly Branch[] | undefined => (isIfStep(step) 
     color: var(--action);
     font-weight: 700;
     text-decoration-color: currentColor;
-    white-space: nowrap;
+    white-space: normal;
   }
 
   /* ■ ■ ■ ■: the drill ends here. */
@@ -558,6 +564,8 @@ const chooseOf = (step: Step): readonly Branch[] | undefined => (isIfStep(step) 
   }
 
   @media print {
+    .step { break-inside: avoid-page; }
+
     .drill {
       break-inside: avoid;
     }
@@ -567,5 +575,10 @@ const chooseOf = (step: Step): readonly Branch[] | undefined => (isIfStep(step) 
       print-color-adjust: exact;
       -webkit-print-color-adjust: exact;
     }
+  }
+  @media screen and (max-width: 40rem) {
+    .line { display: grid; gap: 0.15rem; text-align: left; }
+    .dots { display: none; }
+    .response { margin-inline-start: 0; text-align: left; text-wrap: pretty; }
   }
 </style>

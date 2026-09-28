@@ -47,9 +47,9 @@ describe('reading saved ticks', () => {
   const changeover = CHECKLISTS.changeover;
 
   it('round-trips with the time the ticks last changed', () => {
-    const saved = readSaved(serialiseTicks(['howler', 'rec'], now), doors, now + 1_000);
+    const saved = readSaved(serialiseTicks(['howler-on', 'brakes'], now), doors, now + 1_000);
     expect(saved?.at).toBe(now);
-    expect([...(saved?.done ?? [])]).toEqual(['howler', 'rec']);
+    expect([...(saved?.done ?? [])]).toEqual(['howler-on', 'brakes']);
   });
 
   it('forgets a changeover after 30 minutes', () => {
@@ -59,14 +59,14 @@ describe('reading saved ticks', () => {
   });
 
   it('keeps doors ticks for 12 hours, not 30 minutes', () => {
-    const raw = serialiseTicks(['howler'], now);
+    const raw = serialiseTicks(['howler-on'], now);
     expect(readSaved(raw, doors, now + 31 * MINUTE)).not.toBeNull();
     expect(readSaved(raw, doors, now + 12 * HOUR - 1)).not.toBeNull();
     expect(readSaved(raw, doors, now + 12 * HOUR + 1)).toBeNull();
   });
 
   it('drops items that are no longer on the list', () => {
-    expect([...(readSaved(serialiseTicks(['howler', 'gone'], now), doors, now)?.done ?? [])]).toEqual(['howler']);
+    expect([...(readSaved(serialiseTicks(['howler-on', 'gone'], now), doors, now)?.done ?? [])]).toEqual(['howler-on']);
     expect(readSaved(serialiseTicks(['gone'], now), doors, now)).toBeNull();
   });
 
@@ -84,8 +84,8 @@ describe('reading saved ticks', () => {
   });
 
   it('distrusts timestamps from the future, with a minute’s grace', () => {
-    expect(readSaved(serialiseTicks(['howler'], now + 30_000), doors, now)).not.toBeNull();
-    expect(readSaved(serialiseTicks(['howler'], now + HOUR), doors, now)).toBeNull();
+    expect(readSaved(serialiseTicks(['howler-on'], now + 30_000), doors, now)).not.toBeNull();
+    expect(readSaved(serialiseTicks(['howler-on'], now + HOUR), doors, now)).toBeNull();
   });
 });
 
@@ -95,23 +95,27 @@ describe('where a list starts when its island wakes up', () => {
   const earlier = now - 10 * MINUTE;
 
   it('takes the saved run as it is when nothing was ticked early, without saving again', () => {
-    const start = startingTicks(doors, run(earlier, ['howler']), new Set(), now);
-    expect(start).toEqual({ done: new Set(['howler']), at: earlier, save: false });
+    const start = startingTicks(doors, run(earlier, ['howler-on']), new Set(), now);
+    expect(start).toEqual({ done: new Set(['howler-on']), at: earlier, save: false });
     expect(startingTicks(doors, null, new Set(), now)).toEqual({ done: new Set(), at: null, save: false });
   });
 
   it('keeps ticks made before it woke up, alongside the saved ones', () => {
-    const start = startingTicks(doors, run(earlier, ['howler']), new Set(['att']), now);
-    expect(start).toEqual({ done: new Set(['howler', 'att']), at: now, save: true });
+    const start = startingTicks(doors, run(earlier, ['howler-on']), new Set(['level']), now);
+    expect(start).toEqual({ done: new Set(['howler-on', 'level']), at: now, save: true });
   });
 
   it('keeps early ticks when nothing was saved', () => {
-    expect(startingTicks(doors, null, new Set(['att']), now)).toEqual({ done: new Set(['att']), at: now, save: true });
+    expect(startingTicks(doors, null, new Set(['level']), now)).toEqual({
+      done: new Set(['level']),
+      at: now,
+      save: true,
+    });
   });
 
   it('doesn’t move the time when the early ticks were saved already', () => {
-    const start = startingTicks(doors, run(earlier, ['howler', 'att']), new Set(['att']), now);
-    expect(start).toEqual({ done: new Set(['howler', 'att']), at: earlier, save: false });
+    const start = startingTicks(doors, run(earlier, ['howler-on', 'level']), new Set(['level']), now);
+    expect(start).toEqual({ done: new Set(['howler-on', 'level']), at: earlier, save: false });
   });
 
   it('starts the next changeover from early ticks when the saved one was finished', () => {
@@ -120,12 +124,12 @@ describe('where a list starts when its island wakes up', () => {
   });
 
   it('carries on an unfinished changeover', () => {
-    const start = startingTicks(changeover, run(earlier, ['light']), new Set(['rec']), now);
-    expect(start).toEqual({ done: new Set(['light', 'rec']), at: now, save: true });
+    const start = startingTicks(changeover, run(earlier, ['light']), new Set(['charge']), now);
+    expect(start).toEqual({ done: new Set(['light', 'charge']), at: now, save: true });
   });
 
   it('never starts a list that runs once afresh', () => {
-    const start = startingTicks(doors, run(earlier, ids('doors')), new Set(['howler']), now);
+    const start = startingTicks(doors, run(earlier, ids('doors')), new Set(['howler-on']), now);
     expect(start).toEqual({ done: new Set(ids('doors')), at: earlier, save: false });
   });
 });

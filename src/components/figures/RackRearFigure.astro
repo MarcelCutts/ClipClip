@@ -1,0 +1,83 @@
+---
+/**
+ * Figure: the back of the rack, which faces the DJ. Two QSC GX7 amps around the dbx DriveRack PA2, as
+ * the owner's photographs show them and the makers draw them: on each amp the CH1 speakON above CH2,
+ * the power inlet at the right; on the DriveRack the power inlet at the left and the two inputs at the
+ * right (dbx manual p.6; QSC manual pp.6–7). The upper amp drives the tops and the lower the subs (the
+ * owner). Sockets are drawn larger than life, and the links between the three are left out.
+ *
+ * Every shape is drawn in place. A <use> would put it in a shadow tree, where the figure's styles,
+ * which reach it through an ancestor, do not apply.
+ */
+import { FIGURES } from '../../lib/figures';
+import Fig from './Fig.astro';
+
+interface Props {
+  /** False where the drawing is not a link's target, as on the print kit's card. */
+  anchor?: boolean;
+}
+const { anchor = true } = Astro.props;
+const caption = FIGURES.rackRear;
+
+const amps = [
+  { y: 10, name: 'Top amp', to: 'Top' },
+  { y: 176, name: 'Bottom amp', to: 'Sub' },
+];
+/** A mains inlet, centred on 0,0. */
+const INLET = 'M-16-11H16L19-6V11H-19V-6Z';
+const INLET_PINS = 'M-10-4h3v7h-3zM7-4h3v7H7zM-1.500 1h3v7h-3z';
+---
+
+<Fig id={anchor ? caption.anchor : undefined} title={caption.title} note={caption.note}>
+  <svg viewBox="0 0 300 264" role="img" aria-labelledby="fig-rack-rear-title fig-rack-rear-desc">
+    <title id="fig-rack-rear-title">The back of the rack: where the leads go</title>
+    <desc id="fig-rack-rear-desc">
+      The top amp has two speaker sockets, one above the other, each for a lead to a top, and a power inlet at the
+      right. The DriveRack in the middle has its power inlet at the left and two inputs at the right, for the two
+      leads from MASTER 1. The bottom amp is like the top one, and its two speaker sockets are for the subs.
+    </desc>
+    <rect class="is" x="3" y="3" width="294" height="258" rx="5"></rect>
+    {
+      amps.map((amp) => (
+        <g transform={`translate(0 ${amp.y})`}>
+          <rect class="is" x="9" y="0" width="282" height="78" rx="3" />
+          <text class="b" x="18" y="24">
+            {amp.name}
+          </text>
+          {[21, 57].map((y) => (
+            <g transform={`translate(150 ${y})`}>
+              <circle class="do" r="14" />
+              <circle class="is" r="7" />
+              <text x="22" y="5">
+                {amp.to}
+              </text>
+            </g>
+          ))}
+          <g transform="translate(258 30)">
+            <path class="do" d={INLET} />
+            <path class="pin" d={INLET_PINS} />
+            <text x="0" y="33" text-anchor="middle">
+              Power
+            </text>
+          </g>
+        </g>
+      ))
+    }
+    <rect class="is" x="9" y="94" width="282" height="76" rx="3"></rect>
+    <g transform="translate(40 122)">
+      <path class="do" d={INLET}></path>
+      <path class="pin" d={INLET_PINS}></path>
+      <text x="0" y="34" text-anchor="middle">Power</text>
+    </g>
+    <text class="b" x="76" y="120">DriveRack</text>
+    {
+      [232, 266].map((x) => (
+        <g transform={`translate(${x} 120)`}>
+          <circle class="do" r="12" />
+          <path class="pin" d="M-5-3h3v3h-3zM2-3h3v3H2zM-1.500 3h3v3h-3z" />
+        </g>
+      ))
+    }
+    <text x="282" y="158" text-anchor="end">From MASTER 1</text>
+  </svg>
+</Fig>

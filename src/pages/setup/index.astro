@@ -1,45 +1,20 @@
 ---
 /**
- * Setting up, at every event, for whoever builds the rig, working alone with the kit in front of
- * them. S1 is the whole job in order (checklists.ts). The cards after it follow S1's order: S2 the
- * wiring, as a table built from the guide's signal drawing (lib/rig.ts); T2 and T3, the one-off
- * tests of what MASTER ATT turns down and whether MASTER LEVEL fully up adds gain; S3 the recording
- * level (T2, T3 and S3 are in lib/record/flow.ts); S4 the DriveRack and amps at every event; S5 the
- * DriveRack's setup wizard and S6 the amps' gains and limiters, both once, S6 with the speakers
- * disconnected. Each card says when it's done: every event, or once. Why it works is in the guide.
- *
- * Page numbers are the printed ones. Pioneer's and QSC's PDFs number their pages the same way, so
- * #page=N lands on page N. dbx's PDF has two unnumbered pages first: printed page N is #page=N+2.
- *
- * The anchors other pages use stay put: #setup is the checklist's, the guide links to #record-level
- * and #test-att, and the old /crew/ page forwards to #wiring and #record-level.
+ * Rig reference: what feeds what, and how each unit is set, for when a lead or a setting looks wrong.
+ * An event's work is Crew's C1. The page carries no tests and no commissioning cards: this is a guide
+ * for the field, and those needed a laptop (the owner, 28 September 2026). Old links to them forward
+ * to the card that does their job now.
+ * Printed dbx page N is PDF page N+2. Other manual page references keep their published numbering.
  */
 import Contents, { type ContentsEntry } from '../../components/Contents.astro';
+import LegacyAnchors from '../../components/LegacyAnchors.astro';
 import PageHeader from '../../components/PageHeader.astro';
 import Procedure from '../../components/Procedure.astro';
-import Term from '../../components/Term.astro';
-import Checklist from '../../islands/Checklist.svelte';
 import Base from '../../layouts/Base.astro';
-import { CHECKLISTS } from '../../lib/checklists';
-import { FIXES } from '../../lib/fixes';
-import {
-  CONSEQUENCE,
-  SAVE_NOTE,
-  STEPS,
-  type Step,
-  T2_FINDINGS,
-  T2_INTRO,
-  T2_STEPS,
-  T2_UNCLEAR,
-  T3_INTRO,
-  T3_STEPS,
-} from '../../lib/record/flow';
-import { REVISION } from '../../lib/revision';
+import { SPEAKER_PORTS } from '../../lib/rack';
 import { edgesFor, NODES, type NodeId } from '../../lib/rig';
-import { CREW_RULES } from '../../lib/rules';
 import { section } from '../../lib/sections';
 import { SOURCES } from '../../lib/sources';
-import { MONITOR_TAG, REC_TAG, RIG_TAG, type ShortTag } from '../../lib/tags';
 import { href } from '../../lib/url';
 
 /** A source document's address, from the one list, so the page and the sources section agree. */
@@ -51,35 +26,24 @@ const doc = (title: string): string => {
 const MANUAL = doc('XDJ-RX2 Operating Instructions');
 const QUICK_START = doc('XDJ-RX2 Quick Start Guide and specifications');
 const DBX = doc('DriveRack PA2 Owner’s Manual');
-const DBX_TUNINGS = doc('DriveRack PA2 speaker and amplifier tunings');
 const QSC = doc('GX3, GX5 and GX7 user manual');
 const HOWLER = doc('Recorder+Streamer MK1 manual');
 const RANE = doc('Sound System Interconnection (RaneNote 110)');
-const VIRTUAL_DJ = doc('XDJ-RX2 mixer layout');
-const YAMAHA = doc('Club Series V owner’s manual');
-const EV = doc('EKX passive loudspeakers user manual');
-
-/** Audacity's manual, for the two things S3's peak check leans on: Amplify, and Show Clipping. */
-const AUDACITY = 'https://manual.audacityteam.org/man';
-
-/** HSE's guidance behind S1's generator line: earthed by a competent person, sockets on 30 mA RCDs. */
-const HSE_GS50 = 'https://www.hse.gov.uk/pubns/gs50.pdf';
+const ACHAT = doc('Achat 104 A user manual');
 
 /** A no-break space, between a number and its unit. */
-const nb = '\u00a0';
+const nb = ' ';
 const MINUS = '−';
 
-/** When a card is done, on the right of its title strip. */
-const EVERY_EVENT = 'Every event';
-const ONCE = 'Once';
+/** What kind of card each is, on the right of its title strip. */
+const REFERENCE = 'Reference';
 
-/** The earth warning, in the words of the hum drill (F10), so the setup page and the night page agree. */
-const EARTH_WARNING = FIXES.find((f) => f.id === 'hum')?.warning;
-if (!EARTH_WARNING) throw new Error('The hum drill (F10) has no earth warning for S2 to repeat');
-
-/** The crew's line for a louder room, word for word from their box (rules.ts), for S4's last step. */
-const LOUDER_ROOM = CREW_RULES.find((r) => r.drill === 'not-loud')?.note;
-if (!LOUDER_ROOM) throw new Error('The crew box has no line for a louder room (rules.ts)');
+/** A card's step, as the Procedure component sets it: the control, the state, a note under it. */
+interface Step {
+  challenge: string;
+  response: string;
+  note?: string;
+}
 
 // ---- Links to printed pages --------------------------------------------------------------------
 
@@ -116,27 +80,25 @@ interface RigRow {
   set: string;
   /** A second line under the setting. */
   setNote?: string;
-  /** The card that sets the rest: "See S4." */
-  see?: { code: string; id: string; for?: string };
+  /** The card that sets the rest: "See S4." A path with no code is a card on another page. */
+  see?: { code: string; path: string; for?: string };
   sources: Cite[];
 }
-
-/** The tape each taped part carries (rig.ts marks which are taped; tags.ts has what's printed on them). */
-const TAPE: Partial<Record<NodeId, ShortTag>> = { masterLevel: REC_TAG, booth: MONITOR_TAG, amps: RIG_TAG };
 
 /** Each part in signal order: the PA's branch, the recorder's, then the booth monitors'. */
 const RIG_ROWS: RigRow[] = [
   {
     node: 'masterLevel',
-    set: 'on the REC mark',
-    setNote: 'It sets MASTER 1 and MASTER 2 together. The mark is at fully up, unless T3 or S3 moved it.',
-    sources: [OI(27)],
+    set: 'MASTER meters on the first orange (0), at soundcheck',
+    setNote: 'It sets MASTER 1 and MASTER 2 together. It stays for the night, unless F1 turns it down.',
+    see: { code: 'C1', path: href('/night/#doors') },
+    sources: [OI(27), OI(31)],
   },
   {
     node: 'driverack',
     lead: `XLR, L and R`,
-    set: `input switch on +4${nb}dBu, PIN 1 LIFT out`,
-    see: { code: 'S4', id: 'driverack' },
+    set: `input switch on +4${nb}dBu`,
+    see: { code: 'S4', path: '#driverack' },
     sources: [QSG(20), DBXP(7)],
   },
   {
@@ -145,18 +107,18 @@ const RIG_ROWS: RigRow[] = [
     node: 'amps',
     withSub: true,
     lead: 'LOW and HIGH, L and R',
-    leadNote: 'LOW to the subs’ amp, HIGH to the top speakers’ amp.',
+    leadNote: 'LOW to the bottom amp, for the subs. HIGH to the top amp, for the tops. These leads stay in the rack.',
     set: 'FULL RANGE',
-    setNote: 'Gain knobs at or below the RIG marks.',
-    see: { code: 'S4', id: 'driverack' },
+    setNote: 'Gain knobs up to the room’s volume, CLIP lights dark.',
+    see: { code: 'S4', path: '#driverack' },
     sources: [DBXP(53), QSCP(6)],
   },
   {
     node: 'howler',
     lead: 'RCA, L and R',
-    leadNote: `One stereo RCA lead, under 3${nb}m. Nothing goes in it except an audio isolation transformer if F10 finds hum, or the fixed attenuator if T2 calls for it.`,
+    leadNote: `One stereo RCA lead, under 3${nb}m, with nothing else in it.`,
     set: 'WAV',
-    see: { code: 'S3', id: 'record-level', for: 'its recording level' },
+    setNote: 'A FAT32 microSD card. For the MK1, Howler says A2 cards and SanDisk’s Ultra and Pro cards do not work.',
     sources: [QSG(20), { label: 'RaneNote 110', url: RANE }, { label: 'Howler manual', url: HOWLER }],
   },
   {
@@ -168,9 +130,9 @@ const RIG_ROWS: RigRow[] = [
   {
     node: 'monitor',
     lead: '¼″ jacks, L and R',
-    leadNote: 'Balanced leads.',
+    leadNote: 'Balanced leads, each into a monitor’s INPUT.',
     set: '',
-    sources: [OI(10), QSG(20)],
+    sources: [OI(10), QSG(20), { label: 'Achat 104 A manual', url: ACHAT }],
   },
 ];
 
@@ -190,212 +152,91 @@ function feed(id: NodeId): string {
 
 const rigRows = RIG_ROWS.map((r, i) => {
   const node = NODES[r.node];
-  const tape = node.taped ? TAPE[r.node] : undefined;
   return {
     ...r,
     ref: String(i + 1),
     unit: node.label,
     sub: r.withSub ? node.sub : undefined,
     from: feed(r.node),
-    tape,
   };
 });
 
 const signal = section('signal');
 
-// ---- S4, S5 and S6: the DriveRack and the amps ------------------------------------------------
+// ---- S4: the DriveRack and the amps -------------------------------------------------------------
 
 // dbx's manual: the input switch, out for +4 dBu (p. 7); on −10 dBV the input clips about 10 dB early
-// (p. 5, the INPUT meter table). PIN 1 LIFT, printed so on the back, lifts the pin 1 chassis ground of
-// both input XLRs and is best left out (p. 7). The STORE light shows an unstored change (p. 25). Amps
-// last on, with no audio at the mixer's outputs, and first off, then about 10 seconds before the rest
-// (p. 10). The gains and limiters are set once, in S6, by dbx's own procedure with the speakers
-// disconnected (pp. 19–21): S4 only checks them, and never drives the speakers to find a limit. QSC
-// prints no dB per click, so the knobs move by the figures on their scale.
+// (p. 5, the INPUT meter table). PIN 1 LIFT, printed so on the back, is best left out (p. 7). The STORE light shows an unstored change (p. 25). QSC:
+// an amp's CLIP light is its limit (p. 5), and FULL RANGE leaves the DriveRack to split the bands
+// (p. 6). These switches sit at the back of the rack, behind the leads.
 const S4_STEPS: Step[] = [
   {
-    challenge: 'Input switch, on the back of the DriveRack',
-    response: `+4${nb}dBu`,
-    note: `Out is +4${nb}dBu, and pushed in is ${MINUS}10${nb}dBV (dbx p.${nb}7). Pioneer gives MASTER${nb}1 a standard output level of +6${nb}dBu and a rated output of +24${nb}dBu (Quick Start Guide, p.${nb}20). On ${MINUS}10${nb}dBV the DriveRack’s input clips about 10${nb}dB early (dbx p.${nb}5).`,
+    challenge: 'DriveRack input switch',
+    response: `+4${nb}dBu, out`,
+    note: `On ${MINUS}10${nb}dBV the input clips about 10${nb}dB earlier (dbx p.${nb}5).`,
   },
-  {
-    challenge: 'PIN 1 LIFT switch, beside it',
-    response: 'out',
-    note: `It lifts pin${nb}1, the screen, on both XLR inputs, and never the mains earth. dbx advises leaving it out unless the PA hums (p.${nb}7). If the PA hums, go to F10.`,
-  },
-  {
-    challenge: 'Both GX7 amps, on the back',
-    response: 'FULL RANGE',
-    note: 'The DriveRack already splits the subs from the top speakers.',
-  },
-  {
-    challenge: 'DriveRack preset',
-    response: 'ours, STORE light off',
-    note: `If the STORE light is on, recall our preset. A lit STORE light means a setting has changed since S6 stored it (dbx p.${nb}25).`,
-  },
-  {
-    challenge: 'RIG marks',
-    response: 'on the RIG tape, from S6',
-    note: 'If there are none, or the amps, speakers or preset have changed, do S6 before the night. It needs the speakers disconnected.',
-  },
-  { challenge: 'Amp gain knobs', response: 'fully down' },
+  { challenge: 'PIN 1 LIFT', response: 'out' },
   {
     challenge: 'Both GX7 amps',
-    response: 'switched on last, with no track playing',
-    note: `dbx: the amps go on last and off first. After switching them off, wait about 10${nb}seconds before the rest (p.${nb}10).`,
+    response: 'FULL RANGE',
+    note: 'The DriveRack already splits the subs from the tops.',
   },
   {
-    challenge: 'DriveRack input CLIP lights',
-    response: 'dark on the loudest blend',
-    note: 'The loudest blend is the one from S3, with the MASTER meters red on the loudest peaks. With the gain knobs down, the room stays quiet. If the lights come on, go to F6.',
+    challenge: 'DriveRack',
+    response: 'STORE light off',
+    note: `A lit STORE light means a setting has changed (dbx p.${nb}25). If it is lit, ask the rig owner before use.`,
   },
   {
-    challenge: 'Amp gain knobs',
-    response: 'at or below the RIG marks, loud enough for the room',
-    note: LOUDER_ROOM,
+    challenge: 'Four amp gain knobs',
+    response: 'set by ear at soundcheck, CLIP lights dark',
+    note: `An amp’s CLIP light is its limit (QSC p.${nb}5).`,
   },
 ];
 
-// dbx's manual, a 2-way system with passive mains and subs (p. 53): STEREO input for a left and right
-// pair, PASSIVE mains. The EV subs are not in the PA2's own list (dbx's tunings list); the PA2 app can
-// look online first (p. 17). NOT LISTED gives "safe and usable crossover settings" (p. 41), with no
-// figure, and EV recommends a 30 Hz high-pass for the EKX-18S (EKX manual p. 23): the LOW band's HP
-// FREQUENCY, under XOVER (p. 41). Picking the amps sets the output gains and limiter thresholds (p. 17,
-// p. 43), from a gain knob setting dbx does not give: S6 sets them on this rig. Presets: user presets
-// are 1 to 75, and the factory ones cannot be overwritten; an unstored change is lost when another
-// preset is recalled (p. 25); STORE saves one (p. 26). dbx does not say whether the wizard asks for the
-// subs' amp once the subs are NOT LISTED.
-const S5_STEPS: Step[] = [
-  { challenge: 'Input', response: 'STEREO', note: `MASTER${nb}1 comes in as a left and right pair (dbx p.${nb}53).` },
-  {
-    challenge: 'Top speakers',
-    response: 'Yamaha S/C115V, PASSIVE',
-    note: `dbx: PASSIVE for main speakers that are not bi-amped, used with subs (p.${nb}53).`,
-  },
-  {
-    challenge: 'Subs',
-    response: 'NOT LISTED',
-    note: `The EV EKX-18S is not in the PA2’s own list. The PA2 control app can look in dbx’s online list first (p.${nb}17).`,
-  },
-  {
-    challenge: 'LOW BAND HP FREQUENCY, under XOVER',
-    response: `30${nb}Hz`,
-    note: `Electro-Voice recommends a 30${nb}Hz high-pass for the EKX-18S (EKX manual, p.${nb}23). NOT LISTED gives “safe and usable crossover settings” (dbx p.${nb}41), with no figure.`,
-  },
-  {
-    challenge: 'Amps',
-    response: 'QSC GX7',
-    note: `Picking the amps sets the limiter thresholds (dbx p.${nb}43), for a gain knob setting dbx does not give. S6 sets them for this rig. If the wizard asks for the subs’ amp too, it is a QSC GX7.`,
-  },
-  {
-    challenge: 'Preset',
-    response: 'stored, STORE light off',
-    note: `STORE saves it as a user preset, 1 to 75: the factory ones cannot be overwritten (dbx pp.${nb}25–26). A change that is not stored is lost when another preset is recalled (p.${nb}25).`,
-  },
-];
-
-/** Said before S6's steps: why the speakers come off first. */
-const S6_INTRO =
-  'This card takes both amps to full power, the way dbx sets a DriveRack’s gains and limiters (pp. 19–21). Do it with the speakers disconnected.';
-
-// dbx's manual, "To calibrate the system's gain structure and PA2 limiters" (pp. 19–21): pink noise; power
-// down, disconnect the speakers, attenuators all the way down; limiters OFF, OVEREASY OFF, THRESHOLD 0.0 dB,
-// the other processing off; drive the mixer; raise each amp attenuator until its clip LED just lights, and
-// "take note of their position using gaffers tape"; each limiter ON, THRESHOLD down until the clip LEDs stop;
-// power down, reconnect, amps on last. dbx drives the mixer until the PA2's input clips. Here the mixer's top
-// in normal use is its red light, and on +4 dBu the PA2 clips above it (F6), so the noise sits at red. For
-// the tops: QSC gives the GX7 725 W into 8 Ω (p. 11), and Yamaha rates the S115V at 500 W programme (p. 6),
-// 1.6 dB less, and asks for an amp that matches (p. 3). The further 2 dB on the HIGH limiter is our
-// inference from those figures. The EKX-18S takes 400 W continuous (EV p. 23), within QSC's rule of an amp up
-// to twice a speaker's continuous rating.
-const S6_STEPS: Step[] = [
-  {
-    challenge: 'Pink noise',
-    response: 'on a USB stick',
-    note: `Make it in Audacity: Generate, Noise, Pink, 5${nb}minutes, exported as a WAV file.`,
-  },
-  { challenge: 'Rig', response: 'switched off, speakers disconnected from both amps' },
-  { challenge: 'Amp gain knobs', response: 'fully down' },
-  { challenge: 'Rig', response: 'switched on, amps last' },
-  {
-    challenge: 'DriveRack limiters, under LIMITER',
-    response: `OFF, OVEREASY OFF, THRESHOLD 0.0${nb}dB`,
-    note: `If the compressor, GEQ, subharmonic synth or AFS is on, switch it off too (dbx p.${nb}21).`,
-  },
-  { challenge: 'Pink noise', response: 'playing on one deck, its fader up, MASTER LEVEL on the REC mark' },
-  { challenge: 'TRIM', response: 'up until the MASTER meters’ red light just comes on' },
-  {
-    challenge: 'Each amp gain knob',
-    response: 'up until that amp’s CLIP light just comes on',
-    note: 'There are four: CH1 and CH2 on each GX7. Set them one at a time.',
-  },
-  { challenge: 'RIG marks', response: 'drawn on the RIG tape, one at each knob' },
-  {
-    challenge: 'HIGH and LOW limiters',
-    response: 'ON, THRESHOLD down until both amps’ CLIP lights go dark',
-    note: `Lower each only just far enough (dbx p.${nb}21).`,
-  },
-  {
-    challenge: 'HIGH limiter THRESHOLD',
-    response: `a further 2${nb}dB down`,
-    note: `The GX7 gives 725${nb}W into 8${nb}Ω (QSC p.${nb}11). Yamaha rates the top speakers at 500${nb}W programme (p.${nb}6), 1.6${nb}dB less, and asks for an amp that matches (p.${nb}3). The 2${nb}dB is our inference from those figures, not a maker’s procedure.`,
-  },
-  { challenge: 'Preset', response: 'stored, STORE light off' },
-  { challenge: 'Rig', response: 'switched off, amps first' },
-  { challenge: 'Speakers', response: 'connected again', note: 'S4 switches the rig back on.' },
-];
-
-// The index names each card by its code, as the cards do, in the order S1 uses them.
+// The index names each card by its code, as the cards do.
 const contents: ContentsEntry[] = [
-  { id: CHECKLISTS.setup.anchor, number: CHECKLISTS.setup.code, label: CHECKLISTS.setup.title },
   { id: 'wiring', number: 'S2', label: 'Wiring' },
-  { id: 'test-att', number: 'T2', label: 'MASTER ATT test' },
-  { id: 'test-master-level', number: 'T3', label: 'MASTER LEVEL test' },
-  { id: 'record-level', number: 'S3', label: 'Recording level' },
   { id: 'driverack', number: 'S4', label: 'DriveRack and amps' },
-  { id: 'wizard', number: 'S5', label: 'Setup wizard' },
-  { id: 'amp-gains', number: 'S6', label: 'Amp gains and limiters' },
 ];
+
+/** Where a link to a card that has gone lands now. C1 sets the levels that S3, T2 and T3 tested. */
+const moved = {
+  setup: '/night/#doors',
+  'record-level': '/night/#doors',
+  'test-att': '/night/#doors',
+  'test-master-level': '/night/#doors',
+  wizard: '/setup/#driverack',
+  'amp-gains': '/setup/#driverack',
+};
 ---
 
 <Base
-  title="Setting up"
-  description="For whoever sets up the rig at every event: the setup checklist, the wiring table, and cards for the recording level, the DriveRack PA2 and the amps."
+  title="Rig reference"
+  description="What feeds what on the rig, and how each unit is set. Event preparation is in Crew’s Before doors checklist."
 >
-  <PageHeader title="Setting up">
-    <Fragment slot="lede">
-      At every event, before the doors open. Work through S1 with the kit in front of you. The tape tags are in the
-      <a href={href('/print/')}>Print kit</a>. Cards printed now say “Revised {REVISION}”.
-    </Fragment>
+  <PageHeader title="Rig reference" lede="What feeds what, and how each unit is set.">
+    <p>To prepare for an event, use <a href={href('/night/#doors')}>Before doors (C1)</a>. Come here if a lead or a setting looks wrong.</p>
   </PageHeader>
 
   <div class="page flow">
     <Contents entries={contents} rows={contents.length + 1} />
+    <LegacyAnchors map={moved} />
 
-    <div class="job">
-      <Checklist list="setup" headingLevel={2} client:visible />
-      <p class="source after">
-        HSE’s <a href={HSE_GS50} rel="external">GS50</a> for the generator and its RCDs, QSC’s
-        <a href={qscPage(11)} rel="external">GX manual, p.{nb}11</a>, for what the amps draw, and Howler’s
-        <a href={HOWLER} rel="external">MK1 manual</a> for the battery.
-      </p>
-    </div>
-
-    <!-- The table needs the page's wide column; its card has no steps, only the warning and the table. -->
+    <!-- The table needs the page's wide column; its card has no steps, only the table. -->
     <div class="job subflow">
       <div class="wide wiring">
-        <Procedure id="wiring" number="S2" title="Wiring" kind={EVERY_EVENT} level={2} steps={[]}>
-          <p class="warning"><strong>Warning.</strong> {EARTH_WARNING}</p>
+        <Procedure id="wiring" number="S2" title="Wiring" kind={REFERENCE} level={2} steps={[]}>
+          <p>The rack holds the top amp, the DriveRack PA2 and the bottom amp. The leads between the three stay in.</p>
+          <ul class="ports">{SPEAKER_PORTS.map((port) => <li>{port.amp}, {port.channels}: {port.destination}.</li>)}</ul>
           <!-- Wide: a table, one row per part. Narrow: the same rows as a list, each field labelled. -->
           <table class="rig-table">
-            <caption class="visually-hidden">What feeds each part of the rig, how it’s set and its tape</caption>
+            <caption class="visually-hidden">What feeds each part of the rig, and how it’s set</caption>
             <thead>
               <tr>
                 <th scope="col" class="ref">Ref</th>
                 <th scope="col">Unit</th>
                 <th scope="col">Fed from</th>
                 <th scope="col">Set to</th>
-                <th scope="col">Tape tag</th>
                 <th scope="col">Source</th>
               </tr>
             </thead>
@@ -410,19 +251,18 @@ const contents: ContentsEntry[] = [
                     </th>
                     <td>
                       {r.from}
-                      {r.lead && <span class="nobr">({r.lead})</span>}
+                      {r.lead && <span>({r.lead})</span>}
                       {r.leadNote && <span class="sub">{r.leadNote}</span>}
                     </td>
                     <td>
-                      {r.set ? <span class="set">{r.set}</span> : <span class="none">none</span>}
+                      {r.set && <span class="set">{r.set}</span>}
                       {r.setNote && <span class="sub">{r.setNote}</span>}
                       {r.see && (
                         <span class="sub">
-                          See <a href={`#${r.see.id}`}>{r.see.code}</a>{r.see.for ? ` for ${r.see.for}.` : '.'}
+                          See <a href={r.see.path}>{r.see.code}</a>{r.see.for ? ` for ${r.see.for}.` : '.'}
                         </span>
                       )}
                     </td>
-                    <td>{r.tape ? <span class="tag">{r.tape.name}</span> : <span class="none">none</span>}</td>
                     <td>
                       <span class="cites">
                         {r.sources.map((c) => (
@@ -453,7 +293,7 @@ const contents: ContentsEntry[] = [
                       <dt>Fed from</dt>
                       <dd>
                         {r.from}
-                        {r.lead && <span class="nobr">({r.lead})</span>}
+                        {r.lead && <span>({r.lead})</span>}
                         {r.leadNote && <span class="sub">{r.leadNote}</span>}
                       </dd>
                     </div>
@@ -465,17 +305,9 @@ const contents: ContentsEntry[] = [
                           {r.setNote && <span class="sub">{r.setNote}</span>}
                           {r.see && (
                             <span class="sub">
-                              See <a href={`#${r.see.id}`}>{r.see.code}</a>{r.see.for ? ` for ${r.see.for}.` : '.'}
+                              See <a href={r.see.path}>{r.see.code}</a>{r.see.for ? ` for ${r.see.for}.` : '.'}
                             </span>
                           )}
-                        </dd>
-                      </div>
-                    )}
-                    {r.tape && (
-                      <div>
-                        <dt>Tape tag</dt>
-                        <dd>
-                          <span class="tag">{r.tape.name}</span>
                         </dd>
                       </div>
                     )}
@@ -497,152 +329,23 @@ const contents: ContentsEntry[] = [
             }
           </ol>
           <p class="next">
-            The drawing in <a href={href(`/#${signal.id}`)}>{signal.number} {signal.title}</a> shows what each part feeds.
+            The drawing in <a href={href(`/learn/#${signal.id}`)}>{signal.number} {signal.title}</a> shows what each part feeds.
           </p>
         </Procedure>
       </div>
     </div>
 
     <div class="job">
-      <Procedure
-        id="test-att"
-        number="T2"
-        title={`What MASTER${nb}ATT turns down`}
-        kind={ONCE}
-        level={2}
-        caution={T2_INTRO}
-        steps={[...T2_STEPS]}
-      >
-        <div class="findings">
-          <p><strong>What each result means.</strong></p>
-          <dl>
-            {
-              T2_FINDINGS.map((f) => (
-                <div>
-                  <dt>{f.look}</dt>
-                  {f.readings.map((r) => (
-                    <dd>
-                      <strong>{r.seen}:</strong> {r.means}
-                    </dd>
-                  ))}
-                </div>
-              ))
-            }
-          </dl>
-          <p>{T2_UNCLEAR}</p>
-        </div>
-        <p class="source">
-          Pioneer’s Operating Instructions (<a href={oiPage(5)} rel="external">p.{nb}5</a> for WAV files from USB,
-          <a href={oiPage(31)} rel="external">p.{nb}31</a> for UTILITY,
-          <a href={oiPage(32)} rel="external">p.{nb}32</a> for MASTER ATT) and Quick Start Guide (<a
-            href={qsgPage(17)}
-            rel="external">p.{nb}17</a
-          >), and dbx’s DriveRack PA2 manual (<a href={dbxPage(5)} rel="external">p.{nb}5</a>) for the INPUT meters.
-        </p>
-      </Procedure>
-    </div>
-
-    <div class="job">
-      <Procedure
-        id="test-master-level"
-        number="T3"
-        title={`Whether MASTER${nb}LEVEL fully up adds gain`}
-        kind={ONCE}
-        level={2}
-        caution={T3_INTRO}
-        steps={[...T3_STEPS]}
-      >
-        <p class="source">
-          Pioneer’s Operating Instructions (<a href={oiPage(5)} rel="external">p.{nb}5</a> for WAV files from USB,
-          <a href={oiPage(27)} rel="external">p.{nb}27</a> for MASTER LEVEL’s scale,
-          <a href={oiPage(28)} rel="external">p.{nb}28</a> for THRU).
-        </p>
-      </Procedure>
-    </div>
-
-    <div class="job">
-      <Procedure
-        id="record-level"
-        number="S3"
-        title="Recording level"
-        kind={EVERY_EVENT}
-        level={2}
-        caution={CONSEQUENCE}
-        steps={[...STEPS]}
-        note={SAVE_NOTE}
-      >
-        <p class="source">
-          Pioneer’s Operating Instructions (<a href={oiPage(27)} rel="external">p.{nb}27</a> for MASTER LEVEL,
-          <a href={oiPage(31)} rel="external">p.{nb}31</a> for UTILITY, <a href={oiPage(32)} rel="external"
-            >p.{nb}32</a
-          > for MASTER ATT and <a href={oiPage(35)} rel="external">p.{nb}35</a> for when a change is kept), Howler’s
-          <a href={HOWLER} rel="external">MK1 manual</a> for the LEVEL light, and Audacity’s manual for
-          <a href={`${AUDACITY}/amplify.html`} rel="external">Amplify</a> and
-          <a href={`${AUDACITY}/view_menu.html`} rel="external">Show Clipping</a>.
-        </p>
-      </Procedure>
-    </div>
-
-    <div class="job">
-      <Procedure id="driverack" number="S4" title="DriveRack and amps" kind={EVERY_EVENT} level={2} steps={S4_STEPS}>
+      <Procedure id="driverack" number="S4" title="DriveRack and amp settings" kind={REFERENCE} level={2} steps={S4_STEPS}>
+        <p>The three switches are at the back of the rack, which faces the DJ. The STORE light, the gain knobs and the CLIP lights are at the front, which faces the crowd. If the DriveRack’s input CLIP lights come on, use <a href={href('/night/#fix-driverack-clip')}>F6</a>.</p>
         <p class="source">
           dbx’s DriveRack PA2 manual (<a href={dbxPage(5)} rel="external">p.{nb}5</a> for the INPUT meters and CLIP
           lights, <a href={dbxPage(7)} rel="external">p.{nb}7</a> for the input switch and PIN 1 LIFT,
-          <a href={dbxPage(10)} rel="external">p.{nb}10</a> for the order,
-          <a href={dbxPage(25)} rel="external">p.{nb}25</a> for the STORE light, <a href={dbxPage(19)} rel="external"
-            >pp.{nb}19–21</a
-          > for why the gains are set once, with the speakers disconnected), Pioneer’s Quick Start Guide (<a
-            href={qsgPage(20)}
-            rel="external">p.{nb}20</a
-          >) for MASTER 1’s levels, and QSC’s GX manual (<a href={qscPage(5)} rel="external">p.{nb}5</a> for the gain
+          <a href={dbxPage(25)} rel="external">p.{nb}25</a> for the STORE light), and QSC’s GX manual (<a href={qscPage(5)} rel="external">p.{nb}5</a> for the gain
           knobs and CLIP lights, <a href={qscPage(6)} rel="external">p.{nb}6</a> for FULL RANGE).
         </p>
       </Procedure>
     </div>
-
-    <div class="job">
-      <Procedure id="wizard" number="S5" title="DriveRack setup wizard" kind={ONCE} level={2} steps={S5_STEPS}>
-        <p class="source">
-          dbx’s DriveRack PA2 manual (<a href={dbxPage(17)} rel="external">p.{nb}17</a> for the tunings,
-          <a href={dbxPage(25)} rel="external">p.{nb}25</a> and <a href={dbxPage(26)} rel="external">p.{nb}26</a> for
-          presets, <a href={dbxPage(41)} rel="external">p.{nb}41</a> for the crossover,
-          <a href={dbxPage(43)} rel="external">p.{nb}43</a> for the limiters,
-          <a href={dbxPage(53)} rel="external">p.{nb}53</a> for STEREO and PASSIVE), its
-          <a href={DBX_TUNINGS} rel="external">list of tunings</a>, which names the Yamaha top speakers and the QSC amps
-          but no EV subs, and Electro-Voice’s <a href={`${EV}#page=23`} rel="external">EKX manual, p.{nb}23</a>, for
-          the subs’ high-pass.
-        </p>
-      </Procedure>
-    </div>
-
-    <div class="job">
-      <Procedure
-        id="amp-gains"
-        number="S6"
-        title="Amp gains and limiters"
-        kind={ONCE}
-        level={2}
-        caution={S6_INTRO}
-        steps={S6_STEPS}
-      >
-        <p class="source">
-          dbx’s DriveRack PA2 manual (<a href={dbxPage(19)} rel="external">pp.{nb}19–21</a> for the procedure,
-          <a href={dbxPage(43)} rel="external">p.{nb}43</a> for the limiters), QSC’s GX manual (<a
-            href={qscPage(5)}
-            rel="external">p.{nb}5</a
-          > for the CLIP lights, <a href={qscPage(11)} rel="external">p.{nb}11</a> for the power), and Yamaha’s
-          <a href={`${YAMAHA}#page=6`} rel="external">Club Series V manual</a> for the top speakers’ rating.
-        </p>
-      </Procedure>
-    </div>
-
-    <p class="job check">
-      <strong>Check it yourself.</strong> If a channel meter stays put when you pull its fader down, it reads before the
-      fader, as <a href={VIRTUAL_DJ} rel="external">VirtualDJ’s manual</a> for the unit says. If it rises when you turn
-      up LOW, it reads after the EQ. The guide’s drawing assumes both, and Pioneer says neither. If a channel pushed
-      into the red records with flat tops at any height while MASTER LEVEL is down, red
-      <Term of="clipping" then=".">clips</Term>
-    </p>
   </div>
 </Base>
 
@@ -681,27 +384,9 @@ const contents: ContentsEntry[] = [
     }
   }
 
-  /* Under S1: where its notes' numbers come from, as the cards' own source lines are. */
-  .source.after {
-    margin-block-start: 0.75rem;
-    font-size: var(--text-sm);
-    line-height: 1.5;
-    color: var(--ink-2);
-  }
-
-  /* The earth warning, set as the drills set it: the signal word bold, in the warning colour. */
-  .warning {
-    font-size: var(--text-sm);
-    line-height: 1.5;
-  }
-
-  .warning strong {
-    color: var(--warning);
-  }
-
   /* ---- S2: the rig table ---------------------------------------------------------------------- */
 
-  /* The card has no steps: the warning and the table are its body. */
+  /* The card has no steps: the table is its body. */
   .wiring {
     container-type: inline-size;
   }
@@ -762,23 +447,6 @@ const contents: ContentsEntry[] = [
     color: var(--action);
   }
 
-  .none {
-    color: var(--ink-3);
-  }
-
-  /* The tape's word as it's written on the tape: stencil capitals on gaffer tape. */
-  .tag {
-    display: inline-block;
-    padding: 0.2em 0.55em 0.15em;
-    background: var(--tape);
-    color: var(--tape-ink);
-    font-family: var(--font-stencil);
-    font-weight: 800;
-    font-size: 1.05rem;
-    line-height: 1;
-    letter-spacing: 0.04em;
-    clip-path: polygon(0 8%, 6% 0, 100% 0, 96% 30%, 100% 62%, 95% 100%, 4% 100%, 0 70%, 3% 40%);
-  }
 
   /* Sources: one to a line in the table; in the list they run on, one after another. */
   .cites {
@@ -793,7 +461,7 @@ const contents: ContentsEntry[] = [
   }
 
   .cites a {
-    white-space: nowrap;
+    white-space: normal;
   }
 
   .rig-list {
@@ -842,6 +510,17 @@ const contents: ContentsEntry[] = [
     margin: 0;
   }
 
+  @container (max-width: 26rem) {
+    .rig-list dl {
+      margin-inline-start: 0;
+    }
+
+    .rig-list dl > div {
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: 0.15rem;
+    }
+  }
+
   /* Wide enough for six columns: the table, and the list goes. */
   @container (min-width: 44rem) {
     .rig-table {
@@ -853,44 +532,18 @@ const contents: ContentsEntry[] = [
     }
   }
 
-  /* T2's results: what to look at, then what each thing it can do means. */
-  .findings {
-    display: grid;
-    gap: 0.5rem;
-    line-height: 1.5;
-  }
-
-  .findings dl {
-    display: grid;
-    gap: 0.65rem;
-    margin: 0;
-  }
-
-  .findings dt {
-    font-weight: 700;
-  }
-
-  .findings dd {
-    margin: 0;
-    font-size: var(--text-sm);
-  }
-
-  .next,
-  .check {
+  .next {
     font-size: var(--text-sm);
     line-height: 1.5;
-  }
-
-  @media (forced-colors: active) {
-    .tag {
-      border: 1px solid CanvasText;
-    }
   }
 
   @media print {
-    .tag {
-      print-color-adjust: exact;
-      -webkit-print-color-adjust: exact;
-    }
+    /* Block flow fragments reliably across paper pages; a tall grid can overlap its following note. */
+    .rig-list { display: block; }
+    .rig-list > li { break-inside: avoid-page; }
+    /* Keep the linked manual/page labels; repeated long URLs overwhelm this compact reference. */
+    .rig-list .cites a::after { content: none; }
   }
+
+  .ports { margin: 0; padding-left: 1.2rem; font-size: var(--text-sm); }
 </style>

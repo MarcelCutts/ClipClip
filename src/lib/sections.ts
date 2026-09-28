@@ -1,6 +1,7 @@
 /**
  * The guide's sections, in order, with the numbers a quick reference handbook gives them. One
- * list, so the index, the headings, the tabs and every "See 2.1" cross-reference agree.
+ * list, so the index, the headings, the tabs and every "See 4.4" cross-reference agree. Playing's
+ * sections (2.1 to 2.3) keep their numbers here, and show none: links to them use the title alone.
  */
 export interface Section {
   id: string;
@@ -36,7 +37,7 @@ export const GUIDE: GuidePart[] = [
     sections: [
       { id: 'trim', number: '2.1', title: 'Set TRIM in your headphones', short: 'Set TRIM' },
       { id: 'meters', number: '2.2', title: 'Read the right meter', short: 'The meters' },
-      { id: 'knobs', number: '2.3', title: 'Whose knobs are whose', short: 'Whose knobs' },
+      { id: 'knobs', number: '2.3', title: 'Whose controls' },
       { id: 'blends', number: '2.4', title: 'Keep the MASTER meters’ top orange dark in a blend', short: 'Blends' },
       { id: 'check', number: '2.5', title: 'Meter check' },
       { id: 'myths', number: '2.6', title: 'What people say about the red', short: 'What people say' },
@@ -96,6 +97,33 @@ export const GUIDE_TABS = GUIDE.map((p) => ({
   href: `#${p.id}`,
   target: p.id,
 }));
+
+/** Learning stays together; the operational instructions remain on Playing. */
+export const LEARNING: GuidePart[] = GUIDE.map((part) =>
+  part.id === 'playing'
+    ? {
+        ...part,
+        id: 'practice',
+        title: 'Practise a blend',
+        tab: 'Practise',
+        sections: part.sections.filter((s) => ['blends', 'check', 'myths'].includes(s.id)),
+      }
+    : part,
+);
+export const LEARNING_TABS = LEARNING.map((p) => ({
+  code: p.number,
+  label: p.tab,
+  title: p.title,
+  href: `#${p.id}`,
+  target: p.id,
+}));
+
+const PRACTICAL = new Set(['playing', 'trim', 'meters', 'knobs', 'blends', 'yours', 'crews']);
+/** A canonical address for shared references. Historic section numbers are not reused. */
+export function sectionPath(anchor: string): string {
+  const id = anchor.replace(/^#/, '');
+  return `${PRACTICAL.has(id) ? '/' : '/learn/'}#${id}`;
+}
 
 const all = GUIDE.flatMap((p) => [p, ...p.sections]);
 

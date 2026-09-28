@@ -72,7 +72,7 @@ export interface Summary {
   confidentMisses: number[];
 }
 
-/** Score the answered rounds. Unanswered rounds count as missed. */
+/** Score only predictions; revealing without answering is not a failed prediction. */
 export function summarise(rounds: readonly Round[], answers: readonly Answer[]): Summary {
   let spotted = 0;
   const confidentMisses: number[] = [];
@@ -81,7 +81,7 @@ export function summarise(rounds: readonly Round[], answers: readonly Answer[]):
     if (isSpotted(round, answer)) spotted++;
     else if (answer.pick && answer.sure === 'certain') confidentMisses.push(i);
   });
-  return { spotted, total: rounds.length, confidentMisses };
+  return { spotted, total: rounds.filter((_, i) => answers[i]?.pick).length, confidentMisses };
 }
 
 export interface Versions {

@@ -5,8 +5,8 @@
  * House style for every message: short enough to read on one phone screen (90 words or fewer), a
  * bold first line, the link last, and plain statements, with "If …" for a condition rather than a
  * question and its answer. The DJ briefing carries the three DJ lines word for word as the "Know by
- * heart" boxes set them, notes and all, and the crew's check the doors checklist, so neither can
- * drift from the pages or the printed cards. Nothing here promises a DJ their recording: every set
+ * heart" boxes set them, notes and all. The crew's message names the Before doors checklist and
+ * links to it, so neither can drift from the pages or the printed cards. Nothing here promises a DJ their recording: every set
  * is recorded, and that is all it says.
  */
 
@@ -42,7 +42,7 @@ export const MAX_WORDS = 90;
 export const GUIDE_PATH = `/#${section('trim').id}`;
 
 /** The meter check's heading in the guide, so the link lands on its title, not its first question. */
-export const REVIEW_PATH = `/#${section('check').id}`;
+export const REVIEW_PATH = `/learn/#${section('check').id}`;
 
 /** The doors checklist on the night page. */
 export const DOORS_PATH = `/night/#${CHECKLISTS.doors.anchor}`;
@@ -57,11 +57,6 @@ export const NAME_BLANK = '[name]';
  */
 export function ruleLine({ challenge, response, note }: Rule): string {
   return `- ${challenge}: ${response}. ${note}`;
-}
-
-/** The doors checklist as chat bullets: the control, then the state it should be in. */
-function doorsLines(): string[] {
-  return CHECKLISTS.doors.items.map(({ check, target }) => `- ${check}: ${target}`);
 }
 
 /** A small count in words, as a sentence would say it: "four questions". */
@@ -84,13 +79,14 @@ export function chatMessages(link: LinkTo): ChatMessage[] {
     },
     {
       id: 'crew-setup',
-      title: 'Crew doors check',
-      when: 'To the crew, before the doors open.',
+      title: 'Crew before doors',
+      when: 'To the crew, before the night.',
       text: [
-        // Titled as its laminated card is, code first: *C1 Doors open*.
+        // Titled as its laminated card is, code first: *C1 Before doors*.
         `*${doors.code} ${doors.title}*`,
-        ...doorsLines(),
-        'Reply “done”.',
+        'Save the guide for offline use before you leave home.',
+        'At the event, build the table, connect the rack and the decks, and set the levels by the meters. Start the first set’s file and note the DJ’s name and start time.',
+        'Reply “done” when the first set is recording.',
         `Checklist: ${link(DOORS_PATH)}`,
       ].join('\n'),
     },

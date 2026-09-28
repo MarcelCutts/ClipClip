@@ -64,7 +64,7 @@ describe('chat messages', () => {
 
   it.each(messages)('$title links into the new site: the guide or the night page', ({ text }) => {
     expect(text).not.toMatch(/\/(dj|crew|lab|why)\//);
-    expect(text).toMatch(new RegExp(`${BASE}/(#[a-z-]+|night/#[a-z-]+)$`));
+    expect(text).toMatch(new RegExp(`${BASE}/(#[a-z-]+|night/#[a-z-]+|learn/#[a-z-]+)$`));
   });
 
   it('says things plainly: no question-and-answer lead-ins', () => {
@@ -81,7 +81,7 @@ describe('chat messages', () => {
       expect(briefing.split('\n')).toContain(ruleLine(rule));
     }
     expect(DJ_RULES).toHaveLength(3);
-    expect(briefing).toMatch(/MASTER LEVEL: leave it on the REC mark\./);
+    expect(briefing).toMatch(/MASTER LEVEL: leave it as you find it\./);
     expect(briefing.endsWith(`${BASE}${GUIDE_PATH}`)).toBe(true);
     expect(GUIDE_PATH).toBe('/#trim');
   });
@@ -101,9 +101,15 @@ describe('chat messages', () => {
 
   it('builds the crew’s check from the doors checklist, so the two cannot disagree', () => {
     const check = textOf('crew-setup');
-    const bullets = check.split('\n').filter((line) => line.startsWith('- '));
-    expect(bullets).toEqual(CHECKLISTS.doors.items.map((i) => `- ${i.check}: ${i.target}`));
-    // Titled as its laminated card is: *C1 Doors open*.
+    expect(check).toContain('build the table');
+    expect(check).toContain('levels by the meters');
+    // The guide is saved at home, where there is a signal, and "done" answers the checklist.
+    expect(check.split('\n')[1]).toBe('Save the guide for offline use before you leave home.');
+    expect(check).toContain('Reply “done” when the first set is recording.');
+    // Nobody can listen at the event, so the message asks for no test recording.
+    expect(check).not.toMatch(/test recording/);
+    expect(check).toContain('first set');
+    // Titled as its laminated card is: *C1 Before doors*.
     expect(check.split('\n')[0]).toBe(`*${CHECKLISTS.doors.code} ${CHECKLISTS.doors.title}*`);
     expect(check.endsWith(`${BASE}${DOORS_PATH}`)).toBe(true);
     expect(DOORS_PATH).toBe('/night/#doors');
@@ -112,7 +118,7 @@ describe('chat messages', () => {
   it('sends the reminder to the meter check’s heading, with its number of questions', () => {
     const reminder = textOf('review');
     expect(reminder).toContain(`${BASE}${REVIEW_PATH}`);
-    expect(REVIEW_PATH).toBe('/#check');
+    expect(REVIEW_PATH).toBe('/learn/#check');
     expect(reminder).toMatch(/the meter check/);
     expect(CARDS).toHaveLength(4);
     expect(reminder).toContain('four questions');

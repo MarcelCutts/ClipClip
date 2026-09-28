@@ -5,12 +5,10 @@ const here = Astro.url.pathname.replace(/\/+$/, '');
 const isCurrent = (path: string) => here === href(path).replace(/\/+$/, '');
 // The guide's own title is the site's name, so on the guide the header doesn't repeat it.
 const home = isCurrent('/');
-// The guide teaches; the other three are tools for doing the job. "Crew" is the night page, so a DJ
-// scanning the header can see it isn't theirs.
+// Main entrances are practical tasks. Learning and reference have contextual links.
 const links = [
-  { path: '/', label: 'Guide' },
+  { path: '/', label: 'Playing' },
   { path: '/night/', label: 'Crew' },
-  { path: '/setup/', label: 'Setting up' },
   { path: '/print/', label: 'Print kit' },
 ];
 ---
@@ -54,7 +52,7 @@ const links = [
     text-decoration: none;
   }
 
-  /* All four on one line from a 360px phone up. */
+  /* The three task entrances stay readable on narrow phones. */
   ul {
     display: flex;
     flex-wrap: wrap;

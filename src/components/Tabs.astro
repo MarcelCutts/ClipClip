@@ -154,29 +154,19 @@ const { label, tabs, rail = false, ...attrs } = Astro.props;
     border-radius: 0;
   }
 
-  /* Narrow phones: a size down, so "Something’s" still fits on its line. */
   @media (max-width: 24rem) {
-    .label {
-      font-size: 0.75rem;
-    }
-  }
-
-  /* The narrowest screens, and 400% zoom: codes only, as a printed thumb tab has, so the strip
-     stays short. Screen readers still hear each tab's name. */
-  @media (max-width: 21.99rem) {
-    .label {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-      white-space: nowrap;
-    }
+    ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .tab { flex-direction: row; gap: 0.4rem; padding: 0.4rem; }
+    .label { font-size: var(--text-sm); }
   }
 
   /* Before the script measures it, and without JavaScript: the strip's height with one-line labels. */
   :global(:root:has([data-tab-strip])) {
     --sticky-top: 3.5rem;
+  }
+
+  @media (max-width: 24rem) {
+    :global(:root:has([data-tab-strip])) { --sticky-top: 6.75rem; }
   }
 
   @media (min-width: 80rem) {

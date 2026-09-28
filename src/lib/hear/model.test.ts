@@ -212,7 +212,7 @@ describe('scoring', () => {
     expect(summarise(rounds, answers)).toEqual({ spotted: 1, total: 3, confidentMisses: [0, 2] });
   });
 
-  it('treats unanswered rounds as missed, not confidently wrong', () => {
-    expect(summarise(rounds, [EMPTY_ANSWER])).toEqual({ spotted: 0, total: 3, confidentMisses: [] });
+  it('does not score revealed or unanswered rounds', () => {
+    expect(summarise(rounds, [EMPTY_ANSWER])).toEqual({ spotted: 0, total: 0, confidentMisses: [] });
   });
 });

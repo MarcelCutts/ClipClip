@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { KICKS_TOGETHER_DB, TARGET_PEAK_DB } from '../model';
 import { DJ_RULES } from '../rules';
 import { section } from '../sections';
-import { MASTER_TAG, MONITOR_TAG, REC_TAG, SHORT_TAGS } from '../tags';
 import { litCount, METER_SEGMENTS, zoneFor } from '../xdj';
 import {
   type Answer,
@@ -74,11 +73,12 @@ describe('the cards', () => {
     }
   });
 
-  it('link only to the Part 2 sections that teach the idea, named as the index names them', () => {
+  it('link only to the sections of Playing that teach the idea, named as their headings name them', () => {
     for (const c of CARDS) {
       expect(TAUGHT_AT.has(c.learn.path), c.learn.path).toBe(true);
-      const { number, title } = section(c.learn.path.split('#')[1] ?? '');
-      expect(c.learn.text).toBe(`${number} ${title}`);
+      // Playing's headings carry no numbers, so the link has none to cite.
+      expect(c.learn.text).toBe(section(c.learn.path.split('#')[1] ?? '').title);
+      expect(c.learn.text).not.toMatch(/^\d/);
     }
   });
 
@@ -193,23 +193,22 @@ describe('the volume cards agree with the knob tags', () => {
       expect(choice(id, 'channels')?.feedback).toMatch(/^Louder channels drive the MASTER meters towards the red\. /);
     }
     expect(choice('room', 'master')?.feedback).toBe(choice('monitor', 'master')?.feedback);
-    // MASTER LEVEL stays on its REC mark: it sets the speakers and the recording.
-    expect(choice('room', 'master')?.feedback).toContain(`stays on its ${REC_TAG.name} mark`);
-    expect(choice('room', 'master')?.feedback).toMatch(/speakers and the recording/);
+    // The DJ box's own words for MASTER LEVEL, and why: it sets the speakers and the recording.
+    expect(choice('room', 'master')?.feedback).toBe(
+      'Leave MASTER LEVEL as you find it. It sets the speakers and the recording together.',
+    );
+    // The gear carries no marks or tags, so no card names one.
+    expect(CARDS.flatMap(copyOf).join(' ')).not.toMatch(/\bmarks?\b|\btags?\b|\btape\b/i);
   });
 
-  it('shows BOOTH MONITOR with the tag the print kit puts beside it', () => {
+  it('shows BOOTH MONITOR as it is on the mixer, with no tag beside it', () => {
     const monitor = card('monitor');
-    expect(MONITOR_TAG.owner).toBe('yours');
-    expect(MONITOR_TAG.where).toMatch(/BOOTH MONITOR/);
-    expect(correctChoice(monitor).feedback).toContain(`${MONITOR_TAG.name} tag`);
-    expect(monitor.scene).toEqual({ kind: 'booth', tag: MONITOR_TAG });
+    expect(monitor.scene).toEqual({ kind: 'booth' });
+    expect(correctChoice(monitor).feedback).toBe('BOOTH MONITOR sets the booth monitors only. It is yours to turn.');
   });
 
-  it('says what the MASTER LEVEL tag printed on the same sheet says', () => {
-    expect(SHORT_TAGS).toContain(REC_TAG);
-    expect(REC_TAG.where).toMatch(/MASTER LEVEL/);
-    expect(MASTER_TAG.lines.at(-1)).toMatch(/ask the crew\.$/i);
+  it('says of MASTER LEVEL what the DJ box says', () => {
+    expect(DJ_RULES.find((r) => r.challenge === 'MASTER LEVEL')?.response).toBe('leave it as you find it');
   });
 });
 

@@ -23,7 +23,8 @@ test('ticks made before the checklist wakes up are kept', async ({ page }) => {
   // A fresh load: going from night/ to night/#doors would only change the hash, and the list is
   // already awake by then.
   await page.goto('about:blank');
-  await page.goto('night/#doors');
+  // WebKit may include this deliberately held module in its load event.
+  await page.goto('night/#doors', { waitUntil: 'domcontentloaded' });
   const boxes = page.locator('.checklist[data-list="doors"] input.box');
   await expect(island).toHaveAttribute('ssr', '');
   await boxes.nth(1).check();
@@ -34,7 +35,9 @@ test('ticks made before the checklist wakes up are kept', async ({ page }) => {
   await expect(boxes.nth(1)).toBeChecked();
   await expect(boxes.nth(3)).toBeChecked();
   await expect(page.locator('.checklist[data-list="doors"] .count')).toContainText('2 of');
-  const saved = await page.evaluate(() => localStorage.getItem('out-of-the-red:checklist:doors'));
+  const saved = await page.evaluate(() =>
+    localStorage.getItem(Object.keys(localStorage).find((key) => key.includes(':checklist:doors:')) ?? ''),
+  );
   expect(JSON.parse(saved ?? '{}').done).toHaveLength(2);
 });
 
@@ -50,7 +53,7 @@ test.describe('the night page', () => {
     const tabs = page.getByRole('navigation', { name: 'Checklists and drills' }).getByRole('link');
     // Each named as it reads, code first: "C1: Doors".
     const names = [
-      named('C1', 'Doors open'),
+      named('C1', 'Before doors'),
       named('C2', 'Changeover'),
       named('F', 'Something’s wrong'),
       named('C3', 'End of the night'),
@@ -89,17 +92,18 @@ test.describe('the night page', () => {
     // The step it landed on is outlined, so the eye finds it in either theme.
     await expect(step).toHaveCSS('outline-style', 'solid');
     await expect(step).toHaveCSS('outline-width', '3px');
-    // Before the recording is turned down, which may turn the room down too, the DJ is told, in these words.
+    // Before the recording is turned down, which turns the room down too, the DJ is told, in these words.
     await expect(step).toContainText(
-      'Say to the DJ: “The room may go quieter for a few seconds. Keep your levels as they are.”',
+      'Say to the DJ: “The room will go quieter until the amps are turned up. Keep your levels as they are.”',
     );
-    // One look at the tape and at MASTER ATT: a rig where T2 found MASTER ATT is not to be used goes straight to
-    // the last resort.
-    const look = page.locator('#fix-howler-red-step-3');
-    await expect(look).toContainText('Look at the REC tape, then at MASTER ATT in UTILITY.');
-    await expect(look).toContainText('Not used, on the REC tape');
+    // One knob, and no menu: MASTER LEVEL comes down until the light is green.
+    const down = page.locator('#fix-howler-red-step-3');
+    await expect(down).toContainText('MASTER LEVEL');
+    await expect(down).toContainText('down a little at a time, until the Howler’s LEVEL light blinks green');
+    await expect(drill).not.toContainText('MASTER ATT');
     // Every way through ends by looking at the Howler's light again.
-    await expect(page.locator('#fix-howler-red-step-6')).toContainText('Howler LEVEL light');
+    await expect(page.locator('#fix-howler-red-step-5')).toContainText('Howler LEVEL light');
+    await expect(page.locator('#fix-howler-red-step-6')).toHaveCount(0);
     await expect(nav.getByRole('link', { name: named('F', 'Something’s wrong') })).toHaveAttribute(
       'aria-current',
       'location',
@@ -126,20 +130,19 @@ test.describe('the night page', () => {
     await expect(rail).toBeVisible();
     const parts = rail.locator('.parts > li > a');
     await expect(parts).toHaveText([
-      /C1\s*Doors open/,
+      /C1\s*Before doors/,
       /C2\s*Changeover/,
       /F\s*Something’s wrong/,
       /C3\s*End of the night/,
-      /C4\s*Next day/,
     ]);
-    // In the booth's drills, F opens on its eight, each by its code; the next day holds the other three.
+    // F opens on the booth's eight drills, each by its code. The next day's two are with the recordings.
     const drills = rail.locator('.part[data-open] .subs a');
     await expect(drills).toHaveCount(8);
     // The built page keeps a space either side of a link's words.
     await expect(drills.first()).toHaveText(/^\s*F1 /);
     await expect(drills.last()).toHaveText(/^\s*F8 /);
     await expect(rail.getByRole('link', { name: /^F8 / })).toHaveAttribute('aria-current', 'location');
-    await expect(rail.locator('.subs a')).toHaveCount(11);
+    await expect(rail.locator('.subs a')).toHaveCount(8);
     // It stays in view under the tabs.
     const [box, tabs] = await Promise.all([
       rail.boundingBox(),

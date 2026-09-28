@@ -43,7 +43,7 @@ export const RANGES = {
   /** HI, MID and LOW with EQUALIZER CURVE on EQUALIZER in UTILITY (p. 32); the panel prints −26/−∞ … +6. */
   eq: { min: -26, max: 6 },
   // The output knobs: the panel prints them −∞ … 0. We take fully up as no gain; Pioneer gives no
-  // gain figure, and test T3 on /setup/ checks it on the unit.
+  // gain figure. The crew set MASTER LEVEL by the MASTER meters (C1), so no card leans on it.
   masterLevel: { min: Number.NEGATIVE_INFINITY, max: 0 },
   boothMonitor: { min: Number.NEGATIVE_INFINITY, max: 0 },
 } as const;

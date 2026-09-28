@@ -20,7 +20,7 @@ describe('the print kit’s revision', () => {
   it('reads every printed line, so a change to any of them moves the code', () => {
     const words = printedWords();
     const base = wordsCode(words);
-    for (const list of ['doors', 'changeover', 'after', 'setup'] as const)
+    for (const list of ['doors', 'changeover', 'after'] as const)
       for (const item of CHECKLISTS[list].items) expect(words).toContain(item.target);
     expect(wordsCode([...words.slice(0, -1), `${words.at(-1)}.`])).not.toBe(base);
   });

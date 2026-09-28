@@ -1,0 +1,190 @@
+---
+/**
+ * C1's drawings as one laminated card, to keep with the two C1 cards: the same strip and thumb tab
+ * (ChecklistCard.astro), and the five drawings in two columns, in the order C1 meets them. The
+ * drawings are the Crew page's own components, so a change to one changes both.
+ *
+ * The sheet is full: five drawings and their captions fill an A4 page, and the second column sets the
+ * size. At 63 mm wide a drawing's labels print at about 9 pt. Captions are sentences, and print at
+ * 10 pt like every sentence on the cards.
+ */
+import { CHECKLISTS } from '../../lib/checklists';
+import BoothFigure from '../figures/BoothFigure.astro';
+import MixerRearFigure from '../figures/MixerRearFigure.astro';
+import RackFrontFigure from '../figures/RackFrontFigure.astro';
+import RackRearFigure from '../figures/RackRearFigure.astro';
+import TableFigure from '../figures/TableFigure.astro';
+
+interface Props {
+  /** When the kit's words last changed, printed at its foot. */
+  revised: string;
+}
+
+const { revised } = Astro.props;
+const list = CHECKLISTS.doors;
+---
+
+<div class="card-frame">
+  <article class="qrh-card">
+    <div class="body">
+      <p class="strip">
+        <span><span class="code">{list.code}</span>{list.title} · drawings</span>
+      </p>
+      <div class="columns">
+        <div class="column">
+          <TableFigure anchor={false} />
+          <BoothFigure anchor={false} />
+        </div>
+        <div class="column">
+          <RackRearFigure anchor={false} />
+          <MixerRearFigure anchor={false} />
+          <RackFrontFigure anchor={false} />
+        </div>
+      </div>
+      <p class="revised">Revised {revised}</p>
+    </div>
+    <p class="tab" aria-hidden="true">{list.code}</p>
+  </article>
+</div>
+
+<style>
+  /* The frame, strip, foot and tab are ChecklistCard's, so the three C1 cards stack as one set. */
+  .card-frame {
+    container-type: inline-size;
+    width: 190mm;
+    max-width: 100%;
+  }
+
+  .qrh-card {
+    --mm: calc(100cqi / 190);
+    --pt: calc(var(--mm) * 0.3528);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) calc(var(--mm) * 12);
+    align-items: start;
+    font-family: var(--font-body);
+    line-height: 1.3;
+  }
+
+  @media screen {
+    .qrh-card {
+      --mm: max(100cqi / 190, 3px);
+    }
+  }
+
+  p {
+    margin: 0;
+  }
+
+  .body {
+    display: grid;
+    align-content: start;
+    gap: calc(var(--mm) * 1.5);
+    padding-bottom: calc(var(--mm) * 2.5);
+    border: 0.3mm dashed var(--cut, color-mix(in srgb, CanvasText 50%, Canvas));
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .body > :not(.strip) {
+    margin-inline: calc(var(--mm) * 6);
+  }
+
+  .strip {
+    padding: calc(var(--mm) * 2.4) calc(var(--mm) * 6) calc(var(--mm) * 2.2);
+    background: var(--strip);
+    box-shadow: inset 0 2px 0 var(--strip-edge);
+    color: var(--on-strip);
+    font-size: calc(var(--pt) * 15);
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .code {
+    margin-inline-end: 0.6em;
+  }
+
+  .columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: calc(var(--mm) * 8);
+    align-items: start;
+  }
+
+  .column {
+    display: grid;
+    gap: calc(var(--mm) * 2);
+    align-content: start;
+  }
+
+  /* On the card a drawing's caption is a sentence, at 10 pt. The drawing is as wide as the sheet's
+     height allows with five on it. */
+  .column :global(.fig) {
+    gap: calc(var(--mm) * 1.2);
+    padding-block: 0;
+  }
+
+  .column :global(.fig figcaption) {
+    gap: 0;
+    font-size: calc(var(--pt) * 10);
+    line-height: 1.3;
+  }
+
+  .column :global(.fig .fig-title),
+  .column :global(.fig .fig-note) {
+    font-size: inherit;
+    line-height: inherit;
+    color: CanvasText;
+  }
+
+  .column :global(.fig svg) {
+    width: calc(var(--mm) * 63);
+    max-width: 100%;
+  }
+
+  .revised {
+    font-size: calc(var(--pt) * 8);
+    color: color-mix(in srgb, CanvasText 75%, Canvas);
+  }
+
+  .tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: calc(var(--mm) * 20);
+    margin-top: calc(var(--mm) * 4);
+    border: 0.3mm dashed var(--cut, color-mix(in srgb, CanvasText 50%, Canvas));
+    border-left: 0;
+    background: var(--strip);
+    box-shadow: inset 0 2px 0 var(--strip-edge);
+    color: var(--on-strip);
+    font-size: calc(var(--pt) * 14);
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  /* A narrow preview: one column, as the Crew page shows them. */
+  @container (width < 36rem) {
+    .columns {
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: calc(var(--mm) * 3);
+    }
+  }
+
+  @media print {
+    .strip,
+    .tab {
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .strip,
+    .tab {
+      forced-color-adjust: none;
+      background: CanvasText;
+      box-shadow: none;
+      color: Canvas;
+    }
+  }
+</style>

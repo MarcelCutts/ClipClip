@@ -3,7 +3,7 @@
 <!-- The ten-second chat clip (public/media/turn-it-down.mp4, 1080×1080 drawn, 720×720 encoded), for people who
      won't open a link. It needs no sound. The cockpit display, with a lab panel as the site draws one: its scope,
      TRIM as a flat fader with the channel meter, and the recording's volume afterwards, as an editor would turn
-     it down. MASTER LEVEL is taped fully up at REC, so it never moves here. render.mjs asks for the dark theme, so
+     it down. MASTER LEVEL stays as soundcheck left it, so it never moves here. render.mjs asks for the dark theme, so
      tokens.css gives the night values, and calls window.frame(t) for each frame. Sizes are the site's scaled up
      for a phone screen showing the video small; radii and hairlines are the site's at the video's own 720 px. -->
 <link rel="stylesheet" href="/src/styles/tokens.css">
@@ -101,7 +101,7 @@ const gain = (db) => 10 ** (db / 20);
 // light (0), where the DJ rule puts a track's loudest part (src/lib/model.ts, TARGET_PEAK_DB.aim), and TRIM takes it
 // 4.5 dB past the ceiling. The tops are cut in the mixer, so they're in the recording. Then the recording is turned
 // down 12 dB afterwards, which puts the flat tops where the clean peaks were: quieter, still flat. MASTER LEVEL stays
-// taped fully up throughout, as it is on the night.
+// where it is throughout, as it does on the night.
 // The words say "past the ceiling", never "into the red": Pioneer only says red may distort.
 // Timeline (seconds): 0–2 clean, 2–4.5 TRIM up, 4.5–6 hold, 6–8.5 the recording turned down, then the tape goes on.
 const PUSH = { from: -12, to: 4.5 };

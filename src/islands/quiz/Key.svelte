@@ -5,7 +5,7 @@
    * score). The cards are printed things, not gear, so their keys wear the page's ink, not the
    * panels' rubber.
    */
-  import type { Snippet } from 'svelte';
+  import { onMount, type Snippet } from 'svelte';
 
   interface Props {
     onclick: () => void;
@@ -15,9 +15,11 @@
   }
 
   let { onclick, primary = false, children }: Props = $props();
+  let ready = $state(false);
+  onMount(() => { ready = true; });
 </script>
 
-<button type="button" class="key" class:primary={primary} {onclick}>
+<button type="button" class="key" class:primary={primary} disabled={!ready} {onclick}>
   {@render children()}
 </button>
 

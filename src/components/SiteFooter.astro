@@ -1,18 +1,22 @@
 ---
+import { REVISION } from '../lib/revision';
 import { href } from '../lib/url';
+import OfflineGuide from './OfflineGuide.astro';
 
 // Only the guide has demos, so only the guide's footer says what they are.
-const onGuide = Astro.url.pathname.replace(/\/+$/, '') === href('/').replace(/\/+$/, '');
+const onGuide = Astro.url.pathname.replace(/\/+$/, '') === href('/learn/').replace(/\/+$/, '');
 const links = [
-  { path: '/#sources', label: 'Sources' },
-  { path: '/night/', label: 'Crew' },
-  { path: '/setup/', label: 'Setting up' },
+  { path: '/learn/', label: 'Learn why and practise' },
+  { path: '/setup/', label: 'Rig reference' },
+  { path: '/recordings/', label: 'Recordings' },
+  { path: '/learn/#sources', label: 'Sources' },
   { path: '/print/', label: 'Print kit' },
 ];
 ---
 
 <footer class="site-footer flow">
   <div class="inner">
+    <OfflineGuide />
     <p>
       Made for the DJs and crew at our nights.{
         onGuide &&
@@ -24,6 +28,7 @@ const links = [
   <li><a href={href(l.path)}>{l.label}</a></li>
 ))}
     </ul>
+    <p>Printed cards: {REVISION}. <a href={href('/print/')}>Check or print the current kit</a>.</p>
   </div>
 </footer>
 

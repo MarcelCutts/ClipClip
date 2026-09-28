@@ -390,6 +390,13 @@
     display: revert;
   }
 
+  /* Modern browsers hide closed disclosures in this generated container too. */
+  @supports (content-visibility: visible) {
+    details::details-content {
+      content-visibility: visible;
+    }
+  }
+
   section,
   figure,
   .panel {

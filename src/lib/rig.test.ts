@@ -122,10 +122,6 @@ describe('the wiring table on the setup page', () => {
     expect(into('booth')).toBe('mix');
     expect(into('monitor')).toBe('boothOut');
   });
-
-  it('marks the parts crew tape on the real gear', () => {
-    expect(ALL.filter((id) => NODES[id].taped)).toEqual(['masterLevel', 'booth', 'amps']);
-  });
 });
 
 describe('the graph', () => {
@@ -267,10 +263,10 @@ describe('words', () => {
     expect(COPY.boothOut.text).toBe('BOOTH ATT, in UTILITY, also sets their level.');
   });
 
-  it('never states that MASTER ATT lowers MASTER 1 or MASTER 2: Pioneer does not say, and T2 finds out', () => {
+  it('never states that MASTER ATT lowers MASTER 1 or MASTER 2: Pioneer does not say', () => {
     // Pioneer: MASTER ATT "sets the master output attenuator" (manual p. 32), naming no socket.
     for (const id of ['master1', 'master2'] as const) {
-      expect(COPY[id].text).toBe('MASTER ATT may lower it too. Pioneer does not say (test T2).');
+      expect(COPY[id].text).toBe('MASTER ATT may lower it too. Pioneer does not say.');
     }
     // The drawing wires only what is published: MASTER LEVEL feeds both sockets.
     expect(controlsFor('master1')).toContain('masterLevel');

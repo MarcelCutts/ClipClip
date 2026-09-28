@@ -23,6 +23,8 @@ export default defineConfig({
       name: 'a11y-prefs',
       use: { ...devices['Desktop Chrome'], reducedMotion: 'reduce', forcedColors: 'active', colorScheme: 'dark' },
     },
+    // Optional local Safari-engine run. Normal CI only needs the Chromium installation.
+    ...(process.env.CROSS_BROWSER === '1' ? [{ name: 'webkit-phone', use: { ...devices['iPhone 13'] } }] : []),
   ],
   webServer: {
     // Run astro itself (node_modules/.bin is on the PATH under `pnpm test:e2e`), not through

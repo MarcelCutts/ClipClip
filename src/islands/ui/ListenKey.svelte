@@ -8,7 +8,7 @@
    * A minimum width keeps the key from jumping as the words change. Say what the sound is (it
    * starts quietly, it's matched for loudness) with aria-describedby, which lands on the button.
    */
-  import type { Snippet } from 'svelte';
+  import { onMount, type Snippet } from 'svelte';
   import type { HTMLButtonAttributes } from 'svelte/elements';
 
   interface Props extends Omit<HTMLButtonAttributes, 'children' | 'onclick' | 'type'> {
@@ -34,9 +34,11 @@
     element = $bindable(),
     ...rest
   }: Props = $props();
+  let ready = $state(false);
+  onMount(() => { ready = true; });
 </script>
 
-<button bind:this={element} type="button" {...rest} class="listen-key" class:on={playing} {onclick}>
+<button bind:this={element} type="button" {...rest} disabled={!ready || rest.disabled} class="listen-key" class:on={playing} {onclick}>
   <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
     {#if playing}
       <rect x="1.5" y="1.5" width="9" height="9" />

@@ -2,10 +2,21 @@ import { expect, test } from '@playwright/test';
 import { MOVED, PAGES, scrollThrough } from './pages';
 
 for (const { path, name } of PAGES) {
-  test(`${name} page loads cleanly`, async ({ page }) => {
+  test(`${name} page loads cleanly`, async ({ page, browserName }) => {
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
     page.on('console', (m) => {
+      // Playwright's macOS WebKit media controls emit these even for a bare <video controls>.
+      // They come from the browser's native UI, with no script URL; application errors still fail.
+      if (
+        browserName === 'webkit' &&
+        process.platform === 'darwin' &&
+        m.location().url === '' &&
+        /^Button failed to load, iconName = (invalid|pip|airplay)-placard, layoutTraits = \[MacOSLayoutTraits Inline\], src = blob:/.test(
+          m.text(),
+        )
+      )
+        return;
       if (m.type() === 'error') errors.push(m.text());
     });
     const response = await page.goto(path);
@@ -23,21 +34,31 @@ for (const { path, name } of PAGES) {
   });
 }
 
-test('internal links resolve under the base path', async ({ page, request }) => {
-  const seen = new Set<string>();
+test('internal pages and fragments resolve under the base path', async ({ page, request }) => {
+  const documents = new Map<string, string>();
   for (const { path } of PAGES) {
     await page.goto(path);
-    const hrefs = await page.$$eval('a[href]', (as) => as.map((a) => (a as HTMLAnchorElement).href));
-    for (const href of hrefs) {
-      const url = new URL(href);
-      if (url.origin !== new URL(page.url()).origin || seen.has(url.pathname)) continue;
-      seen.add(url.pathname);
-      const res = await request.get(url.pathname);
-      expect(res.status(), `${url.pathname} (linked from /${path})`).toBe(200);
+    const links = await page.$$eval('a[href]', (anchors) => anchors.map((a) => (a as HTMLAnchorElement).href));
+    for (const link of links) {
+      const url = new URL(link);
+      if (url.origin !== new URL(page.url()).origin) continue;
+      if (!documents.has(url.pathname)) {
+        const response = await request.get(url.pathname);
+        expect(response.status(), `${url.pathname} linked from ${path}`).toBe(200);
+        documents.set(
+          url.pathname,
+          response.headers()['content-type']?.includes('text/html') ? await response.text() : '',
+        );
+      }
+      const html = documents.get(url.pathname)!;
+      if (url.hash && html) {
+        expect(html, `${url.pathname}${url.hash} linked from ${path}`).toContain(
+          `id="${decodeURIComponent(url.hash.slice(1))}"`,
+        );
+      }
     }
   }
-  // Every page, at least, is linked from somewhere.
-  expect(seen.size).toBeGreaterThanOrEqual(PAGES.length);
+  expect(documents.size).toBeGreaterThanOrEqual(PAGES.length);
 });
 
 // Printed QR codes and old chat links point at the old pages: each forwards to the same section
@@ -61,7 +82,10 @@ test('the guide opens for DJs: one box of three lines, then the way to the crew 
   const box = page.locator('.kbh');
   await expect(box).toHaveCount(1);
   await expect(box.locator('.item')).toHaveCount(3);
-  await expect(page.locator('.opening').getByRole('link', { name: 'Crew' })).toHaveAttribute('href', /\/night\/$/);
+  await expect(page.locator('.other-route').getByRole('link', { name: 'Crew', exact: true })).toHaveAttribute(
+    'href',
+    /\/night\/$/,
+  );
   // The index lists the guide's own parts. The drills are on the crew page.
   await expect(page.locator('[data-toc] a[href*="night"]')).toHaveCount(0);
 });
@@ -70,18 +94,17 @@ test('the header names the pages the same way on every page that has it', async 
   for (const { path } of PAGES.filter((p) => p.name !== 'print')) {
     await page.goto(path);
     await expect(page.getByRole('navigation', { name: 'Site' }).getByRole('link')).toHaveText([
-      'Guide',
+      'Playing',
       'Crew',
-      'Setting up',
       'Print kit',
     ]);
   }
 });
 
-test('only the guide’s footer says what the demos are', async ({ page }) => {
-  await page.goto('');
+test('only the learning footer says what the demos are', async ({ page }) => {
+  await page.goto('learn/');
   await expect(page.locator('.site-footer')).toContainText('synthesised in your browser');
-  for (const path of ['night/', 'setup/', 'no-such-page/']) {
+  for (const path of ['', 'night/', 'setup/', 'recordings/', 'no-such-page/']) {
     await page.goto(path);
     await expect(page.locator('.site-footer')).not.toContainText('synthesised');
   }
@@ -101,7 +124,7 @@ test('unknown pages get the 404 page', async ({ page }) => {
 });
 
 test('glossary terms reveal their meaning on tap', async ({ page }) => {
-  await page.goto('');
+  await page.goto('learn/');
   const term = page.locator('button.term').first();
   await term.click();
   const pop = page.locator('.term-pop:popover-open');
@@ -113,8 +136,8 @@ test('glossary terms reveal their meaning on tap', async ({ page }) => {
 test.describe('glossary bubbles on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  // The night page is checklists and drills, with no terms to open.
-  for (const path of ['', 'setup/'] as const) {
+  // Crew and the rig reference are cards and drills, with no terms to open.
+  for (const path of ['learn/'] as const) {
     test(`open at full width, on screen, on /${path}`, async ({ page }) => {
       await page.goto(path);
       const terms = page.locator('button.term');

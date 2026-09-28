@@ -1,0 +1,72 @@
+---
+/**
+ * Figure: the front of the rack, which faces the crowd. On each GX7, from the left: the POWER switch,
+ * the channel 1 gain knob, the CLIP and SIG lights, and the channel 2 gain knob (QSC manual p.5; the
+ * owner's photograph). On the DriveRack, the screen, the wheel, and at the right the INPUT meters with
+ * their CLIP lights at the top (dbx manual p.5). Controls are drawn larger than life. The gain knobs
+ * point fully down, as the line under the drawing leaves them before the power goes on.
+ */
+import { FIGURES } from '../../lib/figures';
+import Fig from './Fig.astro';
+
+interface Props {
+  /** False where the drawing is not a link's target, as on the print kit's card. */
+  anchor?: boolean;
+}
+const { anchor = true } = Astro.props;
+const caption = FIGURES.rackFront;
+
+const amps = [
+  { y: 12, name: 'Top amp' },
+  { y: 186, name: 'Bottom amp' },
+];
+---
+
+<Fig id={anchor ? caption.anchor : undefined} title={caption.title} note={caption.note}>
+  <svg viewBox="0 0 300 286" role="img" aria-labelledby="fig-rack-front-title fig-rack-front-desc">
+    <title id="fig-rack-front-title">The front of the rack: switches, gain knobs and lights</title>
+    <desc id="fig-rack-front-desc">
+      The top amp and the bottom amp are alike. On each, the POWER switch is at the left, then a gain knob, the two
+      CLIP lights and a second gain knob. The DriveRack is between them. Its input CLIP lights are at the top of the
+      input meters, to the right of its screen and wheel.
+    </desc>
+    <rect class="is" x="4" y="4" width="292" height="278" rx="5"></rect>
+    {
+      amps.map((amp) => (
+        <g transform={`translate(0 ${amp.y})`}>
+          <rect class="is" x="10" y="0" width="280" height="88" rx="3" />
+          <text class="b" x="20" y="22">
+            {amp.name}
+          </text>
+          <rect class="do" x="38" y="34" width="20" height="30" rx="2" />
+          <text x="48" y="82" text-anchor="middle">
+            POWER
+          </text>
+          <circle class="do" cx="126" cy="48" r="17" />
+          <path class="arrow" d="M126 48L119 60" />
+          <text x="126" y="82" text-anchor="middle">
+            Gain
+          </text>
+          <circle class="see" cx="178" cy="40" r="4" />
+          <circle class="see" cx="194" cy="40" r="4" />
+          <text x="186" y="64" text-anchor="middle">
+            CLIP
+          </text>
+          <circle class="do" cx="246" cy="48" r="17" />
+          <path class="arrow" d="M246 48L239 60" />
+          <text x="246" y="82" text-anchor="middle">
+            Gain
+          </text>
+        </g>
+      ))
+    }
+    <rect class="is" x="10" y="106" width="280" height="74" rx="3"></rect>
+    <text class="b" x="20" y="128">DriveRack</text>
+    <rect class="is solid" x="20" y="138" width="78" height="32" rx="2"></rect>
+    <circle class="is solid" cx="122" cy="154" r="13"></circle>
+    <path class="is" d="M240 130v40M254 130v40"></path>
+    <rect class="see" x="236" y="120" width="8" height="8" rx="1"></rect>
+    <rect class="see" x="250" y="120" width="8" height="8" rx="1"></rect>
+    <text x="228" y="130" text-anchor="end">Input CLIP</text>
+  </svg>
+</Fig>

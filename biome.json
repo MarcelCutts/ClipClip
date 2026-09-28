@@ -10,9 +10,12 @@
       "**",
       "!!**/dist",
       "!!**/.astro",
+      "!!**/.claude/worktrees",
+      "!!**/.vscode",
       "!!**/playwright-report",
       "!!**/test-results",
-      "!scripts/media/*.html"
+      "!scripts/media/*.html",
+      "!docs/review/rack-rear.svg"
     ]
   },
   "formatter": {

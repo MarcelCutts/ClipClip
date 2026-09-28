@@ -1,0 +1,106 @@
+---
+import { href } from '../lib/url';
+---
+
+<div id="offline-guide" class="offline" data-offline data-base={href('/')} data-worker={href('/sw.js')} data-published={import.meta.env.PROD}>
+  <p><strong>Taking this guide to the night?</strong></p>
+  <p>Save it before leaving, then reopen it in airplane mode to check. The saved guide includes all pages, diagrams and demos. External manuals need a connection.</p>
+  <button type="button" data-save hidden>Save for offline use</button>
+  <p data-status role="status" aria-live="polite"></p>
+  <noscript><p>Turn on JavaScript to save the guide offline.</p></noscript>
+  <p>Keep a backup: <a href={href('/print/')}>print the kit</a> and save <a href={href('/night/')}>Crew</a> and <a href={href('/setup/')}>Rig reference</a> as PDFs. Your browser can remove saved website data.</p>
+</div>
+
+<script>
+  type Saved = { ready: boolean; version: string };
+  const panel = document.querySelector<HTMLElement>('[data-offline]');
+  const button = panel?.querySelector<HTMLButtonElement>('[data-save]');
+  const status = panel?.querySelector<HTMLElement>('[data-status]');
+  if (panel && button && status) {
+    let busy = false;
+    const base = panel.dataset.base ?? '/';
+    const workerURL = panel.dataset.worker ?? '/sw.js';
+    const say = (text: string) => { status.textContent = text; };
+    const ask = (worker: ServiceWorker | null, command = 'OFFLINE_STATUS'): Promise<Saved | null> => new Promise((resolve) => {
+      if (!worker) return resolve(null);
+      const channel = new MessageChannel();
+      const timeout = window.setTimeout(() => { channel.port1.close(); resolve(null); }, command === 'OFFLINE_REPAIR' ? 120000 : 8000);
+      channel.port1.onmessage = (event: MessageEvent<Saved>) => {
+        window.clearTimeout(timeout);
+        channel.port1.close();
+        resolve(event.data);
+      };
+      worker.postMessage(command, [channel.port2]);
+    });
+    const report = async (registration?: ServiceWorkerRegistration) => {
+      const reg = registration ?? await navigator.serviceWorker.getRegistration(base);
+      const [active, waiting] = await Promise.all([ask(reg?.active ?? null), ask(reg?.waiting ?? null)]);
+      if (waiting?.ready) {
+        say(`Update saved (${waiting.version}). Close all guide tabs and reopen between events to use it.${active?.ready ? ' Your current saved version remains available.' : ''}`);
+      } else if (active?.ready) {
+        say(`Saved on this device (${active.version}). Check it in airplane mode before leaving.`);
+      } else {
+        say('No complete offline copy found. Save while you have a connection.');
+      }
+      button.textContent = active?.ready || waiting?.ready ? 'Check for an update' : 'Save for offline use';
+      return Boolean(active?.ready || waiting?.ready);
+    };
+    const installed = (registration: ServiceWorkerRegistration): Promise<void> => new Promise((resolve, reject) => {
+      const worker = registration.installing;
+      if (!worker) return resolve();
+      const timeout = window.setTimeout(() => { worker.removeEventListener('statechange', changed); reject(new Error('Download timed out')); }, 120000);
+      const changed = () => {
+        if (worker.state !== 'installed' && worker.state !== 'activated' && worker.state !== 'redundant') return;
+        window.clearTimeout(timeout);
+        worker.removeEventListener('statechange', changed);
+        if (worker.state === 'redundant') reject(new Error('Download failed'));
+        else resolve();
+      };
+      worker.addEventListener('statechange', changed);
+      changed();
+    });
+    if (!('serviceWorker' in navigator) || !window.isSecureContext) {
+      say('Offline saving is unavailable in this browser. Use the PDF backup.');
+    } else if (panel.dataset.published !== 'true') {
+      say('Offline saving is available on the published guide.');
+    } else {
+      button.hidden = false;
+      void report().catch(() => say('Could not check saved data. Use the PDF backup if saving fails.'));
+      button.addEventListener('click', async () => {
+        busy = true;
+        button.disabled = true;
+        say('Saving all pages and their files… Keep this page open.');
+        try {
+          let reg = await navigator.serviceWorker.getRegistration(base);
+          if (reg) await reg.update();
+          else reg = await navigator.serviceWorker.register(workerURL, { scope: base, updateViaCache: 'none' });
+          await installed(reg);
+          // The first install may be between installed and activated; ready resolves on activation.
+          if (!reg.active) await navigator.serviceWorker.ready;
+          const ready = await ask(reg.waiting ?? reg.active);
+          if (!ready?.ready) await ask(reg.waiting ?? reg.active, 'OFFLINE_REPAIR');
+          if (!(await report(reg))) throw new Error('Package incomplete');
+        } catch {
+          const reg = await navigator.serviceWorker.getRegistration(base).catch(() => undefined);
+          const old = await ask(reg?.active ?? null).catch(() => null);
+          say(old?.ready
+            ? 'The update could not be saved. Your previous complete guide is still available. Try again while connected.'
+            : 'The guide was not fully saved. Reconnect and try again, or use the PDF backup.');
+        } finally {
+          busy = false;
+          button.disabled = false;
+        }
+      });
+      window.addEventListener('pageshow', () => { if (!busy) void report().catch(() => {}); });
+      window.addEventListener('focus', () => { if (!busy) void report().catch(() => {}); });
+    }
+  }
+</script>
+
+<style>
+  .offline { display: grid; gap: 0.65rem; min-width: 0; padding-bottom: 1rem; border-bottom: 1px solid var(--rule); }
+  button { width: fit-content; min-height: 44px; padding: 0.6em 0.9em; border: 1px solid var(--action); border-radius: 0.2rem; color: var(--action); background: var(--paper); font: inherit; font-weight: 700; cursor: pointer; }
+  button:disabled { opacity: 0.65; cursor: wait; }
+  [data-status]:empty { display: none; }
+  @media print { .offline { display: none; } }
+</style>

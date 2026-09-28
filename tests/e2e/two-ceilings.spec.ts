@@ -6,7 +6,7 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
 // the Howler light never blinks for longer than WCAG 2.2.2 allows.
 
 async function openLab(page: Page): Promise<Locator> {
-  await page.goto('#two-ceilings');
+  await page.goto('learn/#two-ceilings');
   const lab = page.locator('.two-ceilings');
   await lab.scrollIntoViewIfNeeded();
   // Islands hydrate as they scroll into view, and Astro drops `ssr` once this one has.
@@ -39,7 +39,7 @@ test('step 1 shows its result before moving on, in view on a phone', async ({ pa
   await expect(lab.getByText('The crunch is still there', { exact: true })).toBeInViewport();
   await expect(lab.getByText(/^The LEVEL light stayed green\./)).toBeVisible();
   await expect(step).toContainText('Step 1 of 3');
-  await expect(key).toHaveText('Next');
+  await expect(key).toHaveCount(0);
   // Only one lit key at a time: the feedback box's.
   await expect(lab.locator('.key.primary')).toHaveCount(1);
   await expect(lab.getByRole('button', { name: 'Next: turn the channel down' })).toBeFocused();

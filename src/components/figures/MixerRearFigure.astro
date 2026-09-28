@@ -1,0 +1,75 @@
+---
+/**
+ * Figure: the back of the XDJ-RX2, and the Howler's IN end. Pioneer's rear panel from behind, left to
+ * right: MASTER1 (XLR, R then L), MASTER2 (RCA, L over R), BOOTH (TRS, R then L), a security slot, USB,
+ * the CH2, CH1 and AUX inputs (all RCA), SIGNAL GND, MIC2, MIC1 and AC IN (Operating Instructions
+ * p.10). The strip shows where the outputs are; below it they are drawn larger, each with where its
+ * lead goes. Howler's manual draws its IN end with the USB-C socket, the two IN sockets and the mode
+ * switch, WAV at the left; the OUT sockets are at the other end.
+ */
+import { FIGURES } from '../../lib/figures';
+import Fig from './Fig.astro';
+
+interface Props {
+  /** False where the drawing is not a link's target, as on the print kit's card. */
+  anchor?: boolean;
+}
+const { anchor = true } = Astro.props;
+const caption = FIGURES.mixerRear;
+
+// Along the panel, as a share of its width (measured on Pioneer's drawing).
+const PANEL = { x: 6, width: 288 };
+const at = (share: number) => PANEL.x + share * PANEL.width;
+const inputs = [0.285, 0.355, 0.385, 0.455, 0.485, 0.517, 0.6, 0.7, 0.77].map(at);
+---
+
+<Fig id={anchor ? caption.anchor : undefined} title={caption.title} note={caption.note}>
+  <svg viewBox="0 0 300 318" role="img" aria-labelledby="fig-mixer-title fig-mixer-desc">
+    <title id="fig-mixer-title">The back of the XDJ-RX2 and the Howler’s IN end</title>
+    <desc id="fig-mixer-desc">
+      Seen from behind, the outputs are at the left end of the mixer and the power inlet is at the right end. From the
+      left: MASTER 1, two large sockets, for the two leads to the DriveRack. MASTER 2, two small sockets one above the
+      other, for the lead to the Howler’s IN. BOOTH, two sockets, for the leads to the booth monitors. On the Howler,
+      the IN sockets are at the end with the USB-C socket and the switch. The switch is on WAV, at the left.
+    </desc>
+
+    <!-- Where they are on the panel -->
+    <rect class="is solid" x="6" y="8" width="288" height="30" rx="3"></rect>
+    {inputs.map((x) => <circle class="is" cx={x} cy="23" r="3" />)}
+    <rect class="is" x={at(0.94) - 9} y="17" width="18" height="12" rx="2"></rect>
+    <rect class="do" x="10" y="12" width="66" height="22" rx="3"></rect>
+    <text class="b" x="10" y="56">Outputs</text>
+    <text class="m" x="160" y="56" text-anchor="middle">Inputs</text>
+    <text class="m" x="294" y="56" text-anchor="end">Power</text>
+
+    <!-- The outputs, larger -->
+    <circle class="do" cx="34" cy="98" r="15"></circle>
+    <circle class="do" cx="74" cy="98" r="15"></circle>
+    <text class="b" x="54" y="134" text-anchor="middle">MASTER 1</text>
+    <text x="54" y="154" text-anchor="middle">DriveRack</text>
+
+    <circle class="do" cx="150" cy="86" r="8"></circle>
+    <circle class="do" cx="150" cy="108" r="8"></circle>
+    <text class="b" x="150" y="134" text-anchor="middle">MASTER 2</text>
+    <text x="150" y="154" text-anchor="middle">Howler IN</text>
+
+    <circle class="do" cx="230" cy="98" r="10"></circle>
+    <circle class="do" cx="260" cy="98" r="10"></circle>
+    <text class="b" x="245" y="134" text-anchor="middle">BOOTH</text>
+    <text x="245" y="154" text-anchor="middle">Monitors</text>
+
+    <!-- The Howler's IN end -->
+    <text class="b" x="6" y="196">The Howler’s IN end</text>
+    <rect class="is solid" x="30" y="208" width="240" height="84" rx="6"></rect>
+    <rect class="is" x="46" y="252" width="26" height="9" rx="4.500"></rect>
+    <text class="m" x="59" y="240" text-anchor="middle">USB-C</text>
+    <circle class="do" cx="118" cy="256" r="11"></circle>
+    <circle class="do" cx="156" cy="256" r="11"></circle>
+    <text class="b" x="137" y="234" text-anchor="middle">IN</text>
+    <!-- The mode switch: WAV, MP3, STREAM. WAV is at the left. -->
+    <rect class="is" x="196" y="262" width="56" height="12" rx="2"></rect>
+    <rect class="do-fill" x="198" y="264" width="18" height="8" rx="1"></rect>
+    <text class="b" x="207" y="252" text-anchor="middle">WAV</text>
+    <text class="m" x="150" y="312" text-anchor="middle">The OUT sockets are at the other end.</text>
+  </svg>
+</Fig>
