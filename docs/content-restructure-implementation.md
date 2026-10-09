@@ -341,7 +341,7 @@ Two reports, working papers kept outside the repository with every quotation and
 - The lab asks before it shows, twice, and each question sits where its subject is. "What colour is the Howler’s LEVEL light?" takes the light’s place. "Can the recording level remove the crunch?" sits with the recording level, which goes live once it is answered.
 - The answer says back what was said, then what is so, then the cause, in three lines at most: "You said red. It is green", then "The light is right. The level into the Howler is 3 dB under its ceiling."
 - The light’s reading says what it measures: "Input 3 dB under its ceiling". While the mixer cuts, it adds "It does not show crunch made before it."
-- The file says where its crunch was made and how much was cut: "Made in the mixer. Tops cut by 6 dB." The number stays put while the recording level moves.
+- The file says where its crunch was made and how much was cut: "Made in the mixer. Tops cut by 6 dB." The mixer’s share stays put while the recording level moves. Turned up until the flat tops pass the Howler’s ceiling, the Howler’s cut is added: "Made in the mixer and at the Howler. Tops cut by 12 dB in all."
 - Crunch is Clean, Tips cut or Crunchy. "Some crunch" and "Heavy crunch" are gone.
 - The Howler’s screen draws the wave that left the mixer, faint, behind its own: the same flat tops, made smaller. It marks only what its own ceiling cut, which cleared the tangle of lines it had.
 - Each try in step 2 is answered at once ("You turned it down 6 dB. The flat tops are smaller. They are still flat."). The step ends after two tries, or 20 seconds after the first.
