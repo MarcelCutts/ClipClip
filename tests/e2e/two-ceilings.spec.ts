@@ -79,6 +79,10 @@ test('the lab asks what colour the light is before it shows it', async ({ page }
 
   await expect(step).toContainText('Step 1 of 4');
   await expect(howler.getByRole('group', { name: 'What colour is the Howler’s LEVEL light?' })).toBeVisible();
+  // The keys carry the light's round shape, unlit: no LED colour lights before anything is shown.
+  const lamps = howler.locator('.question .lamp');
+  await expect(lamps).toHaveCount(2);
+  for (const lamp of await lamps.all()) await expect(lamp).toHaveCSS('box-shadow', 'none');
   // The file is crunchy, and the reader can see it and hear it before answering.
   await expect(lab.locator('[data-crunch]')).toHaveText('Crunchy');
   // Nothing gives the answer away: no light, no wave at the Howler, no word on its ceiling.

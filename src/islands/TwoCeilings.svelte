@@ -346,7 +346,7 @@
   const speakChannels = (v: number) => `${speakDb(v)}, ${describeLevel(v)} on the channel meter`;
   const speakKnob = (v: number) => (v === 0 ? '0 decibels, fully up' : speakDb(v));
 
-  /** Each question's answers. The light's show the light as it would be: round, and lit in its colour. */
+  /** Each question's answers. The light's carry a round lamp, unlit, in its colour's dark lens. */
   const LIGHT_CHOICES = (['green', 'red'] as const).map((c) => ({
     value: c,
     label: copy.QUESTIONS.light.choices[c],
@@ -802,7 +802,9 @@
     outline-offset: 2px;
   }
 
-  /* Round, like the light on the recorder itself. */
+  /* Round, like the light on the recorder itself, and unlit: a lit LED colour only ever means a
+     signal state, and nothing has been shown yet. Each keeps a hint of its colour through the
+     lens, as the meters' dark LEDs do. */
   .lamp {
     flex: none;
     width: 0.8rem;
@@ -811,13 +813,15 @@
   }
 
   .lamp[data-light='green'] {
-    background: var(--led-g);
-    box-shadow: 0 0 0.5rem var(--led-g);
+    background: var(--led-g-off);
+    outline: 1px solid var(--led-g-rim);
+    outline-offset: -1px;
   }
 
   .lamp[data-light='red'] {
-    background: var(--led-r);
-    box-shadow: 0 0 0.5rem var(--led-r);
+    background: var(--led-r-off);
+    outline: 1px solid var(--led-r-rim);
+    outline-offset: -1px;
   }
 
   .level,
@@ -1122,8 +1126,8 @@
 
     .lamp[data-light] {
       forced-color-adjust: none;
-      background: CanvasText;
-      box-shadow: none;
+      background: Canvas;
+      outline: 1px solid CanvasText;
     }
 
     .sw-music {
