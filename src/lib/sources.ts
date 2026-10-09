@@ -110,10 +110,16 @@ export const SOURCES: SourceGroup[] = [
         note: 'That the MK1’s file dates are not set correctly, so split files go in order by name.',
       },
       {
-        title: 'Audacity manual: Amplify and the View menu',
+        title: 'Audacity 3 manual: Amplify and the View menu',
         publisher: 'Audacity',
         url: 'https://manual.audacityteam.org/man/amplify.html',
-        note: 'Reading a file’s peak, where Amplify and Normalize sit in the Effect menu, and Show Clipping, which is off until you turn it on. Audacity 4 keeps all three in the same menus.',
+        note: 'Reading a file’s peak, where Amplify and Normalize sit in the Effect menu, and Show Clipping, which is off until you turn it on.',
+      },
+      {
+        title: 'Audacity 4 manual',
+        publisher: 'Audacity',
+        url: 'https://www.audacityteam.org/manual',
+        note: 'Amplify and Normalize remain under Volume and compression in the Effect menu; Show clipping in waveform remains in View. Audacity 4 does not ship Find Clipping.',
       },
       {
         title: 'XDJ-RX3 Instruction Manual',

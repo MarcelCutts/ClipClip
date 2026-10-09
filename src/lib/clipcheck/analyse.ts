@@ -21,7 +21,7 @@ import { TARGET } from '../model';
 export interface ClipCheckOptions {
   /**
    * Identical samples in a row, at the file's peak, that count as clipping. Audacity 3's Find Clipping
-   * also wants 3 in a row, but only at full scale, where a copy turned down has none. Audacity 4
+   * defaults to 3 in a row, but only at full scale, where a copy turned down has none. Audacity 4
    * does not ship it (its manual, October 2026).
    */
   runSamples?: number;

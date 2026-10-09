@@ -474,12 +474,12 @@ describe('C4: the next day’s work on the recordings', () => {
   it('normalises to −2 dB on the samples, and says why, with SoundCloud’s words', () => {
     const normalise = itemOf('files', 'normalise');
     expect(normalise.target).toBe('normalised to −2 dB');
-    // Audacity sets the sample peak and cannot show the true peak. On 10 released tracks and their blends,
+    // Audacity's built-in tools set the sample peak and cannot show the true peak. On 10 tracks and their blends,
     // −2 dB put the true peak at −1 dB or lower in 54 of 55: SoundCloud's ask at −14 LUFS.
     expect(sentences(normalise.note ?? '')).toEqual([
       // Audacity's own name for the effect, as it prints it, and where both 3.7 and 4 put it.
       'Audacity’s Normalize, in the Effect menu under Volume and Compression, sets the sample peak.',
-      'The true peak, between samples, can sit up to about 1 dB higher, and Audacity does not show it.',
+      'The true peak, between samples, can sit higher, and Audacity’s built-in tools do not show it.',
       'At −2 dB, a set usually meets SoundCloud’s ask for a master at −14 LUFS: true peaks below −1 dB.',
     ]);
     expect(allCopy.join(' ')).not.toMatch(/−1 dB true peak/);

@@ -493,9 +493,11 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
       {
         // Clipped in the mixer but not at the Howler: the flat tops sit below the file's full scale, where a 0 dBFS
         // marker never looks. Audacity manual, View menu: Show Clipping in Waveform is off by default, and marks a
-        // sample that "touches or exceeds 0 dB". Audacity 4 keeps it in the View menu, off by default, printed
-        // "Show clipping in waveform" (its manual, October 2026); the card keeps 3.7's capitals. After the XDJ's and the Howler's converters, a clipped top ripples
-        // and leans (Esqueda, Bilbao and Välimäki, 2016), so it is rarely quite flat.
+        // sample that "touches or exceeds 0 dB". Audacity 4 prints "Show clipping in waveform" in View (its manual,
+        // October 2026); the card keeps 3.7's capitals. Its off-by-default setting is confirmed in the 4.0.1 source:
+        // src/projectscene/internal/projectsceneconfiguration.cpp, DEFAULT_CLIPPING_IN_WAVEFORM_VISIBILITY.
+        // After the XDJ's and the Howler's converters, a clipped top ripples and leans (Esqueda, Bilbao and
+        // Välimäki, 2016), so it is rarely quite flat.
         id: 'flat-tops',
         check: 'Loudest blends, zoomed in',
         target: 'no flat tops, at any height',
@@ -505,9 +507,10 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
       {
         // Audacity manual, Amplify: "If you take the negative of the value shown in the Amplification (dB) box, this
         // will give you the current peak amplitude of the selection." Audacity 3.7: "Effect > Volume and Compression
-        // > Amplify"; Audacity 4: "Effect → Volume and compression → Amplify" (both manuals, October 2026). A peak at the top of the file is where the
-        // Howler's input clips (the guide's 4.4 assumes it; Howler publishes no limit). Nobody sets the recording
-        // to a band now, and a quiet recording is fine (4.3), so the line asks only for a peak below the top.
+        // > Amplify"; Audacity 4: "Effect → Volume and compression → Amplify" (both manuals, October 2026).
+        // A peak at the top of the file is where the Howler's input clips (the guide's 4.4 assumes it; Howler
+        // publishes no limit). Nobody sets the recording to a band now, and a quiet recording is fine (4.3),
+        // so the line asks only for a peak below the top.
         id: 'peak',
         check: 'Each set’s loudest peak',
         target: `below ${FILE_TOP}`,
@@ -515,16 +518,16 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
         drill: { if: 'If the box shows 0', id: 'crunch', code: 'F9' },
       },
       {
-        // Audacity's Normalize sets "the peak amplitude", the sample peak, and no Audacity tool reads or limits true
+        // Audacity's Normalize sets "the peak amplitude", the sample peak, and no built-in tool reads or limits true
         // peak. BS.1770-5: "the true-peak value may occur between samples". SoundCloud Help asks for true peaks below
         // −1 dB at −14 LUFS, and below −2 dB for louder masters. Measured with BS.1770 true peak, normalised to
         // −2 dB: 10 released tracks at −2.04 to −1.31 dB, and 45 blends of them at a median −1.97, worst −0.95; −1 dB
         // or lower in 54 of 55. Whole sets land around −14 LUFS. So −2 dB meets the −14 LUFS ask, and can miss the
-        // louder one by tenths.
+        // louder one by tenths. This sample of music does not set a general bound on intersample peaks.
         id: 'normalise',
         check: 'Each set',
         target: 'normalised to −2 dB',
-        note: 'Audacity’s Normalize, in the Effect menu under Volume and Compression, sets the sample peak. The true peak, between samples, can sit up to about 1 dB higher, and Audacity does not show it. At −2 dB, a set usually meets SoundCloud’s ask for a master at −14 LUFS: true peaks below −1 dB.',
+        note: 'Audacity’s Normalize, in the Effect menu under Volume and Compression, sets the sample peak. The true peak, between samples, can sit higher, and Audacity’s built-in tools do not show it. At −2 dB, a set usually meets SoundCloud’s ask for a master at −14 LUFS: true peaks below −1 dB.',
       },
       {
         // Howler MK1 manual: "FAT32 formatted"; on a Mac, Disk Utility's "MS-DOS (FAT)" gives FAT32; on Windows, 64GB+
