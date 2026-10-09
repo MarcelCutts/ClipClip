@@ -294,3 +294,156 @@ test('the Howler light stops blinking within 5 seconds', async ({ page }) => {
   await expect(lab.locator('.howler .led')).toHaveAttribute('data-light', 'red');
   expect(await blinkEnds(lab)).toBeLessThanOrEqual(5000);
 });
+
+test('the Listen key and the clean pad say what you will hear, before the sound starts', async ({ page }) => {
+  const lab = await openLab(page);
+  await lab.getByRole('button', { name: 'Show the answer' }).click();
+  await expect(lab.getByRole('button', { name: 'Listen' })).toHaveAccessibleDescription(/one steady loudness/);
+  await expect(lab.getByRole('button', { name: 'Hear the clean version' })).toHaveAccessibleDescription(
+    /Only the crunch changes/,
+  );
+  // Shown only while playing: nothing has played yet.
+  await expect(lab.getByText('You hear the file turned up to one steady loudness.')).toBeHidden();
+});
+
+test('a try that ends where it began says nothing, and does not end the step', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+  await page.clock.pauseAt(new Date('2026-01-01T01:00:00Z'));
+  const lab = await openLab(page);
+  const knob = await toTry(lab);
+  const howler = lab.locator('[data-stage="howler"]');
+  const result = lab.getByText('You said yes. It cannot', { exact: true });
+  // In the stage: the live region carries the same words a moment later.
+  const tryIt = howler.getByText('Try it. Turn the recording level down, then up.', { exact: true });
+
+  // Twice down and back, each settling as one try: two tries would otherwise end the step.
+  for (let i = 0; i < 2; i++) {
+    await knob.press('ArrowLeft');
+    await knob.press('ArrowRight');
+    await page.clock.runFor(700);
+  }
+  await expect(tryIt).toBeVisible();
+  await expect(result).toHaveCount(0);
+
+  // The first real move is the first try.
+  await knob.press('ArrowLeft');
+  await page.clock.runFor(700);
+  await expect(lab.getByText(/^You turned it down 1\sdB\./)).toBeVisible();
+  await expect(result).toHaveCount(0);
+});
+
+test('after step 2’s answer, each later try is read out, and the arrow does not come back', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+  await page.clock.pauseAt(new Date('2026-01-01T01:00:00Z'));
+  const lab = await openLab(page);
+  const knob = await toTry(lab);
+  const live = lab.locator('[aria-live]');
+  const result = lab.getByText('You said yes. It cannot', { exact: true });
+
+  // Two tries end the step in its answer, which the live region reads.
+  for (let i = 0; i < 2; i++) {
+    await knob.press('ArrowLeft');
+    await page.clock.runFor(700);
+  }
+  await expect(result).toBeVisible();
+  await page.clock.runFor(500);
+  await expect(live).toContainText('You said yes. It cannot.');
+
+  // A later try is read out, with what it did, while the answer holds on screen.
+  await knob.press('ArrowRight');
+  await page.clock.runFor(1200);
+  await expect(result).toBeVisible();
+  await expect(live).toContainText(/^You turned it up 1\sdB\. The flat tops are bigger\. They are still flat\.$/);
+
+  // Forward, then back: the answer is already on screen, so nothing points at the recording level.
+  await lab.getByRole('button', { name: 'Next: turn the channel down' }).click();
+  await expect(lab.locator('.control.cue')).toHaveCount(0);
+  await lab.getByRole('button', { name: 'Back' }).click();
+  await expect(result).toBeVisible();
+  await expect(lab.locator('.control.cue')).toHaveCount(0);
+});
+
+test('asking for the answer during a try reads the answer before any later try', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+  await page.clock.pauseAt(new Date('2026-01-01T01:00:00Z'));
+  const lab = await openLab(page);
+  const knob = await toTry(lab);
+  const live = lab.locator('[aria-live]');
+
+  // Ask while the first try is still settling. It began before the answer, not after it.
+  await knob.press('ArrowLeft');
+  await page.clock.runFor(350);
+  await lab.locator('.nav').getByRole('button', { name: 'Show the answer' }).click();
+  await page.clock.runFor(1200);
+  await expect(live).toContainText('You said yes. It cannot.');
+
+  // A genuinely later try can then replace the answer in the live region.
+  await knob.press('ArrowLeft');
+  await page.clock.runFor(1200);
+  await expect(live).toHaveText(/^You turned it down 1\sdB\. The flat tops are smaller\. They are still flat\.$/);
+});
+
+test('equal later tries each update the live region, while a down-and-back try stays quiet', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+  await page.clock.pauseAt(new Date('2026-01-01T01:00:00Z'));
+  const lab = await openLab(page);
+  const knob = await toTry(lab);
+  const live = lab.locator('[aria-live]');
+  for (let i = 0; i < 2; i++) {
+    await knob.press('ArrowLeft');
+    await page.clock.runFor(1200);
+  }
+  await expect(live).toContainText('You said yes. It cannot.');
+
+  // Text equality alone cannot show that a screen reader receives another update.
+  await live.evaluate((el) => {
+    const announcements: string[] = [];
+    Object.assign(el, { announcements });
+    new MutationObserver(() => {
+      if (el.textContent) announcements.push(el.textContent);
+    }).observe(el, { childList: true, characterData: true, subtree: true });
+  });
+  for (let i = 0; i < 2; i++) {
+    await knob.press('ArrowLeft');
+    await page.clock.runFor(1200);
+  }
+  const updates = () => live.evaluate((el) => (el as HTMLElement & { announcements: string[] }).announcements);
+  const sentence = 'You turned it down 1\u00a0dB. The flat tops are smaller. They are still flat.';
+  expect(await updates()).toEqual([sentence, sentence]);
+
+  await knob.press('ArrowLeft');
+  await knob.press('ArrowRight');
+  await page.clock.runFor(1200);
+  expect(await updates()).toEqual([sentence, sentence]);
+});
+
+test('crossing the ceiling describes only the completed try', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+  await page.clock.pauseAt(new Date('2026-01-01T01:00:00Z'));
+  const lab = await openLab(page);
+  const knob = await toTry(lab);
+  const live = lab.locator('[aria-live]');
+  for (let i = 0; i < 3; i++) {
+    await knob.press('ArrowLeft');
+    await page.clock.runFor(1200);
+  }
+  const previous = 'You turned it down 1\u00a0dB. The flat tops are smaller. They are still flat.';
+  await expect(live).toHaveText(previous);
+
+  // Fully up crosses the ceiling. Before this try settles, keep the preceding try's own reading.
+  await knob.press('End');
+  await page.clock.runFor(450);
+  await expect(live).toHaveText(previous);
+  await page.clock.runFor(650);
+  const latest =
+    'You turned it up 12\u00a0dB. The flat tops pass the Howler’s ceiling as well, and the LEVEL light is red.';
+  await expect(live).toHaveText(latest);
+
+  // A move across the ceiling and back before settling still adds no try or announcement.
+  await knob.press('Home');
+  await page.clock.runFor(450);
+  await expect(live).toHaveText(latest);
+  await knob.press('End');
+  await page.clock.runFor(1200);
+  await expect(live).toHaveText(latest);
+});

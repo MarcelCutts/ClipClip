@@ -345,6 +345,16 @@ describe('feedback', () => {
     expect(copy.answerFeedback(null, start).next).toBe(`Next: ${copy.STEPS[2].title.toLowerCase()}`);
   });
 
+  it('gives the same distance from the Howler’s ceiling as the light’s own reading, whatever the reading', () => {
+    for (const r of [start, at(18, -6), at(18, 0), at(9, 0)]) {
+      const said = copy.answerFeedback('red', r).lines[0];
+      expect(said, said).toBe(`The light is right. The level into the Howler is ${copy.marginWords(r)}.`);
+      expect(copy.howlerMeaning(r)).toBe(`Input ${copy.marginWords(r)}`);
+    }
+    expect(spaces(copy.marginWords(at(18, -6)))).toBe('at its ceiling');
+    expect(spaces(copy.marginWords(at(18, 0)))).toBe('6 dB over its ceiling');
+  });
+
   it('answers each try in step 2 at once, with what it did to the flat tops', () => {
     expect(spaces(copy.moveSentence(-6, at(18, -15)))).toBe(
       'You turned it down 6 dB. The flat tops are smaller. They are still flat.',
