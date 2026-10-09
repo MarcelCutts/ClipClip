@@ -452,8 +452,9 @@ describe('C4: the next day’s work on the recordings', () => {
     const flat = itemOf('files', 'flat-tops');
     expect(`${flat.check} ${flat.target}`).toBe('Loudest blends, zoomed in no flat tops, at any height');
     // Audacity manual, View menu: Show Clipping in Waveform is off by default, and marks samples at 0 dB.
+    // Audacity 4 keeps it in the same menu, so the note names the menu.
     expect(flat.note).toBe(
-      'In the file, flat tops can ripple or lean a little. Audacity’s Show Clipping in Waveform is off by default, and marks only the top of the file. Mixer clipping sits lower.',
+      'In the file, flat tops can ripple or lean a little. Audacity’s Show Clipping in Waveform, in the View menu, is off by default, and marks only the top of the file. Mixer clipping sits lower.',
     );
     expect(flat.drill).toEqual({ if: 'If you see flat tops or hear crunch', id: 'crunch', code: 'F9' });
   });
@@ -462,9 +463,10 @@ describe('C4: the next day’s work on the recordings', () => {
     const peak = itemOf('files', 'peak');
     // Nobody sets the recording to a band now, and a quiet recording is fine: only the top matters.
     expect(lineOf('files', 'peak')).toBe('Each set’s loudest peak below 0 dBFS');
-    // Audacity manual, Amplify: the negative of the Amplification it offers is the selection's peak.
+    // Audacity manual, Amplify: the negative of the Amplification it offers is the selection's peak. The
+    // submenu is the same in Audacity 3.7 and 4, so the note names it.
     expect(peak.note).toBe(
-      'Audacity’s Amplify, in the Effect menu, reads it with the whole set selected. Its Amplification box shows how far the peak is below the top: 12 dB means −12 dBFS.',
+      'Audacity’s Amplify is in the Effect menu, under Volume and Compression. With the whole set selected, its Amplification box shows how far the peak is below the top: 12 dB means −12 dBFS.',
     );
     expect(peak.drill).toEqual({ if: 'If the box shows 0', id: 'crunch', code: 'F9' });
   });
@@ -472,12 +474,12 @@ describe('C4: the next day’s work on the recordings', () => {
   it('normalises to −2 dB on the samples, and says why, with SoundCloud’s words', () => {
     const normalise = itemOf('files', 'normalise');
     expect(normalise.target).toBe('normalised to −2 dB');
-    // Audacity sets the sample peak and cannot show the true peak. On 10 released tracks and their blends,
+    // Audacity's built-in tools set the sample peak and cannot show the true peak. On 10 tracks and their blends,
     // −2 dB put the true peak at −1 dB or lower in 54 of 55: SoundCloud's ask at −14 LUFS.
     expect(sentences(normalise.note ?? '')).toEqual([
-      // Audacity's own name for the effect, as it prints it.
-      'Audacity’s Normalize, in the Effect menu, sets the sample peak.',
-      'The true peak, between samples, can sit up to about 1 dB higher, and Audacity does not show it.',
+      // Audacity's own name for the effect, as it prints it, and where both 3.7 and 4 put it.
+      'Audacity’s Normalize, in the Effect menu under Volume and Compression, sets the sample peak.',
+      'The true peak, between samples, can sit higher, and Audacity’s built-in tools do not show it.',
       'At −2 dB, a set usually meets SoundCloud’s ask for a master at −14 LUFS: true peaks below −1 dB.',
     ]);
     expect(allCopy.join(' ')).not.toMatch(/−1 dB true peak/);
