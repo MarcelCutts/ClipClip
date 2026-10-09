@@ -137,6 +137,9 @@ test('a right answer is said back, with the same reason', async ({ page }) => {
 });
 
 test('step 2 asks what the recording level can do, then hands it over to try', async ({ page }) => {
+  // A try is counted once the recording level settles (600 ms): under the test's own clock, three
+  // presses are always one try, however slow the runner.
+  await page.clock.install();
   const lab = await openLab(page);
   await toStep2(lab);
   const step = lab.getByRole('heading', { level: 4 });
@@ -162,6 +165,7 @@ test('step 2 asks what the recording level can do, then hands it over to try', a
 
   // Each try is answered at once, with what it did.
   for (let i = 0; i < 3; i++) await knob.press('ArrowLeft');
+  await page.clock.runFor(700);
   await expect(
     howler.getByText(/^You turned it down 3\sdB\. The flat tops are smaller\. They are still flat\.$/),
   ).toBeVisible();

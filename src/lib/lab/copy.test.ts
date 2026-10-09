@@ -141,7 +141,9 @@ describe('house style', () => {
   });
 
   it('keeps numbers and their units together', () => {
-    for (const text of allText()) expect(text, text).not.toMatch(/\d[ {3}](dB|Hz|kHz|%)/);
+    // Only the no-break space formatDb writes may sit between a number and its unit: a plain space
+    // wraps, and a thin or narrow no-break space is a different width that a hand-written line slips in.
+    for (const text of allText()) expect(text, text).not.toMatch(/\d[ \u2009\u202f](dB|Hz|kHz|%)/);
   });
 
   it('never points up or down the page: each stage carries its own words', () => {
