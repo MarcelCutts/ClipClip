@@ -39,6 +39,12 @@ export const SOURCES: SourceGroup[] = [
         note: 'Start TRIM at 12 o’clock; MASTER LEVEL rarely needs changing after it is set.',
       },
       {
+        title: 'XDJ-RX2 FAQ: USB recording and MASTER LEVEL',
+        publisher: 'AlphaTheta (Pioneer DJ) Help Center',
+        url: 'https://support.alphatheta.com/en-US/articles/4408616649497',
+        note: 'MASTER LEVEL does not set the unit’s own USB recorder, and a channel lit red there “may be distorted”. This rig does not use that recorder.',
+      },
+      {
         title: 'XDJ-RX2 FAQ: BOOTH output wiring',
         publisher: 'AlphaTheta (Pioneer DJ) Help Center',
         url: 'https://support.alphatheta.com/en-US/articles/4408442652825',
@@ -125,7 +131,7 @@ export const SOURCES: SourceGroup[] = [
         title: 'XDJ-RX3 Instruction Manual',
         publisher: 'AlphaTheta (Pioneer DJ)',
         url: 'https://downloads.support.alphatheta.com/manuals/all-in-one-dj-systems/XDJ-RX3/XDJ-RX3_DRI1702C_manual.pdf',
-        note: 'The model that followed the XDJ-RX2. Its channel meters read before the channel fader (p. 86). Pioneer does not say so for the XDJ-RX2.',
+        note: 'The model that followed the XDJ-RX2. Its channel meters read before the channel fader (p. 86), and its MASTER ATTENUATOR acts on MASTER 1 and MASTER 2 (p. 115). Pioneer says neither for the XDJ-RX2.',
       },
       {
         title: 'XDJ-RX2 mixer layout',

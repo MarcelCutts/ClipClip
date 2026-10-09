@@ -35,6 +35,8 @@ const PIONEER_COMMUNITY_LEVELS =
 const VIRTUALDJ_LAYOUT = 'https://virtualdj.com/manuals/hardware/pioneer/xdjrx2/layout/mixer.html';
 const XDJ_RX3_MANUAL =
   'https://downloads.support.alphatheta.com/manuals/all-in-one-dj-systems/XDJ-RX3/XDJ-RX3_DRI1702C_manual.pdf';
+// AlphaTheta's XDJ-RX2 help article on the unit's own USB recorder, which MASTER LEVEL does not set.
+const XDJ_USB_RECORDING = 'https://support.alphatheta.com/en-US/articles/4408616649497';
 
 /** A section's heading: its number and title, from the one list. */
 const h = (id: string) => `${section(id).number} ${section(id).title}`;
@@ -315,7 +317,11 @@ const contents: ContentsEntry[] = [
               rel="external">p.&nbsp;27</a
             >), after the channels are mixed. For distorted sound, it lists TRIM for a channel and MASTER LEVEL for the
             mix (<a href={`${XDJ_MANUAL}#page=34`} rel="external">p.&nbsp;34</a>). It does not say where inside the
-            mixer the sound is cut.
+            mixer the sound is cut. For the unit’s own USB recorder, which MASTER LEVEL does not set, AlphaTheta says
+            that a channel lit red means “the input level is too high and the sound may be distorted” (<a
+              href={XDJ_USB_RECORDING}
+              rel="external">help article</a
+            >). This rig does not use that recorder.
           </dd>
           <dd>
             <span class="who">We assume:</span> a channel in the red is cut before MASTER LEVEL. Turned down, that
@@ -329,6 +335,9 @@ const contents: ContentsEntry[] = [
               href={`${XDJ_MANUAL}#page=32`}
               rel="external">p.&nbsp;32</a
             >), and does not say whether that includes MASTER 1, which feeds the PA, or MASTER 2, which feeds the Howler.
+            The XDJ-RX3’s manual says its own acts on both (<a href={`${XDJ_RX3_MANUAL}#page=115`} rel="external"
+              >XDJ-RX3 manual, p.&nbsp;115</a
+            >).
           </dd>
           <dd>
             <span class="who">We assume:</span> nothing. The recording comes down at MASTER LEVEL (<a

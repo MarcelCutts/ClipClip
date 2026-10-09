@@ -14,8 +14,9 @@
  *   the guide's section on what the makers publish says so.
  * - MASTER LEVEL sets MASTER 1 and MASTER 2 together (p. 27). BOOTH MONITOR sets BOOTH alone. The
  *   attenuators in UTILITY (ATT) turn outputs down further. Pioneer says MASTER ATT "sets the master
- *   output attenuator" (p. 32) without naming the sockets. It probably lowers MASTER 1, and with it
- *   the room, but that is not published either. The drawing does not wire it, and the captions for
+ *   output attenuator" (p. 32) without naming the sockets. The XDJ-RX3's manual says its own lowers
+ *   MASTER 1 and MASTER 2 (p. 115), and so, likely, the room and the Howler's feed; for the XDJ-RX2
+ *   that is not published. The drawing does not wire it, and the captions for
  *   MASTER 1 and MASTER 2 say it may lower each, and that Pioneer does not say.
  * - The DriveRack's limiters sit on its outputs, and the amps after it: both on the PA branch only.
  * - Pioneer does not publish where the XDJ clips inside, so the whole mixer counts as ceiling 1.
