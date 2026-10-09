@@ -48,7 +48,7 @@
  * Power. QSC gives the GX7's current, not its watts (p.11): at 230 V the pair draws about 13.4 A at
  * peak programme levels and about 26.5 A in full-power bursts, and a UK strip or plug is 13 A.
  * Those are QSC's 8 + 8 Ω rows. Yamaha's Club Series V manual lists the S112V and S115V as 8 Ω and the
- * S215V as 4 Ω; on 4 Ω a GX7 draws half as much again (QSC's 4 + 4 Ω rows), so the C1 note holds either way. dbx: the
+ * S215V as 4 Ω; on 4 Ω a GX7 draws more current (QSC's 4 + 4 Ω rows), so the C1 note holds either way. dbx: the
  * amps go on last, with no audio passing, and off first, about 10 seconds before the rest (p.10).
  * Hum, earthing and the supply's protection are a separate subject, and not this guide's (the owner).
  *
