@@ -137,9 +137,10 @@ test('a right answer is said back, with the same reason', async ({ page }) => {
 });
 
 test('step 2 asks what the recording level can do, then hands it over to try', async ({ page }) => {
-  // A try is counted once the recording level settles (600 ms): under the test's own clock, three
-  // presses are always one try, however slow the runner.
+  // A try is counted once the recording level settles (600 ms). install() still lets time pass;
+  // pause it so three presses are one try even when the runner takes time between them.
   await page.clock.install();
+  await page.clock.pauseAt(await page.evaluate(() => Date.now()));
   const lab = await openLab(page);
   await toStep2(lab);
   const step = lab.getByRole('heading', { level: 4 });
@@ -196,6 +197,7 @@ test('step 2’s answer can be asked for without trying', async ({ page }) => {
 
 test('step 2 starts its clock on the first move of the recording level', async ({ page }) => {
   await page.clock.install();
+  await page.clock.pauseAt(await page.evaluate(() => Date.now()));
   const lab = await openLab(page);
   const knob = await toTry(lab);
   const result = lab.getByText('You said yes. It cannot', { exact: true });
