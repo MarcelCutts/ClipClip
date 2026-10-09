@@ -82,7 +82,27 @@ test('the lab asks what colour the light is before it shows it', async ({ page }
   // The keys carry the light's round shape, unlit: no LED colour lights before anything is shown.
   const lamps = howler.locator('.question .lamp');
   await expect(lamps).toHaveCount(2);
-  for (const lamp of await lamps.all()) await expect(lamp).toHaveCSS('box-shadow', 'none');
+  for (const lamp of await lamps.all()) {
+    await expect(lamp).toHaveCSS('box-shadow', 'none');
+    // A bright fill without a shadow would still look lit. Resolve the unlit colour in the
+    // browser, including its system Canvas colour when forced colours are active.
+    const unlit = await lamp.evaluate((node) => {
+      const probe = document.createElement('span');
+      const colour = node.getAttribute('data-light') === 'green' ? 'g' : 'r';
+      probe.style.backgroundColor = matchMedia('(forced-colors: active)').matches
+        ? 'Canvas'
+        : `var(--led-${colour}-off)`;
+      probe.style.forcedColorAdjust = 'none';
+      node.append(probe);
+      const background = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return background;
+    });
+    await expect(lamp).toHaveCSS('background-color', unlit);
+    await expect(lamp).toHaveCSS('outline-style', 'solid');
+    await expect(lamp).toHaveCSS('outline-width', '1px');
+    expect(await lamp.evaluate((node) => getComputedStyle(node).outlineColor)).not.toBe(unlit);
+  }
   // The file is crunchy, and the reader can see it and hear it before answering.
   await expect(lab.locator('[data-crunch]')).toHaveText('Crunchy');
   // Nothing gives the answer away: no light, no wave at the Howler, no word on its ceiling.
