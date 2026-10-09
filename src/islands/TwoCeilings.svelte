@@ -100,10 +100,11 @@
   let revealed = $state(false);
   /** The step's live control has moved since the step opened. In step 2 its clock is then running. */
   let moved = $state(false);
-  let knobMoves = 0;
-  /** Where the knob last came to rest in step 2, and how far the last try moved it from there. */
+  let knobMoves = $state(0);
+  /** Where the knob last came to rest in step 2. */
   let restedAt = STEP_SETUP[2].start.knob;
-  let lastMove = $state<number | null>(null);
+  /** What the completed try did. A new drag must not pair its reading with the previous move. */
+  let lastTry = $state<string | null>(null);
   /** A try made after step 2's answer: the live region then reads the try, and not the answer again. */
   let triedAfterReveal = $state(false);
   let hearClean = $state(false);
@@ -129,7 +130,7 @@
   /** In step 2, what to do, then what the last try did. Otherwise, where the sound clipped. */
   const sentence = $derived.by(() => {
     if (step !== 2) return copy.stateSentence(reading);
-    return lastMove === null ? copy.TRY : copy.moveSentence(lastMove, reading);
+    return lastTry ?? copy.TRY;
   });
   const feedback = $derived.by(() => {
     if (step === 1) return answered ? copy.answerFeedback(guess, reading) : null;
@@ -192,7 +193,7 @@
     if (next === 2) {
       knobMoves = 0;
       restedAt = STEP_SETUP[2].start.knob;
-      lastMove = null;
+      lastTry = null;
       triedAfterReveal = false;
     }
     await tick();
@@ -251,18 +252,20 @@
   function knobMoving() {
     moved = true;
     if (step !== 2) return;
+    const movedAfterReveal = revealed;
     window.clearTimeout(settling);
     settling = window.setTimeout(() => {
       if (step !== 2) return;
       // A try that ends where it began did nothing: it says nothing, and does not count.
       if (knob === restedAt) return;
-      lastMove = knob - restedAt;
+      lastTry = copy.moveSentence(knob - restedAt, reading);
       restedAt = knob;
+      knobMoves += 1;
       if (revealed) {
-        triedAfterReveal = true;
+        // An earlier try can settle after the answer was requested. It must not replace that answer.
+        if (movedAfterReveal) triedAfterReveal = true;
         return;
       }
-      knobMoves += 1;
       if (knobMoves >= REVEAL_AFTER_MOVES) revealed = true;
     }, MOVE_SETTLE_MS);
   }
@@ -330,15 +333,18 @@
     if (askingKnob) return copy.QUESTIONS.knob.legend;
     return sentence;
   });
+  // Equal moves can have equal words. Each settled try still needs a fresh live-region update.
+  const liveUpdate = $derived({ text: liveText, try: step === 2 && triedAfterReveal ? knobMoves : 0 });
   let announcement = $state('');
   let armed = false;
 
   $effect(() => {
-    const text = liveText;
+    const { text } = liveUpdate;
     if (!armed) {
       armed = true;
       return;
     }
+    announcement = '';
     const timer = window.setTimeout(() => {
       announcement = text;
     }, 400);
@@ -437,7 +443,7 @@
 {#snippet say()}
   <div class="say">
     <!-- In step 2 each try is answered at once, and the step's result follows it. -->
-    {#if !asking && !askingKnob && (!feedback || (step === 2 && lastMove !== null))}
+    {#if !asking && !askingKnob && (!feedback || (step === 2 && lastTry !== null))}
       <p class="sentence">{sentence}</p>
     {/if}
     {#if feedback}
