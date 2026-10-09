@@ -118,7 +118,7 @@ export function answerFeedback(guess: Guess | null, r: Reading): Feedback {
   return {
     title: `${saidBack(guess === null ? null : QUESTIONS.light.choices[guess])}It is ${light}`,
     lines: [
-      `The light is right. The level into the Howler is ${dbApart(howlerMarginDb(r))} under its ceiling.`,
+      `The light is right. The level into the Howler is ${marginWords(r)}.`,
       'The mixer cut the tops flat, and CH1’s red light showed it. The recording level then made the wave smaller.',
       'A green light does not mean a clean recording.',
     ],
@@ -256,9 +256,18 @@ export const HOWLER_WORDS = {
  * decibel at a time, and never the crunch.
  */
 export function howlerMeaning(r: Reading): string {
+  return `Input ${marginWords(r)}`;
+}
+
+/**
+ * The level at the Howler's input as a distance from its ceiling, in the words the light's own
+ * reading uses: "3 dB under its ceiling", "at its ceiling", "1 dB over its ceiling". Step 1's
+ * answer says the same distance, so the two can never disagree.
+ */
+export function marginWords(r: Reading): string {
   const margin = howlerMarginDb(r);
-  if (r.recorder === 'at') return 'Input at its ceiling';
-  return `Input ${dbApart(margin)} ${margin < 0 ? 'under' : 'over'} its ceiling`;
+  if (r.recorder === 'at') return 'at its ceiling';
+  return `${dbApart(margin)} ${margin < 0 ? 'under' : 'over'} its ceiling`;
 }
 
 /** Under the light while the mixer is cutting: what the light leaves out. */

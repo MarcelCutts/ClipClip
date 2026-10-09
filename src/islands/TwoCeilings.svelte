@@ -104,6 +104,8 @@
   /** Where the knob last came to rest in step 2, and how far the last try moved it from there. */
   let restedAt = STEP_SETUP[2].start.knob;
   let lastMove = $state<number | null>(null);
+  /** A try made after step 2's answer: the live region then reads the try, and not the answer again. */
+  let triedAfterReveal = $state(false);
   let hearClean = $state(false);
   let soundNote = $state<string | null>(null);
   let heading: HTMLElement | undefined = $state();
@@ -191,6 +193,7 @@
       knobMoves = 0;
       restedAt = STEP_SETUP[2].start.knob;
       lastMove = null;
+      triedAfterReveal = false;
     }
     await tick();
     showHead();
@@ -251,12 +254,14 @@
     window.clearTimeout(settling);
     settling = window.setTimeout(() => {
       if (step !== 2) return;
-      // A try that ends where it began did nothing, and says nothing.
-      if (knob !== restedAt) {
-        lastMove = knob - restedAt;
-        restedAt = knob;
+      // A try that ends where it began did nothing: it says nothing, and does not count.
+      if (knob === restedAt) return;
+      lastMove = knob - restedAt;
+      restedAt = knob;
+      if (revealed) {
+        triedAfterReveal = true;
+        return;
       }
-      if (revealed) return;
       knobMoves += 1;
       if (knobMoves >= REVEAL_AFTER_MOVES) revealed = true;
     }, MOVE_SETTLE_MS);
@@ -319,7 +324,8 @@
   /* One polite live region: the key sentence, once the reader pauses.                         */
 
   const liveText = $derived.by(() => {
-    if (feedback) return `${feedback.title}. ${feedback.lines.join(' ')}`;
+    // Step 2's answer holds on screen while the reader goes on trying: each later try is read instead.
+    if (feedback && !(step === 2 && triedAfterReveal)) return `${feedback.title}. ${feedback.lines.join(' ')}`;
     if (asking) return copy.QUESTIONS.light.legend;
     if (askingKnob) return copy.QUESTIONS.knob.legend;
     return sentence;
@@ -362,7 +368,7 @@
 {#snippet control(kind: Control)}
   {@const id = `${uid}-${kind}`}
   {#if kind === liveKind && !(kind === 'knob' && askingKnob)}
-    <div class="control lit" class:cue={!moved}>
+    <div class="control lit" class:cue={step === 2 && !moved && !revealed}>
       {#if kind === 'channels'}
         <Fader
           {id}
@@ -475,13 +481,15 @@
         onclick={listen}
         label={copy.SOUND.listen}
         stopLabel={copy.SOUND.stop}
-        aria-describedby="{uid}-quiet"
+        aria-describedby="{uid}-quiet {uid}-steady"
       />
-      <Pad pressed={hearClean} onclick={toggleClean}>{copy.SOUND.clean}</Pad>
+      <Pad pressed={hearClean} onclick={toggleClean} aria-describedby="{uid}-matched">{copy.SOUND.clean}</Pad>
     </div>
     <p class="quiet" id="{uid}-quiet">{soundNote ?? copy.SOUND.quiet}</p>
-    <!-- What you are hearing, while you hear it. -->
-    {#if playing}<p class="note">{hearClean ? copy.SOUND.matched : copy.SOUND.steady}</p>{/if}
+    <!-- What you are hearing, shown while you hear it. Both notes stay in the DOM, hidden, so each
+         key's description reaches a screen reader before the sound starts. -->
+    <p class="note" id="{uid}-steady" hidden={!(playing && !hearClean)}>{copy.SOUND.steady}</p>
+    <p class="note" id="{uid}-matched" hidden={!(playing && hearClean)}>{copy.SOUND.matched}</p>
   </div>
 {/snippet}
 
@@ -705,8 +713,9 @@
     color: var(--hw-action);
   }
 
-  /* Step 2, before the knob has moved: the knob is the only thing to do, so an arrow in the
-     action colour points at its name. Drawn, so screen readers don't read it out. */
+  /* Step 2, before the knob has moved and before its answer shows: the knob is the only thing to
+     do, so an arrow in the action colour points at its name. Drawn, so screen readers don't read it
+     out. Coming back to the step after its answer brings the answer, not the arrow. */
   .control.cue :global(.plain-label)::before {
     content: '';
     display: inline-block;
