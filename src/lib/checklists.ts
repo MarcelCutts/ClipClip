@@ -493,23 +493,25 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
       {
         // Clipped in the mixer but not at the Howler: the flat tops sit below the file's full scale, where a 0 dBFS
         // marker never looks. Audacity manual, View menu: Show Clipping in Waveform is off by default, and marks a
-        // sample that "touches or exceeds 0 dB". After the XDJ's and the Howler's converters, a clipped top ripples
+        // sample that "touches or exceeds 0 dB". Audacity 4 keeps it in the View menu, off by default, printed
+        // "Show clipping in waveform" (its manual, October 2026); the card keeps 3.7's capitals. After the XDJ's and the Howler's converters, a clipped top ripples
         // and leans (Esqueda, Bilbao and Välimäki, 2016), so it is rarely quite flat.
         id: 'flat-tops',
         check: 'Loudest blends, zoomed in',
         target: 'no flat tops, at any height',
-        note: 'In the file, flat tops can ripple or lean a little. Audacity’s Show Clipping in Waveform is off by default, and marks only the top of the file. Mixer clipping sits lower.',
+        note: 'In the file, flat tops can ripple or lean a little. Audacity’s Show Clipping in Waveform, in the View menu, is off by default, and marks only the top of the file. Mixer clipping sits lower.',
         drill: { if: 'If you see flat tops or hear crunch', id: 'crunch', code: 'F9' },
       },
       {
         // Audacity manual, Amplify: "If you take the negative of the value shown in the Amplification (dB) box, this
-        // will give you the current peak amplitude of the selection." A peak at the top of the file is where the
+        // will give you the current peak amplitude of the selection." Audacity 3.7: "Effect > Volume and Compression
+        // > Amplify"; Audacity 4: "Effect → Volume and compression → Amplify" (both manuals, October 2026). A peak at the top of the file is where the
         // Howler's input clips (the guide's 4.4 assumes it; Howler publishes no limit). Nobody sets the recording
         // to a band now, and a quiet recording is fine (4.3), so the line asks only for a peak below the top.
         id: 'peak',
         check: 'Each set’s loudest peak',
         target: `below ${FILE_TOP}`,
-        note: `Audacity’s Amplify, in the Effect menu, reads it with the whole set selected. Its Amplification box shows how far the peak is below the top: 12 dB means −12 dBFS.`,
+        note: `Audacity’s Amplify is in the Effect menu, under Volume and Compression. With the whole set selected, its Amplification box shows how far the peak is below the top: 12 dB means −12 dBFS.`,
         drill: { if: 'If the box shows 0', id: 'crunch', code: 'F9' },
       },
       {
@@ -522,7 +524,7 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
         id: 'normalise',
         check: 'Each set',
         target: 'normalised to −2 dB',
-        note: 'Audacity’s Normalize, in the Effect menu, sets the sample peak. The true peak, between samples, can sit up to about 1 dB higher, and Audacity does not show it. At −2 dB, a set usually meets SoundCloud’s ask for a master at −14 LUFS: true peaks below −1 dB.',
+        note: 'Audacity’s Normalize, in the Effect menu under Volume and Compression, sets the sample peak. The true peak, between samples, can sit up to about 1 dB higher, and Audacity does not show it. At −2 dB, a set usually meets SoundCloud’s ask for a master at −14 LUFS: true peaks below −1 dB.',
       },
       {
         // Howler MK1 manual: "FAT32 formatted"; on a Mac, Disk Utility's "MS-DOS (FAT)" gives FAT32; on Windows, 64GB+

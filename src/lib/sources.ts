@@ -113,7 +113,7 @@ export const SOURCES: SourceGroup[] = [
         title: 'Audacity manual: Amplify and the View menu',
         publisher: 'Audacity',
         url: 'https://manual.audacityteam.org/man/amplify.html',
-        note: 'Reading a file’s peak, and Show Clipping, which is off until you turn it on.',
+        note: 'Reading a file’s peak, where Amplify and Normalize sit in the Effect menu, and Show Clipping, which is off until you turn it on. Audacity 4 keeps all three in the same menus.',
       },
       {
         title: 'XDJ-RX3 Instruction Manual',
