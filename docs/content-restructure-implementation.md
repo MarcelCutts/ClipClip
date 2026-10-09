@@ -322,19 +322,19 @@ The model was right. With a channel 6 dB past the red and the recording level do
 - The light was shown before the question it answers had been asked.
 - The mixer’s screen was folded away, and the screens ran against the sound’s order.
 - Locked controls were drawn as faders that did not move.
-- "Heavy" graded the crunch with no ground. Nothing published says how much hard clipping on dance music is heavy; the one survey that names a range calls the lab’s 6 dB over "mild but still noticeable".
+- "Heavy" graded the crunch with no ground. Nothing published says how much hard clipping on dance music is heavy. The one survey that names a range (Záviška, Rajmic, Ozerov and Rencker, 2021, section V-A) grades clipping by input signal-to-distortion ratio, from 1 dB, "very harsh", to 20 dB, "mild but still noticeable", and gives no figure in dB over the threshold. On the lab’s loop, 6 dB over adds 15 % distortion, about 16.5 dB by that measure: between the survey’s two mildest levels.
 
 ### What the research found
 
 Two reports, working papers kept outside the repository with every quotation and its source:
 
-- Doubting the apparatus is a known response to evidence against a belief (Chinn and Brewer). It is likeliest when no cause is in view and the reader knows the subject.
-- A prediction helps, and only with what was asked: g = 0.54 for what was asked, 0.04 for the rest (a meta-analysis, abstract read).
-- Saying the belief back, then the fact, then the cause beats plain explanation: g = 0.41 over 44 comparisons.
-- Feedback that explains beats right or wrong, most of all straight after the attempt.
+- Doubting the apparatus is a known response to evidence against a belief: "the apparatus is bust" (Chinn and Brewer, 1993, "The role of anomalous data in knowledge acquisition", Review of Educational Research 63, 1–49). It is likeliest when no mechanism is in view; what the reader already knows can push either way.
+- A question asked before the material helps, and only with what it asked: g = 0.54 for the asked-about material, 0.04 for the rest (St. Hilaire, Chan and Ahn, 2024, "Guessing as a learning intervention: a meta-analytic review of the prequestion effect", Psychonomic Bulletin & Review 31, 411–441; the abstract and p. 425). A 2025 meta-analysis finds the same, g = 0.66 against 0.01, and that the answer following the question helps more (King-Shepard, Walker, Nokes-Malach, Carpenter and Fraundorf, Educational Psychology Review 37, article 115).
+- Saying the belief back, then that it is wrong, then the cause beats the texts it was tested against: g = 0.41 over 44 comparisons from 33 studies and 3,869 readers, 30 of them against an expository text (Schroeder and Kucera, 2022, "Refutation text facilitates learning: a meta-analysis of between-subjects experiments", Educational Psychology Review 34, 957–987). The larger pre-registered meta-analysis agrees: g = 0.37 over 294 effect sizes, unchanged by 26 moderators (Danielson, Jacobson, Patall, Sinatra, Adesope and others, Educational Psychologist, online 16 August 2024).
+- Feedback that explains beats right or wrong: d = 0.99 for high-information against 0.46 for corrective feedback (Wisniewski, Zierer and Hattie, 2020, "The power of feedback revisited", Frontiers in Psychology, table 3), and 0.49 for elaborated feedback against 0.05 for a bare mark (Van der Kleij, Feskens and Eggen, 2015, Review of Educational Research, abstract). Timing on its own is not decisive: the newest meta-analysis finds no average difference between immediate and delayed feedback, g = 0.03 (Kandemir, Esposito, Gurgand and Ramus, 2026, Educational Psychology Review 38, article 13). The lab answers each try at once as a design choice, not on that evidence.
 - An indicator is read as a verdict on the whole (Three Mile Island). A light should be labelled by what it measures.
 - Howler’s manual invites the belief: it "is correctly recording when … the LEVEL indicator is blinking green" (2.2). Howler never says green means clean, and says the mixer distorts first (FAQ).
-- Zoom’s H6essential manual draws the lab’s lesson in three words: "Clipped recording", "Volume lowered", "Still clipped".
+- Zoom’s H6essential manual draws the lab’s lesson in three labels on its 16/24-bit figure: "Clipped recording", "Volume lowered", "Still clipped" (p. 9, "32-bit float WAV file overview").
 
 ### What changed
 
@@ -358,5 +358,5 @@ Two reports, working papers kept outside the repository with every quotation and
 
 ### Still open
 
-- Whether the XDJ-RX2 cuts a channel in the red before MASTER LEVEL. Pioneer does not say. A forum post relays Pioneer’s engineers saying that on the DJM-900NXS2 a digital source cannot clip at the channel; if the XDJ-RX2 works that way, turning MASTER LEVEL down would cure a channel in the red. One check settles it: TRIM up until CH1’s red light shows at the loudest part, MASTER LEVEL down until the MASTER meters show the first orange, record on the Howler, and listen the next day. Crunch in the file means the lab is right.
+- Whether the XDJ-RX2 cuts a channel in the red before MASTER LEVEL. Pioneer does not say. A 2016 reply by Pioneer DJ’s forum moderator, relaying its engineers, says that on the DJM-900NXS and DJM-900NXS2 a digital source (USB or S/PDIF) cannot be clipped at the channel, whatever the channel level, and that the MASTER output still can (community.pioneerdj.com, post 22977674121369, comment of 4 March 2016); if the XDJ-RX2 works that way, turning MASTER LEVEL down would cure a channel in the red. One check settles it: TRIM up until CH1’s red light shows at the loudest part, MASTER LEVEL down until the MASTER meters show the first orange, record on the Howler, and listen the next day. Crunch in the file means the lab is right.
 - The learning report proposes a test with five DJs on their own phones, thinking aloud. It passes if nobody calls the lab broken and four of five say the light cannot tell them the file is clean.
