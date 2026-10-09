@@ -448,7 +448,8 @@ export const FIXES: Fix[] = [
     // dbx manual p.10: amps last on, and "ensure you're not passing audio to the mixer's outputs … before applying
     // power to the amplifiers"; amps first off, then "wait about 10 seconds". On a generator a trip can be an
     // overload: two GX7s can draw about 26 A in full-power bursts (QSC p.11). Howler MK1 manual: about 30 hours
-    // on its battery, and it saves the file before the battery runs flat. The XDJ-RX2 has no battery, and a cut
+    // on its battery, and it saves the file before the battery runs flat; that save came with firmware 1.2
+    // (Howler's update notes, 7 November 2023), which the rig reference asks for. The XDJ-RX2 has no battery, and a cut
     // is no switch-off at its own switch (Pioneer p.35), so a UTILITY change may be lost: the last step looks at
     // the Howler's light again.
     id: 'power-cut',
@@ -478,7 +479,7 @@ export const FIXES: Fix[] = [
         },
       ],
     },
-    why: 'dbx says to switch the amps on last, with no audio playing, and off first (p. 10). The Howler MK1 records for about 30 hours on its battery, and saves its file before the battery runs flat.',
+    why: 'dbx says to switch the amps on last, with no audio playing, and off first (p. 10). The Howler MK1 records for about 30 hours on its battery, and with firmware 1.2 or later saves its file before the battery runs flat.',
   },
 
   // ---- On the recordings, the next day ------------------------------------------------------------

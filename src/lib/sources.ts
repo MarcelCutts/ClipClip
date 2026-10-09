@@ -60,7 +60,7 @@ export const SOURCES: SourceGroup[] = [
         title: 'FAQ',
         publisher: 'Howler Audio',
         url: 'https://howler-audio.com/pages/faq',
-        note: 'Fixed recording level, 24-bit/48 kHz WAV, normalising afterwards.',
+        note: 'Fixed recording level, 24-bit/48 kHz WAV, normalising afterwards, and the firmware 1.2 update for MK1s made before October 2023.',
       },
       {
         title: 'How to record DJ sets without clipping',
@@ -77,7 +77,7 @@ export const SOURCES: SourceGroup[] = [
         title: 'GX3, GX5 and GX7 user manual',
         publisher: 'QSC',
         url: 'https://www.qscaudio.com/resource-files/productresources/amp/gx/q_amp_gx_usermanual.pdf',
-        note: 'The front-panel gain knobs and CLIP lights, the speaker sockets and how a plug locks (p. 7), the FULL RANGE switch, and current draw (p. 11).',
+        note: 'The front-panel gain knobs and CLIP lights, the speaker sockets and how a plug locks (p. 7), the CROSSOVER switch and its FULL RANGE position, and current draw (p. 11).',
       },
       {
         title: 'Club Series V owner’s manual',

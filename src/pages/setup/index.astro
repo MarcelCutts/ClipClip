@@ -28,6 +28,7 @@ const QUICK_START = doc('XDJ-RX2 Quick Start Guide and specifications');
 const DBX = doc('DriveRack PA2 Owner’s Manual');
 const QSC = doc('GX3, GX5 and GX7 user manual');
 const HOWLER = doc('Recorder+Streamer MK1 manual');
+const HOWLER_FAQ = doc('FAQ');
 const RANE = doc('Sound System Interconnection (RaneNote 110)');
 const ACHAT = doc('Achat 104 A user manual');
 
@@ -118,8 +119,17 @@ const RIG_ROWS: RigRow[] = [
     lead: 'RCA, L and R',
     leadNote: `One stereo RCA lead, under 3${nb}m, with nothing else in it.`,
     set: 'WAV',
-    setNote: 'A FAT32 microSD card. For the MK1, Howler says A2 cards and SanDisk’s Ultra and Pro cards do not work.',
-    sources: [QSG(20), { label: 'RaneNote 110', url: RANE }, { label: 'Howler manual', url: HOWLER }],
+    // Howler's firmware 1.2 notes (7 November 2023) list two things the MK1 manual now describes as standard:
+    // the BATTERY light's warning about an hour before the battery runs out, and the save just before it does.
+    // Howler's FAQ: "If your Howler is before October 2023, you should update its firmware."
+    setNote:
+      'A FAT32 microSD card. For the MK1, Howler says A2 cards and SanDisk’s Ultra and Pro cards do not work. Firmware 1.2 or later: it added the BATTERY light’s warning an hour before the battery runs out, and the save just before it does.',
+    sources: [
+      QSG(20),
+      { label: 'RaneNote 110', url: RANE },
+      { label: 'Howler manual', url: HOWLER },
+      { label: 'Howler FAQ', url: HOWLER_FAQ },
+    ],
   },
   {
     node: 'booth',
@@ -337,7 +347,7 @@ const moved = {
 
     <div class="section-start">
       <Procedure id="driverack" number="S4" title="DriveRack and amp settings" kind={REFERENCE} level={2} steps={S4_STEPS}>
-        <p>The three switches are at the back of the rack, which faces the DJ. The STORE light, the gain knobs and the CLIP lights are at the front, which faces the crowd. If the DriveRack’s input CLIP lights come on, use <a href={href('/night/#fix-driverack-clip')}>F6</a>.</p>
+        <p>The four switches are at the back of the rack, which faces the DJ: two on the DriveRack and one on each amp. The STORE light, the gain knobs and the CLIP lights are at the front, which faces the crowd. If the DriveRack’s input CLIP lights come on, use <a href={href('/night/#fix-driverack-clip')}>F6</a>.</p>
         <p class="source">
           dbx’s DriveRack PA2 manual (<a href={dbxPage(5)} rel="external">p.{nb}5</a> for the INPUT meters and CLIP
           lights, <a href={dbxPage(7)} rel="external">p.{nb}7</a> for the input switch and PIN 1 LIFT,

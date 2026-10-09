@@ -46,7 +46,9 @@
  * - the room by the amps' gain knobs, with their CLIP lights dark (QSC p.5).
  *
  * Power. QSC gives the GX7's current, not its watts (p.11): at 230 V the pair draws about 13.4 A at
- * peak programme levels and about 26.5 A in full-power bursts, and a UK strip or plug is 13 A. dbx: the
+ * peak programme levels and about 26.5 A in full-power bursts, and a UK strip or plug is 13 A.
+ * Those are QSC's 8 + 8 Ω rows. Yamaha's Club Series V manual lists the S112V and S115V as 8 Ω and the
+ * S215V as 4 Ω; on 4 Ω a GX7 draws half as much again (QSC's 4 + 4 Ω rows), so the C1 note holds either way. dbx: the
  * amps go on last, with no audio passing, and off first, about 10 seconds before the rest (p.10).
  * Hum, earthing and the supply's protection are a separate subject, and not this guide's (the owner).
  *
@@ -375,7 +377,8 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
       {
         // Howler MK1 manual: the BATTERY indicator is "red when charging". "The BATTERY indicator blinks blue and red
         // when you have around 1 hour left of recording. You are unable to start new recordings until you connect a
-        // charger." The next line starts one, so the charger comes first.
+        // charger." The next line starts one, so the charger comes first. The warning came with firmware 1.2
+        // (Howler's update notes, 7 November 2023).
         id: 'charge',
         check: 'Howler',
         target: 'on charge',
@@ -386,6 +389,7 @@ export const CHECKLISTS: Readonly<Record<ChecklistId, Checklist>> = {
         // file at every changeover puts any gap between DJs, whatever the sets' lengths, and gives each set its own
         // file. Recording is running "when the RECORD button is blinking constantly"; if it "stops blinking soon
         // after you've pushed it, there is something wrong with the microSD card, or the microSD card is full".
+        // Howler's FAQ says a full card makes RECORD "blink rapidly", the MK2 manual's words; this rig is a MK1.
         id: 'new-file',
         check: 'Howler recording',
         target: 'a new file for the next set, RECORD blinking',
