@@ -103,8 +103,9 @@ export type Crunch = 'clean' | 'tips' | 'crunch';
  *
  * Crunch is named and never graded. No study we could open measures how much hard clipping on
  * dance music can be heard, so the lab has no ground for "some" or "heavy". How much the ceilings
- * cut is given in dB instead (Reading.cutDb), which is a fact of the model and does not change
- * when the recording level does.
+ * cut is given in dB instead (Reading.cutDb): the mixer's share, which no control after the mixer
+ * can change, plus the Howler's own cut once the recording level pushes the feed past its ceiling
+ * (ceilings.test.ts).
  */
 export const CRUNCH_LIMITS = { tips: 0.001, crunch: 0.01 } as const;
 

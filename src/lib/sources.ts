@@ -154,7 +154,7 @@ export const SOURCES: SourceGroup[] = [
         title: 'EBU R 128',
         publisher: 'EBU',
         url: 'https://tech.ebu.ch/docs/r/r128.pdf',
-        note: 'The −1 dB true-peak ceiling in production, and why data-reduced files may need a lower one.',
+        note: 'The −1 dB true-peak ceiling in production, and that data-reduced files may need a lower one (item m).',
       },
       {
         title: 'Adding coherent and incoherent sound levels',
