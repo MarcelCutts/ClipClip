@@ -6,10 +6,10 @@
    * between the two numbers. LOW is the boost half of the EQ's bass knob, flat to +6 (model.ts,
    * LOW), set off from TRIM by a printed line so TRIM's note never reads as LOW's heading.
    *
-   * The lab puts the two decks side by side straight under the faders and meters, deck 1 under
-   * deck 1's fader, so the meters stay on screen while you turn these, even on a phone. On a
-   * touch screen the sliders move only by their caps (ui/Fader), so scrolling past never
-   * changes them.
+   * On a phone the lab puts these controls below the meters, with deck 1 under its fader; on a
+   * wide panel each pair sits beside its fader. On a touch screen the sliders move only by their caps
+   * (ui/Fader), so scrolling past never changes them. When the lab's step asks for TRIM, its name
+   * is printed in the action colour and a ring goes round it, until it moves.
    */
   import { trimHint } from '../../lib/blend/copy';
   import { LOW, TRIM } from '../../lib/blend/model';
@@ -27,9 +27,13 @@
     peak: number;
     /** Unique prefix for ids. */
     uid: string;
+    /** The step asks for this TRIM and it has not moved yet. */
+    lit?: boolean;
+    /** Called as TRIM moves. */
+    onmove?: () => void;
   }
 
-  let { n, trim = $bindable(), low = $bindable(), peak, uid }: Props = $props();
+  let { n, trim = $bindable(), low = $bindable(), peak, uid, lit = false, onmove }: Props = $props();
 
   const id = $derived(`${uid}-deck${n}`);
 
@@ -48,7 +52,7 @@
     <span class="key" aria-hidden="true"></span>
     <span class="hw-label" id="{id}-knobs">Deck {n}</span>
   </p>
-  <div class="trim">
+  <div class="trim" class:lit={lit}>
     <Fader
       id="{id}-trim"
       label="TRIM"
@@ -60,6 +64,7 @@
       format={(v) => formatDb(v)}
       speak={(v) => `track peaks at ${speakDb(v)} on the channel meter with LOW flat`}
       hint={trimHint(n, peak)}
+      oninput={() => onmove?.()}
     />
   </div>
   <div class="low">
@@ -143,6 +148,24 @@
     }
   }
 
+  /* WebKit wraps the longest reading onto three lines on the narrowest phones. */
+  @container knobs (max-width: 9rem) {
+    .trim :global(.hint) {
+      min-height: calc(3 * 1.4em);
+    }
+  }
+
+  /* The TRIM the step asks for: a steady ring in the action colour, and its name in the same colour. */
+  .trim.lit {
+    outline: 2px solid var(--hw-action);
+    outline-offset: 4px;
+    border-radius: var(--radius-control);
+  }
+
+  .trim.lit :global(.hw-label) {
+    color: var(--hw-action);
+  }
+
   /* LOW starts after a printed line, so TRIM's note above it can't pass for LOW's heading. */
   .low {
     padding-top: 0.6rem;
@@ -150,6 +173,10 @@
   }
 
   @media (forced-colors: active) {
+    .trim.lit {
+      outline-color: Highlight;
+    }
+
     .key {
       background: CanvasText;
     }

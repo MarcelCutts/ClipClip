@@ -6,7 +6,9 @@
    * in sentence case, not in the panel lettering.
    *
    * Hidden from screen readers: the MASTER meter says the same thing, and the lab's live region
-   * says the verdict when it changes. Two lines always, so it never changes height.
+   * says the verdict when it changes. It reserves the same height for every reading, and one width,
+   * set for its longest words ("6 dB over the red"), with the words starting at the same place
+   * whatever they say, so nothing in it shifts as the level changes.
    */
   import type { Zone } from '../../lib/xdj';
 
@@ -31,9 +33,9 @@
 <style>
   .readout {
     display: grid;
-    justify-items: center;
+    justify-items: start;
     gap: 0.2rem;
-    text-align: center;
+    inline-size: min(100%, 10.5rem);
   }
 
   p {
@@ -72,6 +74,21 @@
     line-height: 1.25;
     white-space: nowrap;
     color: var(--hw-bright);
+  }
+
+  /* Below a 360px phone, the meter column is too narrow for the full-size number and a single
+     line of colour words. Reserve two lines for the latter before anything changes. */
+  @container mixer (max-width: 17.99rem) {
+    .value {
+      font-size: 1.375rem;
+    }
+
+    .zone {
+      align-items: baseline;
+      min-height: 2.5em;
+      font-size: var(--text-sm);
+      white-space: normal;
+    }
   }
 
   /* Square, like a segment of the meter it repeats. */

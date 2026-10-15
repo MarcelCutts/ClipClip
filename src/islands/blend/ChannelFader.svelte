@@ -4,6 +4,9 @@
    * together: the deck's name and colour key, the fader with − and + keys (one printed mark a
    * press), and the printed scale behind it.
    *
+   * When the lab's step asks for this fader, its name is printed in the action colour and a ring
+   * goes round it, until it moves.
+   *
    * The fader's length comes from --fader-length, set by the lab to match the meters beside it.
    * On a touch screen it moves only by its cap (ui/Fader), so a scroll that starts on the fader,
    * which on a phone sits right where a thumb scrolls, never pushes deck 2 in by accident.
@@ -20,11 +23,13 @@
     value: number;
     /** Unique prefix for ids. */
     uid: string;
-    /** Draw attention to this fader (the challenge hint). */
-    hinted?: boolean;
+    /** The step asks for this fader and it has not moved yet. */
+    lit?: boolean;
+    /** Called as the fader moves. */
+    onmove?: () => void;
   }
 
-  let { n, value = $bindable(), uid, hinted = false }: Props = $props();
+  let { n, value = $bindable(), uid, lit = false, onmove }: Props = $props();
 
   const id = $derived(`${uid}-deck${n}`);
   const formatFader = (p: number) => (p <= FADER.min ? 'Off' : formatDb(faderDb(p)));
@@ -42,7 +47,7 @@
     <span class="hw-label" id="{id}-strip">Deck {n}</span>
   </p>
 
-  <div class="channel" class:hinted={hinted}>
+  <div class="channel" class:lit={lit}>
     <div class="scale" aria-hidden="true">
       {#each ticks as t (t)}
         <span class="tick" class:major={t % 5 === 0}></span>
@@ -61,6 +66,7 @@
       step={FADER.step}
       format={formatFader}
       speak={speakFader}
+      oninput={() => onmove?.()}
     />
   </div>
 </div>
@@ -127,11 +133,22 @@
     z-index: 0;
   }
 
-  /* The hint: a steady printed ring round deck 1's fader, no animation, beside the hint's words. */
-  .channel.hinted {
-    outline: 2px solid var(--hw-label);
+  /* The fader the step asks for: a steady ring in the action colour, no animation, and its name in
+     the same colour. */
+  .channel.lit {
+    outline: 2px solid var(--hw-action);
     outline-offset: 4px;
     border-radius: var(--radius-control);
+  }
+
+  .channel.lit :global(.plain-label) {
+    color: var(--hw-action);
+  }
+
+  /* The value changes as the cap moves: it keeps one width, so its lettering never shifts. */
+  .channel :global(.value) {
+    min-inline-size: 4.2em;
+    text-align: center;
   }
 
   /* The shared fader grows its slot to fill a column; here the slot is --fader-length long, so the
@@ -180,7 +197,7 @@
   }
 
   @media (forced-colors: active) {
-    .channel.hinted {
+    .channel.lit {
       outline-color: Highlight;
     }
 

@@ -1,78 +1,68 @@
 <script lang="ts">
   /**
-   * W3 "Blends add up". Two decks, each trimmed to the second orange on its own channel meter.
-   * Bring deck 2 in and the MASTER meters climb to the top orange, which the DJ box keeps dark,
-   * because two tracks peaking together can add up to 6 dB. The channel meters never move with a
-   * fader: they read before it. Fix the blend by pulling a fader down or trimming both decks to
-   * the first orange. LOW turns up only, to show what a boost adds (model.ts, LOW).
+   * W3 "Blends add up": a small mixer, two decks and the MASTER meters, in four steps (model.ts,
+   * STEP_START). Bring deck 2 in and watch the peaks add; fix it with a fader; push both channels
+   * to the top orange and hear the mix go 3 dB past the red; then leave room with TRIM.
    *
-   * The MASTER meters are the centre of the lab: the biggest thing on the panel, with the two
-   * faders either side and the verdict (Mix +9 dB, on the top orange) by them. Each deck's TRIM and LOW
-   * sit straight under its fader, deck 1 on the left and deck 2 on the right, so on a phone the
-   * meters and every control that moves them share one screen. Before deck 2 comes up the reader
-   * can guess where MASTER will peak by tapping it; the prompt sits above the meters, and the
-   * guess meets the real peak there. The pads come in two sets: blends that light the top orange,
-   * and fixes, which wait until the reader has lit it (each one solves the challenge in one
-   * press). A pad tapped on a phone scrolls the meters back into view. On a touch screen the
-   * sliders move only by their caps, so scrolling past the lab never changes it.
+   * It is a mixer first. Every control is on the panel and live in every step, in the unit's
+   * order: each deck's TRIM and LOW above its fader, as on the XDJ-RX2's channel strip, and the
+   * meters between the faders. Anything a DJ can do to the unit, the reader can do here, the red
+   * included: a lab that cannot go wrong cannot show what going wrong sounds like. The step names
+   * the control to move, printed in the action colour until it moves.
    *
-   * Server-rendered complete: meters lit, verdict and sentence written before hydration.
+   * On a phone the meters come first and every control that moves them comes under them, the faders
+   * beside them and each deck's TRIM and LOW below: a thumb on a slider hides what is under it, never
+   * what is above. On a wide panel the mixer is one row of channel strips, as on the unit.
    *
-   * Nothing above a control changes height while it's in use, so a slider never moves under the
-   * reader's finger: the status line under the prompt keeps two lines' room (one on a wide panel),
-   * the guess line above the meters keeps its two lines whatever it says, the verdict keeps two
-   * lines, and the words that change (the hint, the sentence) sit below the controls.
+   * Nothing moves while a control is in use. Every word that changes as a slider moves sits in a
+   * box that keeps its size: the readout by the meters, and one line under them that says how the
+   * step is going. The step's result appears once, when its goal is met, and only below every
+   * control: a goal met in mid-drag never pushes the slider from under the finger.
    *
-   * One surface: the panel. Its parts are set apart by printed lines and legends, and the only
-   * boxes inside it are the meters' well and the waveform's screen.
+   * Server-rendered complete: step 1, meters lit, its question open, before hydration.
+   *
+   * One surface: the panel. Its parts are set apart by printed lines, and the only boxes inside it
+   * are the meters' well and the waveform's screen.
    */
   import { tick, untrack } from 'svelte';
   import { audio } from '../lib/audio/engine.svelte';
   import { LoopPlayer } from '../lib/audio/loopPlayer';
   import {
-    BARELY_OVER_NOTE,
-    blendSentence,
-    CHALLENGE_PROMPT,
-    explainBlend,
+    coach,
+    type Feedback,
     GUESS_LEGEND,
     GUESS_PROMPT,
     guessNote,
-    guessReveal,
     guessSpot,
-    HINT,
-    LISTEN_NOTE,
     MODEL_NOTES,
     MODEL_NOTES_TITLE,
     mixReadout,
-    NO_SOUND,
-    PLAYER_LABEL,
-    PRESET_GROUPS,
-    presetLine,
+    NAV,
+    NO_SCRIPT,
     READOUT_LABEL,
-    statusLine,
+    RESULT_CONTEXT,
+    SOUND,
+    STEPS,
+    SUMMARY,
+    stepCounter,
+    stepResult,
     verdictLine,
     WAVEFORM_TOGGLE,
-    WAYS_OUT_SHOW,
-    WAYS_OUT_WAIT,
   } from '../lib/blend/copy';
   import {
     analyseBlend,
     type BlendSettings,
-    barelyOver,
-    type ChallengeStatus,
-    challengeStatus,
+    type Control,
     cloneSettings,
     displayDb,
     FADER,
     listenBuffer,
-    type Preset,
-    type PresetId,
-    preset,
-    presetsIn,
-    START,
-    sameSettings,
+    STEP_CONTROLS,
+    STEP_COUNT,
+    STEP_START,
+    type Step,
+    stepDone,
   } from '../lib/blend/model';
-  import { showMeters } from '../lib/blend/scroll';
   import ChannelFader from './blend/ChannelFader.svelte';
   import Knobs from './blend/Knobs.svelte';
   import MeterBridge from './blend/MeterBridge.svelte';
@@ -83,190 +73,111 @@
   import Pad from './ui/Pad.svelte';
 
   interface Props {
-    /** Where the lab starts: deck 2 cued with its fader down (default), or one of the presets. */
-    start?: 'incoming' | PresetId;
+    /** The step titles' level: one below the heading the page puts over the lab (an h3 in the guide). */
+    headingLevel?: 3 | 4 | 5;
   }
 
-  let { start = 'incoming' }: Props = $props();
+  let { headingLevel = 4 }: Props = $props();
 
   const uid = $props.id();
-  /** Once the reader has lit the top orange, show the hint after this long without a change or a solve. */
-  const HINT_AFTER_MS = 20_000;
   /**
    * The live region waits this long after the last change. Longer than the 400 ms the fader's
    * −/+ buttons take to say their value, so the value comes first and the verdict after it.
    */
   const LIVE_DEBOUNCE_MS = 700;
 
-  const initial = untrack(() => (start === 'incoming' ? START : preset(start).settings));
-  let settings = $state<BlendSettings>(cloneSettings(initial));
+  /* ---------------------------------------------------------------------------------------- */
+  /* State                                                                                    */
+
+  let step = $state<Step>(1);
+  let settings = $state<BlendSettings>(cloneSettings(STEP_START[1]));
 
   const analysis = $derived(analyseBlend(settings));
-  const segments = $derived(blendSentence(settings, analysis));
-  const explanation = $derived(explainBlend(settings, analysis));
-  const status = $derived(challengeStatus(settings, analysis));
-  const line = $derived(statusLine(status));
   const readout = $derived(mixReadout(analysis));
   const meters = $derived({
     ch1: displayDb(analysis.channel[0]),
     ch2: displayDb(analysis.channel[1]),
     master: displayDb(analysis.mix),
   });
-  /** In the red, but only just: it still sounds clean, and the lab says why by Listen. */
-  const shaved = $derived(barelyOver(analysis));
 
-  const push = presetsIn('push');
-  const out = presetsIn('out');
+  /** The controls the step asks for that the reader has not moved yet: printed in the action colour. */
+  let moved = $state<Control[]>([]);
+  const lit = $derived(STEP_CONTROLS[step].filter((c) => !moved.includes(c)));
+  const touch = (c: Control) => {
+    if (!moved.includes(c)) moved = [...moved, c];
+  };
 
-  // Presets ---------------------------------------------------------------------------------------
+  /**
+   * The step's result, taken when its goal is first met and kept until the step changes, so the
+   * words stay put while the reader carries on moving things. It is labelled as a past result;
+   * the line beside the meters and the live region always describe the current mixer.
+   */
+  let result = $state<Feedback | null>(null);
+  const line = $derived(coach(step, settings, analysis));
 
-  let challengeEl = $state<HTMLElement>();
-  let metersEl = $state<HTMLElement>();
-  let waysEl = $state<HTMLElement>();
-  /** The pad press came from a finger or a mouse, not a key (a key press has no click count). */
-  let tapped = false;
+  $effect(() => {
+    if (result === null && currentResult) result = currentResult;
+  });
 
-  function apply(p: Preset) {
-    // A pad sets up a different blend, so a guess about this one no longer applies.
-    endGuess();
-    settings = cloneSettings(p.settings);
-    // A pad jumps the whole mixer in one press, so it always says where it landed, numbers and
-    // all, even when the verdict is the same as before (every way out solves the challenge).
-    heard = verdict;
-    say(presetLine(settings, analysis, status));
-    // On a phone the meters are a screen above the pads. A key press leaves the page (and the
-    // focus) where it is: the live region has just said what happened.
-    if (tapped) {
-      const pad = Number.parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
-      showMeters(challengeEl, metersEl, pad);
-    }
-    tapped = false;
-  }
-
-  // The guess ------------------------------------------------------------------------------------
+  /* ---------------------------------------------------------------------------------------- */
+  /* The guess, in step 1                                                                     */
   // Before deck 2 first moves, the reader can tap the MASTER LED where they think the blend will
-  // peak. The mark stays by the meter; once deck 2 is all the way up, the line above the meters
-  // puts the guess beside the real peak until a fader moves or a pad is pressed. Only from the
-  // lab's usual start. The line keeps its two lines' height from the start, even once it's empty,
-  // so its words coming and going never move the faders, meters or knobs below it.
+  // peak. The mark stays by the meter for the rest of the step, beside the real peak, and the
+  // result says the guess back.
 
   /** The guessed LED's dB mark. */
   let guess = $state<number | null>(null);
-  let guessOpen = $state(untrack(() => start === 'incoming'));
-  /** The guess beside the real peak, from deck 2 reaching the top until a fader moves. */
-  let reveal = $state<string | null>(null);
-  /** Where the faders were at the reveal. */
-  let revealedOn = '';
-  let guessDone = false;
-  const faders = (s: BlendSettings) => `${s.deck1.fader},${s.deck2.fader}`;
-
-  function endGuess() {
-    guessOpen = false;
-    guess = null;
-    reveal = null;
-    guessDone = true;
-  }
+  let guessOpen = $state(true);
+  const guessLine = $derived(guess !== null ? guessNote(guess, guessOpen) : guessOpen ? GUESS_PROMPT : null);
+  const currentResult = $derived(stepDone(step, settings, analysis) ? stepResult(step, settings, analysis, guess) : null);
 
   // Deck 2 moving closes the guess: from here on the meters give the answer away.
   $effect(() => {
-    if (guessOpen && settings.deck2.fader > FADER.min) guessOpen = false;
+    if (step === 1 && guessOpen && settings.deck2.fader > FADER.min) guessOpen = false;
   });
 
-  $effect(() => {
-    if (guessDone || guess === null || status === 'waiting') return;
-    guessDone = true;
-    reveal = guessReveal(guess, displayDb(analysis.mix));
-    revealedOn = faders(settings);
-  });
+  /* ---------------------------------------------------------------------------------------- */
+  /* Steps                                                                                    */
 
-  $effect(() => {
-    if (reveal !== null && faders(settings) !== revealedOn) {
-      reveal = null;
-      guess = null;
-    }
-  });
+  let heading: HTMLElement | undefined = $state();
 
-  const guessLine = $derived(
-    reveal ?? (guess !== null ? guessNote(guess, guessOpen) : guessOpen ? GUESS_PROMPT : null),
-  );
-  /** The lab starts with the guess open, so the line above the meters keeps its room throughout. */
-  const guessRow = untrack(() => guessOpen);
+  /**
+   * A new step's head goes to the top of the screen, so the mixer follows it: a jump, like turning
+   * a page, since the whole mixer changes at once. Not at all when it is already in the top third.
+   */
+  function showHead() {
+    if (!heading) return;
+    heading.focus({ preventScroll: true });
+    const box = heading.getBoundingClientRect();
+    const padding = Number.parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+    if (box.top >= padding && box.top <= window.innerHeight / 3) return;
+    window.scrollTo({ top: window.scrollY + box.top - padding, behavior: 'instant' });
+  }
 
-  // Challenge and hint --------------------------------------------------------------------------
-
-  let solved = $state(false);
-  /** The top orange, CLIP or the red seen on the MASTER meters with deck 2 fully up: the hint now makes sense. */
-  const failed = (s: ChallengeStatus) => s === 'top' || s === 'clip' || s === 'red';
-  let tried = $state(untrack(() => failed(status)));
-  let hint = $state(false);
-  const showHint = $derived(hint && !solved);
-  /** The fixes wait for the first top orange, unless the reader asks for them. */
-  let asked = $state(false);
-  const waysShown = $derived(tried || asked);
-
-  async function showWays() {
-    asked = true;
-    // The button goes, so its focus moves to the first way out.
+  async function goTo(next: Step) {
+    step = next;
+    settings = cloneSettings(STEP_START[next]);
+    moved = [];
+    result = null;
+    guess = null;
+    guessOpen = next === 1;
+    hearClean = false;
     await tick();
-    waysEl?.querySelector('button')?.focus();
+    showHead();
   }
 
-  $effect(() => {
-    if (status === 'done') solved = true;
-    if (failed(status)) tried = true;
-  });
+  const next = () => {
+    if (step < STEP_COUNT) void goTo((step + 1) as Step);
+  };
+  const back = () => {
+    if (step > 1) void goTo((step - 1) as Step);
+  };
 
-  $effect(() => {
-    // Any change to the mixer restarts the wait.
-    $state.snapshot(settings);
-    if (solved || !tried) return;
-    const timer = window.setTimeout(() => (hint = true), HINT_AFTER_MS);
-    return () => window.clearTimeout(timer);
-  });
-
-  // One polite live region. Once the reader pauses it says the verdict in words, and only when the
-  // verdict has changed: the sliders already speak their values, so a step that leaves the meters
-  // where they were stays quiet. A pad, or the hint appearing, always speaks. Nothing is said on
-  // load, and the full sentence with its numbers stays readable on the page.
-
-  const verdict = $derived(verdictLine(analysis, status));
-  let spoken = $state('');
-  /** The verdict the reader last heard (or saw on load). */
-  let heard = untrack(() => verdict);
-  let sayTimer: ReturnType<typeof setTimeout> | undefined;
-
-  /** Speak now, even if it's what the region said last: clear it, then set it. */
-  function say(text: string) {
-    clearTimeout(sayTimer);
-    spoken = '';
-    sayTimer = setTimeout(() => (spoken = text), 60);
-  }
-
-  /** The reveal is said once, ahead of the verdict it arrives with. */
-  let revealSaid = false;
-
-  $effect(() => {
-    const text = verdict;
-    const lead = reveal !== null && !revealSaid ? reveal : null;
-    const timer = window.setTimeout(() => {
-      if (text === heard && lead === null) return;
-      heard = text;
-      if (lead !== null) revealSaid = true;
-      clearTimeout(sayTimer);
-      spoken = lead === null ? text : `${lead} ${text}`;
-    }, LIVE_DEBOUNCE_MS);
-    return () => window.clearTimeout(timer);
-  });
-
-  $effect(() => {
-    if (showHint) say(HINT);
-  });
-
-  $effect(() => () => clearTimeout(sayTimer));
-
-  // Sound -------------------------------------------------------------------------------------------
+  /* ---------------------------------------------------------------------------------------- */
+  /* Sound                                                                                    */
 
   let playing = $state(false);
+  let hearClean = $state(false);
   let soundProblem = $state<string | null>(null);
   let lastHeard = '';
   // The label names this demo on the page-wide Stop bar.
@@ -275,8 +186,10 @@
     () => {
       playing = false;
     },
-    PLAYER_LABEL,
+    SOUND.playing,
   );
+
+  const heardKey = (s: BlendSettings, clean: boolean) => `${JSON.stringify(s)}:${clean}`;
 
   async function listen() {
     if (playing) {
@@ -285,148 +198,202 @@
     }
     soundProblem = null;
     const snapshot = $state.snapshot(settings);
-    lastHeard = JSON.stringify(snapshot);
+    const clean = hearClean;
+    lastHeard = heardKey(snapshot, clean);
     playing = true;
-    const ok = await player.start((sampleRate) => listenBuffer(snapshot, sampleRate));
+    const ok = await player.start((sampleRate) => listenBuffer(snapshot, sampleRate, clean));
     if (!ok) {
       // No sound at all, or another demo took over while this one started.
       playing = false;
-      if (audio.unavailable) soundProblem = NO_SOUND;
+      if (audio.unavailable) soundProblem = SOUND.unavailable;
     }
+  }
+
+  /** "Hear the clean version" is a request to hear it, so it starts the sound if it's off. */
+  function toggleClean() {
+    hearClean = !hearClean;
+    if (hearClean && !playing) void listen();
   }
 
   $effect(() => {
     const snapshot = $state.snapshot(settings);
+    const clean = hearClean;
     if (!playing) return;
-    const key = JSON.stringify(snapshot);
+    const key = heardKey(snapshot, clean);
     if (key === lastHeard) return;
     lastHeard = key;
-    untrack(() => player.update((sampleRate) => listenBuffer(snapshot, sampleRate)));
+    untrack(() => player.update((sampleRate) => listenBuffer(snapshot, sampleRate, clean)));
   });
 
   $effect(() => () => player.stop());
 
-  // The waveform --------------------------------------------------------------------------------------
+  /* ---------------------------------------------------------------------------------------- */
+  /* One polite live region                                                                   */
+  // Once the reader pauses it describes the current mixer, even after completing the step.
+  // The stored result below the controls is history, not a reason to stop announcing changes.
 
-  /** Behind a toggle until the panel is wide enough to show it beside the pads. */
+  const liveText = $derived(
+    currentResult
+      ? `${currentResult.title}. ${currentResult.lines.join(' ')}`
+      : [line, verdictLine(analysis)].filter(Boolean).join(' '),
+  );
+  let spoken = $state('');
+  /** What the reader last heard (or saw on load). */
+  let heard = untrack(() => liveText);
+
+  $effect(() => {
+    const text = liveText;
+    const timer = window.setTimeout(() => {
+      if (text === heard) return;
+      heard = text;
+      spoken = text;
+    }, LIVE_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  });
+
+  /* ---------------------------------------------------------------------------------------- */
+  /* The waveform                                                                             */
+
+  /** Behind a toggle until the panel is wide enough to show it beside the mixer. */
   let waveOpen = $state(false);
 </script>
 
-{#snippet pads(list: Preset[])}
-  {#each list as p (p.id)}
-    <Pad pressed={sameSettings(settings, p.settings)} onclick={() => apply(p)}>{p.label}</Pad>
-  {/each}
-{/snippet}
-
 <section class="panel blend" aria-label="Blend lab" data-playing={playing}>
+  <!-- One grid, in the order a reader on a phone needs it: a thumb on a slider hides what is under
+       it, so the meters come first and every control that moves them sits beside or under them. A
+       wide panel rearranges the same grid into a row of channel strips. -->
   <div class="layout">
-    <div class="challenge" bind:this={challengeEl}>
-      <p class="prompt">{CHALLENGE_PROMPT}</p>
-      <!-- How it's going: the state in bold, then what it means. The live region says the same
-           thing in longer words, so this is read in place and never announced. -->
-      <p class="status" data-tone={line.tone}>
-        <span class="visually-hidden">Status: </span><strong>{line.state}</strong>
-        {line.detail}
-      </p>
+    <div class="head">
+      <!-- The step in words ("Step 2 of 4"), over its title, like a numbered card in a quick
+           reference handbook. -->
+      <svelte:element this={`h${headingLevel}`} class="step" tabindex="-1" bind:this={heading}>
+        <span class="counter">{stepCounter(step, STEP_COUNT)}</span>
+        <span class="title">{STEPS[step].title}</span>
+      </svelte:element>
+      <p class="body">{STEPS[step].body}</p>
+      <noscript><p class="noscript">{NO_SCRIPT}</p></noscript>
     </div>
 
-    <div class="main">
-      <div class="mixer">
-        <!-- Above the meters, where the reader looks first. The radios' legend asks the question
-             and the live region says the reveal, so this stays out of the accessibility tree. -->
-        {#if guessRow}
-          <p class="guess-line" data-guessed={guess !== null} data-open={guessOpen} aria-hidden="true">
-            {#if guessLine}<span class="mark-key"></span>{guessLine}{/if}
-          </p>
-        {/if}
-        <ChannelFader n={1} bind:value={settings.deck1.fader} {uid} hinted={showHint} />
-        <div class="centre" bind:this={metersEl}>
-          <MeterBridge
-            ch1={meters.ch1}
-            master={meters.master}
-            ch2={meters.ch2}
-            clip={analysis.clip}
-            {guess}
-            guessing={guessOpen}
-            guessName="{uid}-guess"
-            guessLegend={GUESS_LEGEND}
-            {guessSpot}
-            onguess={(db) => (guess = db)}
-          />
-          <Readout label={READOUT_LABEL} {...readout} />
-        </div>
-        <ChannelFader n={2} bind:value={settings.deck2.fader} {uid} />
-      </div>
-
-      <!-- Each deck's TRIM and LOW under its fader, so the meters stay in view while they turn. -->
-      <details class="extra-controls">
-        <summary class="disclose">TRIM and EQ</summary>
-        <div class="tray">
-        <Knobs n={1} bind:trim={settings.deck1.trim} bind:low={settings.deck1.low} peak={meters.ch1} {uid} />
-        <Knobs n={2} bind:trim={settings.deck2.trim} bind:low={settings.deck2.low} peak={meters.ch2} {uid} />
-        </div>
-      </details>
-
-      <div class="listen">
-        <ListenKey
-          {playing}
-          onclick={listen}
-          aria-describedby={shaved ? `${uid}-listen-note ${uid}-shaved` : `${uid}-listen-note`}
-        />
-        <p class="listen-note" id="{uid}-listen-note">{soundProblem ?? LISTEN_NOTE}</p>
-      </div>
-    </div>
-
-    <div class="side">
-      <!-- What to try next. The status line above says how it's going. -->
-      {#if showHint || shaved}
-        <div class="coach">
-          <!-- Read out through the live region when it appears. -->
-          {#if showHint}<p class="hint" aria-hidden="true">{HINT}</p>{/if}
-          <!-- Red on the meters, yet it sounds clean: say why, so the red never passes for fine. -->
-          {#if shaved}<p class="shaved" id="{uid}-shaved">{BARELY_OVER_NOTE}</p>{/if}
-        </div>
+    <div class="mixer">
+      <!-- Above the meters, where the reader looks first. The radios' legend asks the question
+           and the result says the guess back, so this stays out of the accessibility tree. It
+           keeps two lines' height in step 1 whatever it says, so nothing under it moves. -->
+      {#if step === 1}
+        <p class="guess-line" data-guessed={guess !== null} data-open={guessOpen} aria-hidden="true">
+          {#if guessLine}<span class="mark-key"></span>{guessLine}{/if}
+        </p>
       {/if}
+      <ChannelFader
+        n={1}
+        bind:value={settings.deck1.fader}
+        {uid}
+        lit={lit.includes('fader1')}
+        onmove={() => touch('fader1')}
+      />
+      <div class="centre">
+        <MeterBridge
+          ch1={meters.ch1}
+          master={meters.master}
+          ch2={meters.ch2}
+          clip={analysis.clip}
+          {guess}
+          guessing={step === 1 && guessOpen}
+          guessName="{uid}-guess"
+          guessLegend={GUESS_LEGEND}
+          {guessSpot}
+          onguess={(db) => (guess = db)}
+        />
+        <Readout label={READOUT_LABEL} {...readout} />
+      </div>
+      <ChannelFader
+        n={2}
+        bind:value={settings.deck2.fader}
+        {uid}
+        lit={lit.includes('fader2')}
+        onmove={() => touch('fader2')}
+      />
+    </div>
 
-      <!-- A pad pressed with a finger or a mouse has a click count; one pressed with a key has none. -->
-      <div class="pads" onclickcapture={(e) => (tapped = e.detail > 0)}>
-        <!-- biome-ignore lint/a11y/useSemanticElements: preset buttons, not form fields; role="group" names them without a fieldset's legend -->
-        <div class="set" role="group" aria-labelledby="{uid}-push">
-          <p class="set-name" id="{uid}-push">{PRESET_GROUPS.push}</p>
-          <div class="set-pads">{@render pads(push)}</div>
-        </div>
-        <!-- biome-ignore lint/a11y/useSemanticElements: preset buttons, not form fields; role="group" names them without a fieldset's legend -->
-        <div class="set" role="group" aria-labelledby="{uid}-out">
-          <p class="set-name" id="{uid}-out">{PRESET_GROUPS.out}</p>
-          {#if waysShown}
-            <div class="set-pads" bind:this={waysEl}>{@render pads(out)}</div>
+    <!-- Current feedback stays beside the meters even after the first completed result. -->
+    <p class="coach">{currentResult?.title ?? line}</p>
+
+    <!-- Each deck's TRIM and LOW: under the meters on a phone, beside its fader on a wide panel. -->
+    <div class="knobs1">
+      <Knobs
+        n={1}
+        bind:trim={settings.deck1.trim}
+        bind:low={settings.deck1.low}
+        peak={meters.ch1}
+        {uid}
+        lit={lit.includes('trim1')}
+        onmove={() => touch('trim1')}
+      />
+    </div>
+    <div class="knobs2">
+      <Knobs
+        n={2}
+        bind:trim={settings.deck2.trim}
+        bind:low={settings.deck2.low}
+        peak={meters.ch2}
+        {uid}
+        lit={lit.includes('trim2')}
+        onmove={() => touch('trim2')}
+      />
+    </div>
+
+    <div class="say">
+      {#if result}
+        <div class="goal">
+          <p class="goal-context">{RESULT_CONTEXT}</p>
+          <p class="goal-title">{result.title}</p>
+          {#each result.lines as text (text)}
+            <p>{text}</p>
+          {/each}
+          {#if result.next}
+            <span class="goal-next"><HwButton primary onclick={next}>{result.next}</HwButton></span>
           {:else}
-            <div class="wait">
-              <p>{WAYS_OUT_WAIT}</p>
-              <HwButton onclick={showWays}>{WAYS_OUT_SHOW}</HwButton>
+            <div class="summary">
+              <p class="summary-title">{SUMMARY.title}</p>
+              {#each SUMMARY.lines as text (text)}
+                <p>{text}</p>
+              {/each}
             </div>
           {/if}
         </div>
+      {/if}
+      <div class="nav">
+        {#if step > 1}<HwButton onclick={back}>{NAV.back}</HwButton>{/if}
+        {#if step < STEP_COUNT && !result}<HwButton onclick={next}>{NAV.next}</HwButton>{/if}
       </div>
+    </div>
 
-      <!-- The sentence stays readable to screen readers; the live region only says what changed. -->
-      <div class="result">
-        <p class="sentence">{#each segments as seg, i (i)}{#if seg.kind === 'value'}<strong class="num">{seg.text}</strong>{:else if seg.kind === 'num'}<span class="num">{seg.text}</span>{:else if seg.kind === 'zone'}<strong class="zone">{seg.text}</strong>{:else}{seg.text}{/if}{/each}</p>
-        <p class="visually-hidden" role="status">{spoken}</p>
-        <p class="explain">{explanation}</p>
+    <!-- Volume lives on the page-wide sound bar, which appears while anything plays. -->
+    <div class="listen">
+      <div class="transport">
+        <ListenKey
+          {playing}
+          onclick={listen}
+          label={SOUND.listen}
+          stopLabel={SOUND.stop}
+          aria-describedby="{uid}-quiet"
+        />
+        <Pad pressed={hearClean} onclick={toggleClean}>{SOUND.clean}</Pad>
       </div>
+      <p class="quiet" id="{uid}-quiet">{soundProblem ?? SOUND.quiet}</p>
+      <!-- What you are hearing, while you hear it. -->
+      {#if playing}<p class="note">{hearClean ? SOUND.matched : SOUND.steady}</p>{/if}
+    </div>
 
-      <div class="wave" data-open={waveOpen}>
-        <button
-          type="button"
-          class="disclose wave-toggle"
-          aria-expanded={waveOpen}
-          aria-controls="{uid}-wave"
-          onclick={() => (waveOpen = !waveOpen)}>{WAVEFORM_TOGGLE}</button
-        >
-        <div class="wave-body" id="{uid}-wave">
-          <Scope view={analysis.view} {uid} />
-        </div>
+    <div class="wave" data-open={waveOpen}>
+      <button
+        type="button"
+        class="disclose wave-toggle"
+        aria-expanded={waveOpen}
+        aria-controls="{uid}-wave"
+        onclick={() => (waveOpen = !waveOpen)}>{WAVEFORM_TOGGLE}</button
+      >
+      <div class="wave-body" id="{uid}-wave">
+        <Scope view={analysis.view} {uid} />
       </div>
     </div>
 
@@ -441,6 +408,8 @@
       </details>
     </div>
   </div>
+
+  <p class="visually-hidden" aria-live="polite">{spoken}</p>
 </section>
 
 <style>
@@ -450,96 +419,172 @@
   }
 
   /*
-   * Phones first: one column. The meters and faders come straight after the challenge, with each
-   * deck's TRIM and LOW under its fader, then Listen, so nothing above a control changes height.
-   * What the mixer did follows: the feedback, the pads, the sentence and the waveform.
+   * Phones first: one column in the order a thumb needs it, but for the two decks' TRIM and LOW,
+   * side by side under the meters. The step; the meters between the faders; how it is going; the
+   * knobs; the result, once there is one; Listen; the waveform.
    */
   .layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1.1rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      'head head'
+      'mixer mixer'
+      'coach coach'
+      'knobs1 knobs2'
+      'say say'
+      'listen listen'
+      'wave wave'
+      'foot foot';
+    gap: 1.1rem 1rem;
   }
 
-  .main,
-  .side {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    align-content: start;
-    gap: 1.1rem;
+  .head {
+    grid-area: head;
+  }
+
+  .mixer {
+    grid-area: mixer;
+  }
+
+  .coach {
+    grid-area: coach;
+  }
+
+  .knobs1 {
+    grid-area: knobs1;
+  }
+
+  .knobs2 {
+    grid-area: knobs2;
+  }
+
+  .say {
+    grid-area: say;
+  }
+
+  .listen {
+    grid-area: listen;
+  }
+
+  .wave {
+    grid-area: wave;
+  }
+
+  .foot {
+    grid-area: foot;
+  }
+
+  .knobs1,
+  .knobs2 {
     min-width: 0;
   }
 
-  /*
-   * Wide: the mixer on the left, the pads and what the mixer does on the right. The pads lead the
-   * right-hand column, so words changing under them never move a control under the pointer.
-   */
-  @container blend (min-width: 50rem) {
+  @container blend (min-width: 28rem) {
     .layout {
-      grid-template-columns: minmax(0, 31rem) minmax(0, 1fr);
-      column-gap: 2rem;
-    }
-
-    .challenge,
-    .foot {
-      grid-column: 1 / -1;
-    }
-
-    .pads {
-      order: -1;
+      column-gap: 1.5rem;
     }
   }
 
-  /* Challenge ---------------------------------------------------------------------------------- */
+  /*
+   * Wide: the mixer as one row of channel strips, as it lies on the unit left to right: deck 1's
+   * TRIM and LOW, its fader, the meters, deck 2's fader, its TRIM and LOW. Every control that
+   * moves the meters sits beside them, and the whole mixer fits one screen with the step over it.
+   * Under it, how it is going and the result on the left, Listen and the waveform on the right:
+   * nothing there sits over a control.
+   *
+   * The mixer is a size container, so it has no width of its own to give an auto column: its two
+   * middle columns give it the width its faders and meters take at their full size.
+   */
+  @container blend (min-width: 54rem) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr) 14rem 14rem minmax(0, 1fr);
+      grid-template-areas:
+        'head head head head'
+        'knobs1 mixer mixer knobs2'
+        'coach coach listen listen'
+        'say say wave wave'
+        'foot foot foot foot';
+      column-gap: 1.75rem;
+    }
 
-  /* The panel's title strip, over a printed line: the task, then how it's going. */
-  .challenge {
+    .knobs1,
+    .knobs2 {
+      align-self: center;
+    }
+
+    .coach,
+    .say,
+    .listen,
+    .wave {
+      align-self: start;
+    }
+
+  }
+
+  /* The step's head -------------------------------------------------------------------------- */
+
+  .head {
     display: grid;
-    gap: 0.4rem;
+    gap: 0.6rem;
+    justify-items: start;
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--hw-edge);
   }
 
-  .prompt {
+  .step {
+    display: grid;
+    gap: 0.3rem;
+    justify-self: stretch;
+    max-width: 40rem;
     margin: 0;
-    font-size: var(--text-base);
-    font-weight: 700;
-    line-height: 1.4;
+    font-family: var(--font-display);
     color: var(--hw-bright);
-    text-wrap: pretty;
   }
 
-  /* Two lines' room whatever it says (statusLine keeps to two on the narrowest phone), so the
-     words changing never move the faders under it. The state leads in bold. */
-  .status {
-    min-height: calc(2 * 1.45em);
-    margin: 0;
+  .step:focus-visible {
+    outline: 3px solid var(--hw-focus);
+    outline-offset: 4px;
+  }
+
+  .counter {
+    font-family: var(--font-body);
     font-size: var(--text-sm);
-    line-height: 1.45;
+    font-weight: 700;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
     color: var(--hw-label);
   }
 
-  .status strong {
+  /* One size under the page's heading for the lab, which sits above the panel. */
+  .title {
+    font-size: var(--text-h3);
+    font-weight: 700;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+
+  .body,
+  .noscript {
+    max-width: 40rem;
+    margin: 0;
+    line-height: 1.55;
+    color: var(--hw-label);
+  }
+
+  .noscript {
     font-weight: 700;
     color: var(--hw-bright);
-  }
-
-  .status[data-tone='todo'] strong {
-    color: var(--hw-label);
-  }
-
-  /* Wide panels fit every line on one. */
-  @container blend (min-width: 36rem) {
-    .status {
-      min-height: 1.45em;
-    }
   }
 
   /* Mixer: faders either side of the meters -------------------------------------------------- */
 
-  /* Each fader runs about the height of the meters beside it. */
+  /* Each fader runs about the height of the meters beside it. Every column has a set width, so
+     nothing in the middle one (the guess, the readout) can push a fader. */
   .mixer {
     container: mixer / inline-size;
     display: grid;
+    inline-size: min(100%, 30rem);
+    margin-inline: auto;
     grid-template-columns: 3.5rem minmax(0, 1fr) 3.5rem;
     column-gap: 0.35rem;
     align-items: start;
@@ -562,26 +607,19 @@
 
   @container blend (min-width: 28rem) {
     .mixer {
-      grid-template-columns: 5.5rem auto 5.5rem;
-      justify-content: center;
+      grid-template-columns: 5.5rem minmax(0, 1fr) 5.5rem;
       column-gap: 1.25rem;
       --fader-length: 15.5rem;
     }
   }
 
-  /* The verdict sits right under the meters on a phone, and over them once there's room. */
+  /* The readout sits right under the meters, where the eye already is. */
   .centre {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0.75rem;
     min-width: 0;
-  }
-
-  @container mixer (min-width: 28rem) {
-    .centre :global(.readout) {
-      order: -1;
-    }
   }
 
   /* Above the meters and both faders, two lines tall whatever it says (or when it's empty), so
@@ -629,152 +667,110 @@
     }
   }
 
-  /* Listen, next to the mixer ------------------------------------------------------------------ */
+  /* How it is going, and the result ---------------------------------------------------------- */
 
-  .listen {
+  .say {
+    display: grid;
+    gap: 0.9rem;
+    align-content: start;
+    min-width: 0;
+  }
+
+  /* Two lines' room whatever it says (coach keeps to two on the narrowest phone), so no word
+     changing moves what is under it. */
+  .coach {
+    min-height: calc(2 * 1.45em);
+    margin: 0;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    line-height: 1.45;
+    color: var(--hw-bright);
+  }
+
+  /* What happened, under a printed line: the verdict in the display face, then why. */
+  .goal {
+    display: grid;
+    gap: 0.5rem;
+    justify-items: start;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--hw-edge);
+  }
+
+  .goal p {
+    margin: 0;
+    max-width: 36rem;
+    line-height: 1.5;
+    color: var(--hw-label);
+  }
+
+  .goal .goal-title,
+  .summary .summary-title {
+    font-family: var(--font-display);
+    font-size: var(--text-h3);
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--hw-bright);
+  }
+
+  .goal .goal-context {
+    font-size: var(--text-sm);
+  }
+
+  .goal-next {
+    margin-top: 0.35rem;
+  }
+
+  /* After the last step: the two meters' lines. */
+  .summary {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--hw-edge);
+  }
+
+  .summary .summary-title {
+    font-size: var(--text-rule);
+  }
+
+  .nav {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem 0.9rem;
+    gap: 0.5rem 0.75rem;
   }
 
-  .listen-note {
-    flex: 1 1 12rem;
-    margin: 0;
-    font-size: var(--text-sm);
-    line-height: 1.45;
-    color: var(--hw-label);
+  .nav:empty {
+    display: none;
   }
 
-  /* TRIM and LOW: one column per deck, under that deck's fader, at every width -------------- */
+  /* Listen ----------------------------------------------------------------------------------- */
 
-  .tray {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1.25rem 1rem;
-  }
-
-  @container blend (min-width: 28rem) {
-    .tray {
-      column-gap: 1.5rem;
-    }
-  }
-
-  /* Feedback --------------------------------------------------------------------------------- */
-
-  .coach {
+  .listen {
     display: grid;
     gap: 0.6rem;
-  }
-
-  /* The hint is what to do next, so it's printed in the action colour. */
-  .hint {
-    margin: 0;
-    font-size: var(--text-sm);
-    font-weight: 700;
-    line-height: 1.45;
-    color: var(--hw-action);
-  }
-
-  .shaved {
-    margin: 0;
-    font-size: var(--text-sm);
-    line-height: 1.5;
-    color: var(--hw-label);
-    text-wrap: pretty;
-  }
-
-  /* Presets: two labelled sets --------------------------------------------------------------- */
-
-  .pads {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .set {
-    display: grid;
-    gap: 0.5rem;
-  }
-
-  .set-name {
-    margin: 0;
-    font-size: var(--text-sm);
-    font-weight: 700;
-    line-height: 1.3;
-    color: var(--hw-bright);
-  }
-
-  .set-pads {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 9rem), 1fr));
-    gap: 0.5rem;
-  }
-
-  .set-pads :global(.pad) {
-    width: 100%;
-  }
-
-  /* The note and its key share a row, like a pad row, so the set keeps about one pad's height.
-     The key opens the set; it isn't a preset, so it's a plain key rather than a pad. */
-  .wait {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .wait p {
-    flex: 1 1 0;
-    margin: 0;
-    font-size: var(--text-sm);
-    line-height: 1.4;
-    color: var(--hw-label);
-  }
-
-  .wait :global(.key) {
-    flex: none;
-  }
-
-  /* Result ------------------------------------------------------------------------------------- */
-
-  .result {
-    display: grid;
     align-content: start;
-    gap: 0.4rem;
+    min-width: 0;
   }
 
-  /* What the meters say, in words: the numbers and the colour in bold, the rest regular. */
-  .sentence {
+  .transport {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 0.5rem;
+  }
+
+  .quiet,
+  .note {
     margin: 0;
-    font-size: var(--text-rule);
+    max-width: 40rem;
+    font-size: var(--text-sm);
     line-height: 1.45;
     color: var(--hw-label);
-    text-wrap: pretty;
   }
 
-  .num {
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-  }
+  /* The waveform: behind a toggle on phones, beside the mixer on wide panels. ---------------- */
 
-  strong.num,
-  .zone {
-    font-weight: 700;
-    color: var(--hw-bright);
-  }
-
-  .zone {
-    white-space: nowrap;
-  }
-
-  /* What to try next: an instruction, so never in the dimmer grey. */
-  .explain {
-    margin: 0;
-    font-size: var(--text-sm);
-    line-height: 1.5;
-    color: var(--hw-label);
-  }
-
-  /* The waveform: behind a toggle on phones, smaller and last, beside the pads on wide panels. */
   .wave {
     display: grid;
     gap: 0.5rem;
@@ -870,5 +866,4 @@
     margin: 0.4rem 0 0.25rem;
     padding-left: 1.1rem;
   }
-
 </style>

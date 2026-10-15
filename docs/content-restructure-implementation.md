@@ -360,3 +360,57 @@ Two reports, working papers kept outside the repository with every quotation and
 
 - Whether the XDJ-RX2 cuts a channel in the red before MASTER LEVEL. Pioneer does not say. AlphaTheta comes closest for the unit’s own USB recorder, which MASTER LEVEL does not set: a channel lit red means "the input level is too high and the sound may be distorted" (help article 4408616649497). A 2016 reply by Pioneer DJ’s forum moderator, relaying its engineers, says that on the DJM-900NXS and DJM-900NXS2 a digital source (USB or S/PDIF) cannot be clipped at the channel, whatever the channel level, and that the MASTER output still can (community.pioneerdj.com, post 22977674121369, comment of 4 March 2016); if the XDJ-RX2 works that way, turning MASTER LEVEL down would cure a channel in the red. In 2015 the same moderator wrote of the original XDJ-RX that "there is enough overhead to not clip the signal if the output is configured properly", a reply not attributed to the engineers (post 22977303740441, comment of 17 December 2015). One check settles it: TRIM up until CH1’s red light shows at the loudest part, MASTER LEVEL down until the MASTER meters show the first orange, record on the Howler, and listen the next day. Crunch in the file means the lab is right.
 - The learning report proposes a test with five DJs on their own phones, thinking aloud. It passes if nobody calls the lab broken and four of five say the light cannot tell them the file is clean.
+
+## 29 September 2026: the blend lab
+
+### What the owner said
+
+- "moving the sliders on the channels causes a lot of content jumping. also, you can't make it go into the red and clip. would it be a better educational tool if you could? have another look with fresh eyes with what you're trying to convey here. remember, clear, educational, intuitive"
+- "oh maybe if you mess with the trim and eq at the bottom but those controls are hidden so its not obvious they're involved, at least to me"
+
+### What was measured before
+
+- Deck 2's fader, stepped one mark at a time: on a wide screen the explanation beside the pads grew from one line to three as the top orange lit, and pushed the waveform 45 px down. On a phone the sentence and the explanation changed their line counts at two points in the fader's travel. The readout re-centred as its words changed width. A drag crosses those points many times.
+- With the controls on screen, the faders could only bring the mix down. TRIM and LOW, folded under "TRIM and EQ", and the preset pads were the only ways into the red.
+
+### What the research found
+
+A working paper kept outside the repository, with every quotation and its source:
+
+- Error management training beat error-avoidant training in a meta-analysis of 24 studies (Keith and Frese 2008, N = 2,183): d = 0.44 overall, 0.56 for transfer after training, 0.80 for tasks unlike the ones practised. A later experiment (Loh and others 2013, N = 164) credits active exploration more than the errors, and a review (Metcalfe 2017) finds feedback on the mistake crucial.
+- PhET's design guidance: "Simulations need to ‘break’ in a meaningful way when pushed to extremes", and "No features are hidden or buried in menus" (Podolefsky and others 2013).
+- Segmenting a lesson into steps the learner paces: d = 0.67 over 7 tests (Mayer 2024).
+- Layout shift: movement during a drag counts as unexpected (web.dev, Cumulative Layout Shift).
+
+### What changed
+
+- Four steps, each opening on a mixer set for it: bring deck 2 in (the peaks add, the top orange lights); fix it with a fader; push both TRIMs to the top orange (each channel under the red, the mix 3 dB past it); leave room with TRIM (set deck 2 on the first orange before it comes in). Each ends on a result in three lines at most, and the lab closes on the two meters' lines.
+- Every control is on the panel and live in every step: each deck's TRIM, LOW and fader. The step's control is printed in the action colour, with a ring, until it moves. The reader can push the mix into the red at any time.
+- On a phone the meters come first, the faders beside them and each deck's TRIM and LOW under them: a thumb on a slider hides what is under it. On a wide panel the mixer is one row of channel strips, as on the unit.
+- Nothing moves while a control is in use. The readout keeps one width, the line under the meters keeps two lines' room, the mixer's columns have set widths, and a step's result appears once, when its goal is met, below every control.
+- Listen has "Hear the clean version": the same blend with nothing cut, at the same loudness.
+- The preset pads, the fixes that waited for the top orange, the hint and the long sentence are gone: the steps do what the pads did, by hand. `blend/scroll.ts` went with the pads.
+- `tests/e2e/blend-lab.spec.ts` is new. It walks the four steps, checks that every control is live, and checks that nothing moves under a control.
+
+### Verification
+
+`pnpm verify` passes: lint, Astro and Svelte checks, 597 unit and component tests, the build, and 257 browser tests (10 skipped by design). With `BASE_PATH=/ClipClip/` and `CROSS_BROWSER=1`, 342 pass and one WebKit test on Learn's listening test times out under full parallel load. The previous commit times out the same way on this machine, and every WebKit test passes with two workers. The lab was inspected at 360, 390, 820 and 1440 pixels, in both themes.
+
+### Still open
+
+- How much hard clipping on dance music can be heard is not settled by any study we could open. Step 3 goes 3 dB past the red, where the lab's own loops cut enough to hear.
+
+## 15 October 2026: blend lab review before release
+
+The local changes were reviewed against the latest `origin/main` (`75c65e1`), preserving the October corrections to Two ceilings, the hardware guidance and the research notes.
+
+- After a step was completed, its stored success message hid later changes to the mixer, both beside the meters and in the screen-reader announcement. The completed result now identifies itself as history, while the feedback beside the meters continues to describe the current controls and meters.
+- The clean comparison used to stay selected when moving to another step. Each step now selects the actual mix, so an earlier comparison cannot hide the clipping the lesson asks the reader to hear.
+- WebKit needed three lines for the longest channel reading at 320 pixels; with only two reserved, turning LOW moved its own slider by 21 pixels. The narrowest columns now reserve three lines. At that width the mix readout also uses a smaller number and reserves two lines for its colour words, keeping it clear of the faders.
+- Browser regressions cover feedback after completion, audio selection on Next and Back, and control positions and readout width at 320, 360 and 390 pixels.
+
+### Verification
+
+The release-check commands were run through the installed project binaries in `node_modules/.bin`; the local pnpm version-switch attempt could not verify the pinned release through the registry. Lint, Astro and Svelte checks, 598 unit/component tests and the production build pass, with `BASE_PATH=/ClipClip/`.
+
+The full browser run with `CROSS_BROWSER=1` and two workers passed 378 tests and skipped 13 by design; one extra diagnostic screenshot timed out in WebKit after its layout assertions passed. That screenshot capture was removed from the regression test. The affected blend-lab file then passed all 27 Chromium cases across desktop, phone and accessibility preferences, and all nine WebKit cases with one worker. Parallel WebKit runs also intermittently stalled during opening or scrolling, before the assertions; the serial run passed in 32.5 seconds. The 320-pixel Chromium and WebKit captures and the 390-pixel phone capture were inspected for readable, unobstructed controls and readings.

@@ -18,21 +18,23 @@ import {
   faderDb,
   faderGain,
   hotDecks,
+  LISTEN_REFERENCE,
   LOW,
   listenBuffer,
-  PRESETS,
-  type PresetId,
-  preset,
-  presetsIn,
   renderMix,
   START,
+  STEP_CONTROLS,
+  STEP_COUNT,
+  STEP_START,
+  type Step,
   sameSettings,
+  stepDone,
   TRIM,
+  topLight,
   topLit,
   tracksAt,
 } from './model';
 
-const settingsOf = (id: PresetId) => cloneSettings(preset(id).settings);
 const withDeck = (s: BlendSettings, deck: 'deck1' | 'deck2', change: Partial<BlendSettings['deck1']>) => {
   const next = cloneSettings(s);
   next[deck] = { ...next[deck], ...change };
@@ -42,6 +44,21 @@ const withDeck = (s: BlendSettings, deck: 'deck1' | 'deck2', change: Partial<Ble
 const challenge = withDeck(START, 'deck2', { fader: FADER.max });
 /** Both decks on the third orange (+6), blended: the mix only just reaches the red. */
 const sixes = withDeck(withDeck(challenge, 'deck1', { trim: 6 }), 'deck2', { trim: 6 });
+
+/**
+ * The blends the steps walk through. Both tracks on the top orange, both faders up: where step 3
+ * ends. Step 1's blend with deck 2's LOW fully up. Step 1's blend with deck 1's fader one mark down:
+ * step 2's fix. Both tracks on the first orange, both faders up: where step 4 ends, and what Listen
+ * plays every blend as loud as.
+ */
+const named = {
+  hot: withDeck(withDeck(challenge, 'deck1', { trim: TARGET_PEAK_DB.top }), 'deck2', { trim: TARGET_PEAK_DB.top }),
+  boost: withDeck(challenge, 'deck2', { low: LOW.max }),
+  ease: withDeck(challenge, 'deck1', { fader: FADER.max - FADER.step }),
+  orange: cloneSettings(LISTEN_REFERENCE),
+};
+const settingsOf = (id: keyof typeof named) => cloneSettings(named[id]);
+const STEPS: Step[] = [1, 2, 3, 4];
 
 /** How much of the loop the ceilings cut away: RMS of the removed part against the uncut blend, in %. */
 function cutPercent(s: BlendSettings, sampleRate: number): number {
@@ -204,7 +221,7 @@ describe('blends add up', () => {
   });
 
   it('shows the loop’s loudest moment in the two beats on screen', () => {
-    const cases = [START, ...PRESETS.map((p) => p.settings), { ...settingsOf('hot'), aligned: false }];
+    const cases = [START, ...Object.values(named), { ...settingsOf('hot'), aligned: false }];
     for (const s of cases) {
       const r = analyseBlend(s);
       expect(sampleToMeterDb(peak(r.view.mix))).toBeCloseTo(r.mix, 1);
@@ -324,44 +341,78 @@ describe('only just in the red', () => {
   });
 });
 
-describe('presets', () => {
-  it('are all different, and the lab starts on none of them', () => {
-    for (const p of PRESETS) {
-      expect(sameSettings(p.settings, START)).toBe(false);
-      expect(PRESETS.filter((q) => sameSettings(q.settings, p.settings))).toHaveLength(1);
-    }
+describe('the steps', () => {
+  it('are four, each opening on its own mixer with the kicks lined up', () => {
+    expect(STEP_COUNT).toBe(4);
+    for (const step of STEPS) expect(STEP_START[step].aligned).toBe(true);
+    expect(sameSettings(START, STEP_START[1])).toBe(true);
   });
 
-  it('match the spec', () => {
-    // One printed mark: the DJ box's "pull a channel fader down a little".
-    expect(faderDb(settingsOf('ease').deck1.fader)).toBeCloseTo(-3, 6);
-    expect(settingsOf('boost').deck2.low).toBe(6);
-    expect(settingsOf('orange').deck1.trim).toBe(TARGET_PEAK_DB.aim);
-    expect(settingsOf('orange').deck2.trim).toBe(TARGET_PEAK_DB.aim);
-    expect(settingsOf('hot').deck1.trim).toBe(TARGET_PEAK_DB.top);
-    // Every other pad starts from the lab's own levels, one change away from the challenge.
-    for (const id of ['boost', 'ease'] as const) {
-      expect(settingsOf(id).deck1.trim).toBe(TRIM.initial);
-      expect(settingsOf(id).deck2.trim).toBe(TRIM.initial);
-    }
+  it('ask each step for the controls its goal needs', () => {
+    expect(STEP_CONTROLS).toEqual({ 1: ['fader2'], 2: ['fader1'], 3: ['trim1', 'trim2'], 4: ['trim2', 'fader2'] });
   });
 
-  it('come in two sets: blends that light the top orange, then ways to keep it dark', () => {
-    expect(presetsIn('push').map((p) => p.label)).toEqual(['Both decks on top orange', 'Boost the LOW']);
-    expect(presetsIn('out').map((p) => p.label)).toEqual(['Pull a fader down', 'First orange']);
-    expect(presetsIn('push').length + presetsIn('out').length).toBe(PRESETS.length);
-    expect(challengeStatus(settingsOf('hot'), analyseBlend(settingsOf('hot')))).toBe('red');
-    expect(challengeStatus(settingsOf('boost'), analyseBlend(settingsOf('boost')))).toBe('clip');
-    for (const p of presetsIn('push')) expect(topLit(analyseBlend(p.settings))).toBe(true);
-    for (const p of presetsIn('out')) {
-      const r = analyseBlend(p.settings);
-      expect(challengeStatus(p.settings, r)).toBe('done');
-    }
+  it('open step 1 on two tracks on the second orange, deck 2 cued, and end it with deck 2 all the way up', () => {
+    const s = STEP_START[1];
+    expect([s.deck1.trim, s.deck2.trim]).toEqual([TRIM.initial, TRIM.initial]);
+    expect([s.deck1.fader, s.deck2.fader]).toEqual([FADER.max, FADER.min]);
+    expect(stepDone(1, s, analyseBlend(s))).toBe(false);
+    expect(stepDone(1, challenge, analyseBlend(challenge))).toBe(true);
+    // Whatever the meters then show: that is the lesson.
+    expect(topLit(analyseBlend(challenge))).toBe(true);
   });
 
-  it('line the kicks up, as every blend in the lab does', () => {
-    for (const p of PRESETS) expect(p.settings.aligned).toBe(true);
-    expect(START.aligned).toBe(true);
+  it('open step 2 with the top orange lit, and one mark down on deck 1 ends it', () => {
+    const s = STEP_START[2];
+    expect(sameSettings(s, challenge)).toBe(true);
+    expect(stepDone(2, s, analyseBlend(s))).toBe(false);
+    expect(stepDone(2, settingsOf('ease'), analyseBlend(settingsOf('ease')))).toBe(true);
+  });
+
+  it('end step 3 with both channels on the top orange and both faders up: the mix 3 dB past the red', () => {
+    const s = STEP_START[3];
+    expect([s.deck1.fader, s.deck2.fader]).toEqual([FADER.max, FADER.max]);
+    const hot = settingsOf('hot');
+    const r = analyseBlend(hot);
+    expect(stepDone(3, hot, r)).toBe(true);
+    expect(hotDecks(r)).toEqual([]);
+    expect(displayDb(r.mix)).toBe(CEILING_DB + 3);
+    // Two tracks on the third orange reach the red, but only just: not yet the goal.
+    expect(barelyOver(analyseBlend(sixes))).toBe(true);
+    expect(stepDone(3, sixes, analyseBlend(sixes))).toBe(false);
+    // A channel pushed into the red is past the goal, and so is a fader pulled down.
+    const red = withDeck(hot, 'deck2', { trim: 12 });
+    expect(stepDone(3, red, analyseBlend(red))).toBe(false);
+    const eased = withDeck(hot, 'deck1', { fader: 9 });
+    expect(stepDone(3, eased, analyseBlend(eased))).toBe(false);
+  });
+
+  it('open step 4 with deck 1 on the first orange and deck 2 cued on the second, and end it with both on the first', () => {
+    const s = STEP_START[4];
+    expect(topLight(analyseBlend(s).channel[0])).toBe(TARGET_PEAK_DB.aim);
+    expect(topLight(analyseBlend(s).channel[1])).toBe(TRIM.initial);
+    // Brought in without its TRIM set, deck 2 keeps the top orange dark, and the step is not done:
+    // its channel is not on the first orange.
+    const hasty = withDeck(s, 'deck2', { fader: FADER.max });
+    expect(topLit(analyseBlend(hasty))).toBe(false);
+    expect(stepDone(4, hasty, analyseBlend(hasty))).toBe(false);
+    for (const trim of [0, 1, 2]) {
+      const set = withDeck(hasty, 'deck2', { trim });
+      expect(stepDone(4, set, analyseBlend(set)), `trim ${trim}`).toBe(true);
+    }
+    const low = withDeck(hasty, 'deck2', { trim: -1 });
+    expect(stepDone(4, low, analyseBlend(low))).toBe(false);
+  });
+
+  it('name the light a level reaches as the meter shows it', () => {
+    expect(topLight(Number.NEGATIVE_INFINITY)).toBeNull();
+    expect(topLight(-30)).toBeNull();
+    expect(topLight(-1)).toBe(-3);
+    expect(topLight(0)).toBe(0);
+    expect(topLight(2.9)).toBe(0);
+    expect(topLight(8.6)).toBe(6);
+    expect(topLight(9.02)).toBe(9);
+    expect(topLight(15)).toBe(12);
   });
 });
 
@@ -433,16 +484,44 @@ describe('listening', () => {
       { deck1: { trim: -6, low: 0, fader: 0.5 }, deck2: { trim: -6, low: 6, fader: 10 }, aligned: false },
       { deck1: { trim: 0, low: 6, fader: 10 }, deck2: { trim: 0, low: 6, fader: 10 }, aligned: true },
     ];
-    for (const s of [START, ...PRESETS.map((p) => p.settings), ...extremes]) {
-      for (const sr of [44_100, 48_000]) expect(peak(listenBuffer(s, sr))).toBeLessThanOrEqual(0.98);
+    for (const s of [START, ...Object.values(named), ...extremes]) {
+      for (const sr of [44_100, 48_000]) {
+        expect(peak(listenBuffer(s, sr))).toBeLessThanOrEqual(0.98);
+        expect(peak(listenBuffer(s, sr, true))).toBeLessThanOrEqual(0.98);
+      }
     }
   });
 
-  it('plays every preset at the same loudness, so red never wins by being louder', () => {
+  it('plays every step’s blend at the same loudness, so red never wins by being louder', () => {
     for (const sr of [44_100, 48_000]) {
       const ref = lufs(settingsOf('orange'), sr);
-      for (const p of PRESETS) expect(Math.abs(lufs(p.settings, sr) - ref)).toBeLessThan(0.1);
-      expect(Math.abs(lufs(START, sr) - ref)).toBeLessThan(0.1);
+      for (const s of [...Object.values(named), ...STEPS.map((step) => STEP_START[step])]) {
+        if (s.deck1.fader === FADER.min && s.deck2.fader === FADER.min) continue;
+        expect(Math.abs(lufs(s, sr) - ref)).toBeLessThan(0.1);
+      }
+    }
+  });
+
+  it('plays the clean version of a blend at the same loudness, with nothing cut', () => {
+    const tracks = tracksAt(48_000);
+    // Past the red, the clean version keeps the peaks the ceilings would cut: 3 dB over, in full.
+    expect(sampleToMeterDb(peak(renderMix(settingsOf('hot'), tracks, true)))).toBeCloseTo(CEILING_DB + 3, 0);
+    // Under the red, it is the same blend.
+    const a = renderMix(settingsOf('orange'), tracks);
+    const b = renderMix(settingsOf('orange'), tracks, true);
+    let diff = 0;
+    for (let i = 0; i < a.length; i++) diff = Math.max(diff, Math.abs(a[i]! - b[i]!));
+    expect(diff).toBeLessThan(1e-6);
+    const loudest: BlendSettings = {
+      deck1: { trim: 12, low: 6, fader: 10 },
+      deck2: { trim: 12, low: 6, fader: 10 },
+      aligned: true,
+    };
+    for (const sr of [44_100, 48_000]) {
+      const ref = lufs(settingsOf('orange'), sr);
+      for (const s of [settingsOf('hot'), settingsOf('boost'), sixes, challenge, loudest]) {
+        expect(Math.abs(loudnessLufs(listenBuffer(s, sr, true), sr) - ref)).toBeLessThan(0.1);
+      }
     }
   });
 

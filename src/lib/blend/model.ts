@@ -18,7 +18,8 @@
  * - The crossfader is assumed to be on THRU, Pioneer's setting for not using it (manual p. 28), so
  *   only the channel faders count. The lab's notes say so (copy.ts, MODEL_NOTES).
  * - The DJ box's targets come from model.ts: a channel on the first orange (TARGET_PEAK_DB.aim),
- *   and the MASTER meters' top orange (TARGET_PEAK_DB.top) dark. The challenge asks for the second.
+ *   and the MASTER meters' top orange (TARGET_PEAK_DB.top) dark. The lab's four steps practise
+ *   both (STEP_START).
  * - Every level is measured at one fixed rate (ANALYSIS_RATE), so the server render, the browser
  *   and the tests agree to the sample. Kicks stack by a slightly different amount at other rates.
  */
@@ -256,92 +257,63 @@ export function analyseBlend(s: BlendSettings, tracks: Tracks = tracksAt(ANALYSI
 
 /**
  * One loop of the blend as the mixer outputs it: each channel through its own ceiling, then its
- * fader, then the sum through the mixer's ceiling (±1).
+ * fader, then the sum through the mixer's ceiling (±1). `clean` leaves every ceiling out: the same
+ * blend as it would be with nothing cut, to hear beside it.
  */
-export function renderMix(s: BlendSettings, tracks: Tracks): Float32Array {
+export function renderMix(s: BlendSettings, tracks: Tracks, clean = false): Float32Array {
   const { a, b, length: n } = tracks;
   const { t1, t2, l1, l2, f1, f2 } = gains(s);
   const shift = s.aligned ? 0 : tracks.sixteenth;
+  const cut = clean ? (v: number) => v : clip;
   const out = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     const j = (i - shift + n) % n;
     const d1 = t1 * (l1 * a.low[i]! + a.mid[i]! + a.high[i]!);
     const d2 = t2 * (l2 * b.low[j]! + b.mid[j]! + b.high[j]!);
-    out[i] = clip(f1 * clip(d1) + f2 * clip(d2));
+    out[i] = cut(f1 * cut(d1) + f2 * cut(d2));
   }
   return out;
 }
 
 // ---------------------------------------------------------------------------------------------
-// Presets and the challenge
+// The steps
 
 const deck = (trim: number, low: number, fader: number): DeckSettings => ({ trim, low, fader });
 
-export type PresetId = 'hot' | 'boost' | 'ease' | 'orange';
-
-/** Problems to cause ('push') and fixes to try once you've caused one ('out'). */
-export type PresetGroup = 'push' | 'out';
-
-export interface Preset {
-  id: PresetId;
-  label: string;
-  group: PresetGroup;
-  settings: BlendSettings;
-}
-
 /**
- * Each pad sets the whole mixer, so it always shows the same thing however you got there. They
- * come in two sets: two blends that light the MASTER meters' top orange, and two ways to keep it
- * dark, each of which solves the challenge in one press (so the lab keeps them back until the
- * reader has lit the top orange).
+ * Four steps, each opening on a mixer set for it, with every control live throughout: it is a
+ * mixer, and anything a DJ can do to one, the reader can do here, the red included.
  *
- * Top orange puts both tracks on the top orange light, so the blend lands 3 dB past the red and
- * Listen has something to cut. Boost the LOW is the start with deck 2 in and its LOW fully up: it
- * lights CLIP just under the red. The fixes start from the start's levels (both on the second
- * orange), where one change is enough: a fader one mark down, or both TRIMs on the first orange.
+ *   1. Bring deck 2 in: both tracks on the second orange, deck 1 playing, deck 2's fader down.
+ *      Up it comes, and the MASTER meters light the top orange: the peaks add.
+ *   2. Fix it with a fader: the same blend, deck 2 up. Pull deck 1's fader down until the top
+ *      orange goes dark, the DJ box's line for the MASTER meters.
+ *   3. Push it into the red: both faders up, both TRIMs turned up until each channel shows the
+ *      top orange. Neither channel is in the red, and the mix is 3 dB past it: the crunch to hear.
+ *   4. Leave room with TRIM: deck 1 on the first orange, deck 2 cued on the second. Set deck 2's
+ *      TRIM to the first orange and bring it in: the top orange stays dark. The DJ box's line for
+ *      the channel meters.
  */
-export const PRESETS: readonly Preset[] = [
-  {
-    id: 'hot',
-    label: 'Both decks on top orange',
-    group: 'push',
-    settings: { deck1: deck(TARGET_PEAK_DB.top, 0, 10), deck2: deck(TARGET_PEAK_DB.top, 0, 10), aligned: true },
-  },
-  {
-    id: 'boost',
-    label: 'Boost the LOW',
-    group: 'push',
-    settings: { deck1: deck(TRIM.initial, 0, 10), deck2: deck(TRIM.initial, RANGES.eq.max, 10), aligned: true },
-  },
-  {
-    id: 'ease',
-    label: 'Pull a fader down',
-    group: 'out',
-    // One printed mark, −3 dB: the DJ box's "pull a channel fader down a little".
-    settings: { deck1: deck(TRIM.initial, 0, 9), deck2: deck(TRIM.initial, 0, 10), aligned: true },
-  },
-  {
-    id: 'orange',
-    label: 'First orange',
-    group: 'out',
-    settings: { deck1: deck(TARGET_PEAK_DB.aim, 0, 10), deck2: deck(TARGET_PEAK_DB.aim, 0, 10), aligned: true },
-  },
-];
+export type Step = 1 | 2 | 3 | 4;
+export const STEP_COUNT = 4;
 
-export function preset(id: PresetId): Preset {
-  const p = PRESETS.find((x) => x.id === id);
-  if (!p) throw new Error(`No preset ${id}`);
-  return p;
-}
+export const STEP_START: Record<Step, BlendSettings> = {
+  1: { deck1: deck(TRIM.initial, 0, FADER.max), deck2: deck(TRIM.initial, 0, FADER.min), aligned: true },
+  2: { deck1: deck(TRIM.initial, 0, FADER.max), deck2: deck(TRIM.initial, 0, FADER.max), aligned: true },
+  3: { deck1: deck(TRIM.initial, 0, FADER.max), deck2: deck(TRIM.initial, 0, FADER.max), aligned: true },
+  4: { deck1: deck(TARGET_PEAK_DB.aim, 0, FADER.max), deck2: deck(TRIM.initial, 0, FADER.min), aligned: true },
+};
 
-/** The pads in one set, in the order they sit on the panel. */
-export const presetsIn = (group: PresetGroup): Preset[] => PRESETS.filter((p) => p.group === group);
+/** Where the lab starts: step 1. */
+export const START: BlendSettings = STEP_START[1];
 
-/** Where the lab starts: deck 1 playing, deck 2 cued with its fader down, both on the second orange. */
-export const START: BlendSettings = {
-  deck1: deck(TRIM.initial, 0, 10),
-  deck2: deck(TRIM.initial, 0, 0),
-  aligned: true,
+/** The controls each step asks for, printed in the action colour until the reader moves one. */
+export type Control = 'fader1' | 'fader2' | 'trim1' | 'trim2';
+export const STEP_CONTROLS: Record<Step, readonly Control[]> = {
+  1: ['fader2'],
+  2: ['fader1'],
+  3: ['trim1', 'trim2'],
+  4: ['trim2', 'fader2'],
 };
 
 export function cloneSettings(s: BlendSettings): BlendSettings {
@@ -354,12 +326,20 @@ export function sameSettings(x: BlendSettings, y: BlendSettings): boolean {
   return x.aligned === y.aligned && sameDeck(x.deck1, y.deck1) && sameDeck(x.deck2, y.deck2);
 }
 
+/** The mark of the highest light a level lights on a meter, as the meter shows it, or null if none. */
+export function topLight(db: number): number | null {
+  const shown = displayDb(db);
+  let top: number | null = null;
+  for (const { db: mark } of METER_SEGMENTS) if (shown >= mark) top = mark;
+  return top;
+}
+
 /**
- * "Bring deck 2 all the way up without lighting the top orange on the MASTER meters": the DJ box's
- * line for them. It only counts as a blend if the kicks are lined up and deck 1 is still audibly
- * in the mix (fader at 4, about −20 dB, or higher). Red and CLIP fail it too, and each says so. The
- * channel meters have to stay out of the red as well: a red channel is cut flat before its fader,
- * so easing that fader after it can't make the blend clean.
+ * "Deck 2 all the way up, and the top orange dark on the MASTER meters": the DJ box's line for
+ * them, and the goal of steps 2 and 4. It only counts as a blend if the kicks are lined up and
+ * deck 1 is still audibly in the mix (fader at 4, about −20 dB, or higher). Red and CLIP fail it
+ * too. The channel meters have to stay out of the red as well: a red channel is cut flat before
+ * its fader, so easing that fader after it can't make the blend clean.
  */
 export const CHALLENGE = { deck1MinFader: 4 } as const;
 
@@ -388,6 +368,31 @@ export function challengeStatus(s: BlendSettings, r: BlendAnalysis): ChallengeSt
   return 'done';
 }
 
+/** Both channel meters light the same light at the top: the first orange, say, or the top orange. */
+const bothOn = (r: BlendAnalysis, mark: number) => topLight(r.channel[0]) === mark && topLight(r.channel[1]) === mark;
+
+/**
+ * Has the reader done what the step asks?
+ *
+ * Step 1 asks only for deck 2 all the way up: what the meters then show is the lesson, whatever
+ * it is. Step 3 asks for both channels on the top orange with both faders up, where the mix is 3 dB
+ * past the red, far enough to hear: passing through the red on the way (two tracks on the third
+ * orange) only shaves the tips (barelyOver). Step 4 asks for the blend done with both channels on
+ * the first orange.
+ */
+export function stepDone(step: Step, s: BlendSettings, r: BlendAnalysis): boolean {
+  switch (step) {
+    case 1:
+      return s.deck2.fader === FADER.max;
+    case 2:
+      return challengeStatus(s, r) === 'done';
+    case 3:
+      return s.deck1.fader === FADER.max && s.deck2.fader === FADER.max && bothOn(r, TARGET_PEAK_DB.top);
+    case 4:
+      return challengeStatus(s, r) === 'done' && bothOn(r, TARGET_PEAK_DB.aim);
+  }
+}
+
 /**
  * How far past the red the ceiling only shaves the tips of the kicks: every level the lab shows
  * as "+12 dB". Up to here it cuts away at most about 0.3% of these loops (RMS, at 44.1 or 48 kHz,
@@ -412,11 +417,16 @@ export function barelyOver(r: BlendAnalysis): boolean {
 // Listening
 
 /**
- * Every setting plays at the loudness of the "First orange" blend, so a setting that clips never
- * sounds better just by being louder (the site's loudness-matching rule), and a clean setting
- * never sounds worse by being quieter. Silence stays silent.
+ * Every setting plays at the loudness of a blend of two tracks on the first orange, both faders
+ * up, so a setting that clips never sounds better just by being louder (the site's
+ * loudness-matching rule), and a clean setting never sounds worse by being quieter. Silence stays
+ * silent. The clean version of a blend plays at the same loudness, so only the crunch changes.
  */
-export const LISTEN_REFERENCE: PresetId = 'orange';
+export const LISTEN_REFERENCE: BlendSettings = {
+  deck1: deck(TARGET_PEAK_DB.aim, 0, FADER.max),
+  deck2: deck(TARGET_PEAK_DB.aim, 0, FADER.max),
+  aligned: true,
+};
 /**
  * Lifts the reference blend from −6 dBFS (its peak at meter +6) to −4 dBFS. At this makeup every
  * setting the lab can reach plays at the reference loudness inside the peak limit, at 44.1, 48,
@@ -429,13 +439,16 @@ const LISTEN_PEAK_LIMIT = 0.98;
 
 const referencePower = new Map<number, number>();
 
-/** One loop of the blend at the current settings, for LoopPlayer: through the ceiling, loudness-matched. */
-export function listenBuffer(s: BlendSettings, sampleRate: number): Float32Array {
+/**
+ * One loop of the blend at the current settings, for LoopPlayer: through the ceilings, or with
+ * none (`clean`), loudness-matched either way.
+ */
+export function listenBuffer(s: BlendSettings, sampleRate: number, clean = false): Float32Array {
   const tracks = tracksAt(sampleRate);
-  const mix = renderMix(s, tracks);
+  const mix = renderMix(s, tracks, clean);
   let ref = referencePower.get(sampleRate);
   if (ref === undefined) {
-    ref = kWeightedPower(renderMix(preset(LISTEN_REFERENCE).settings, tracks), sampleRate);
+    ref = kWeightedPower(renderMix(LISTEN_REFERENCE, tracks), sampleRate);
     referencePower.set(sampleRate, ref);
   }
   const power = kWeightedPower(mix, sampleRate);

@@ -5,9 +5,9 @@
    * shape, and whatever the mix pushes past the red is filled in the damage colour, because the
    * ceiling cuts it off. The vertical scale is fixed, so louder always looks bigger.
    *
-   * Hidden from screen readers: the reactive sentence just above it says the same thing. The lab
-   * keeps it behind "Show the waveform" on a phone and shows it, smaller, beside the pads on a
-   * wide panel: the meters are what the reader watches.
+   * Hidden from screen readers: the meters say the same thing, and the lab's live region says it
+   * in words. The lab keeps it behind "Show the waveform" on a phone and shows it, smaller, beside
+   * the mixer on a wide panel: the meters are what the reader watches.
    */
   import type { BlendView } from '../../lib/blend/model';
   import { ANALYSIS_RATE, VIEW } from '../../lib/blend/model';
