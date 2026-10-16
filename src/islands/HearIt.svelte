@@ -460,6 +460,7 @@
 
   .controls {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 1.25rem;
     min-width: 0;
   }
@@ -467,6 +468,8 @@
   .device,
   .listen {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
     gap: 0.6rem;
   }
 
@@ -494,7 +497,7 @@
 
   .transport {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr));
     gap: 0.5rem;
   }
 

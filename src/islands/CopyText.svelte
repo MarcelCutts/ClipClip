@@ -4,7 +4,7 @@
    * button. If the clipboard is off limits (an in-app browser, an old phone, no permission), the
    * raw text appears in a read-only box, already selected, with how to copy it by hand.
    */
-  import { tick } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { type Inline, parseMessage } from '../lib/messages';
 
   interface Props {
@@ -25,9 +25,15 @@
   const blocks = $derived(parseMessage(text));
 
   let status = $state('');
+  let ready = $state(false);
   let manual = $state(false);
   let box: HTMLTextAreaElement | undefined = $state();
   let clear: ReturnType<typeof setTimeout> | undefined;
+
+  onMount(() => {
+    ready = true;
+    return () => clearTimeout(clear);
+  });
 
   async function copy(): Promise<void> {
     clearTimeout(clear);
@@ -86,8 +92,9 @@
     <!-- The name starts with the visible words, so voice control users can say what they see. -->
     <button
       type="button"
-      class="button"
+      class="button page-button"
       aria-label={name ? `Copy message: ${name}` : undefined}
+      disabled={!ready}
       onclick={copy}
     >
       Copy message
@@ -166,25 +173,6 @@
     }
   }
 
-  .button {
-    min-height: 2.75rem;
-    padding: 0.55rem 1.1rem;
-    border: 0;
-    border-radius: var(--radius-control);
-    background: var(--ink);
-    color: var(--paper);
-    font-weight: 700;
-    cursor: pointer;
-  }
-
-  .button:hover {
-    background: color-mix(in oklab, var(--ink) 86%, var(--paper));
-  }
-
-  .button:active {
-    translate: 0 1px;
-  }
-
   .status {
     display: inline-flex;
     align-items: center;
@@ -227,17 +215,7 @@
     field-sizing: content;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .button:active {
-      translate: none;
-    }
-  }
-
   @media (forced-colors: active) {
-    .button {
-      border: 1px solid ButtonText;
-    }
-
     .bubble {
       border: 1px solid CanvasText;
     }

@@ -100,6 +100,7 @@
   .position {
     position: relative;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     justify-items: center;
     align-content: start;
     gap: 0.45rem;
@@ -175,10 +176,12 @@
   /* The position's name, printed under the slot. */
   .name {
     display: grid;
+    min-width: 0;
     justify-items: center;
     font-size: var(--text-sm);
     line-height: 1.25;
     text-align: center;
+    overflow-wrap: anywhere;
     color: var(--hw-label);
   }
 
@@ -237,6 +240,36 @@
   @container (max-width: 19rem) {
     .pads :global(.radio-pad) {
       padding: 0.45rem 0.3rem;
+    }
+  }
+
+  /* Enlarged text: give each setting a row, with its cap beside an uncramped name. */
+  @container hear (max-width: 16rem) {
+    .switch {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0.5rem;
+    }
+
+    .position {
+      grid-template-columns: 1.25rem minmax(0, 1fr);
+      align-items: center;
+      justify-items: stretch;
+      gap: 0.5rem;
+    }
+
+    .position .slot {
+      height: 1.5rem;
+      border: 1px solid var(--hw-edge);
+      border-radius: var(--radius-control);
+    }
+
+    .name {
+      justify-items: start;
+      text-align: left;
+    }
+
+    .choice:not(.letters) .pads {
+      grid-auto-flow: row;
     }
   }
 

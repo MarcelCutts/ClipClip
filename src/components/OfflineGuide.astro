@@ -5,7 +5,7 @@ import { href } from '../lib/url';
 <div id="offline-guide" class="offline" data-offline data-base={href('/')} data-worker={href('/sw.js')} data-published={import.meta.env.PROD}>
   <p><strong>Taking this guide to the night?</strong></p>
   <p>Save it before leaving, then reopen it in airplane mode to check. The saved guide includes all pages, diagrams and demos. External manuals need a connection.</p>
-  <button type="button" data-save hidden>Save for offline use</button>
+  <button type="button" class="page-button page-button--secondary" data-save hidden>Save for offline use</button>
   <p data-status role="status" aria-live="polite"></p>
   <noscript><p>Turn on JavaScript to save the guide offline.</p></noscript>
   <p>Keep a backup: <a href={href('/print/')}>print the kit</a> and save <a href={href('/night/')}>Crew</a> and <a href={href('/setup/')}>Rig reference</a> as PDFs. Your browser can remove saved website data.</p>
@@ -99,8 +99,8 @@ import { href } from '../lib/url';
 
 <style>
   .offline { display: grid; gap: 0.65rem; min-width: 0; padding-bottom: 1rem; border-bottom: 1px solid var(--rule); }
-  button { width: fit-content; min-height: 44px; padding: 0.6em 0.9em; border: 1px solid var(--action); border-radius: 0.2rem; color: var(--action); background: var(--paper); font: inherit; font-weight: 700; cursor: pointer; }
-  button:disabled { opacity: 0.65; cursor: wait; }
+  button { width: fit-content; }
+  button:disabled { cursor: wait; }
   [data-status]:empty { display: none; }
   @media print { .offline { display: none; } }
 </style>

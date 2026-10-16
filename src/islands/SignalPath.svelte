@@ -499,12 +499,17 @@
   .readout {
     grid-area: readout;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
     color: var(--hw-label);
   }
 
   .card {
     grid-area: 1 / 1;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
+    overflow-wrap: anywhere;
     gap: 0.45rem;
     align-content: start;
   }
@@ -524,6 +529,8 @@
 
   .details {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
     gap: 0.6rem;
     align-content: start;
   }
@@ -557,6 +564,12 @@
 
   .summary dd {
     margin: 0;
+  }
+
+  @container sp (max-width: 16rem) {
+    .summary {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 
   /* The drawing's caveat, once, pointing to the guide's section on what the makers publish. */

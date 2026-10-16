@@ -350,6 +350,7 @@
   /* A printed checklist card: a 2px frame, a title strip, hairlines between the lines. */
   .checklist {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     border: 2px solid var(--ink);
     background: var(--paper);
     color: var(--ink);
@@ -358,6 +359,7 @@
   /* Black by day; by night a raised display header, never a glaring white bar. */
   .strip {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
     justify-content: space-between;
     gap: 1rem;
@@ -382,8 +384,10 @@
 
   .body {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.8rem;
     padding: 0.75rem 0.8rem 0.9rem;
+    overflow-wrap: anywhere;
   }
 
   /* When to run it: read before starting, so as strong as any instruction. */

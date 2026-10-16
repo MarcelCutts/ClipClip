@@ -479,6 +479,23 @@
     min-width: 0;
   }
 
+  /* At enlarged text sizes, give each deck's controls the full panel width. */
+  @container blend (max-width: 16rem) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas:
+        'head'
+        'mixer'
+        'coach'
+        'knobs1'
+        'knobs2'
+        'say'
+        'listen'
+        'wave'
+        'foot';
+    }
+  }
+
   @container blend (min-width: 28rem) {
     .layout {
       column-gap: 1.5rem;
@@ -620,6 +637,19 @@
     align-items: center;
     gap: 0.75rem;
     min-width: 0;
+  }
+
+  /* Enlarged labels need the full width above the two faders. */
+  @container blend (max-width: 16rem) {
+    .mixer {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      row-gap: 1rem;
+    }
+
+    .centre {
+      grid-column: 1 / -1;
+      grid-row: 1;
+    }
   }
 
   /* Above the meters and both faders, two lines tall whatever it says (or when it's empty), so

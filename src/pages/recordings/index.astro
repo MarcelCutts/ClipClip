@@ -5,6 +5,7 @@
  * the title on a phone, the rail on a wide screen.
  */
 import Contents, { type ContentsEntry } from '../../components/Contents.astro';
+import CrewLinks from '../../components/CrewLinks.astro';
 import DrillCard from '../../components/DrillCard.astro';
 import PageHeader from '../../components/PageHeader.astro';
 import Checklist from '../../islands/Checklist.svelte';
@@ -24,6 +25,7 @@ const contents: ContentsEntry[] = [
 <Base title="Recordings" description="Copy, check and prepare the Howler recordings after the night. Keep an untouched original and diagnose clipping before normalising.">
   <PageHeader title="Recordings" lede="Copy and check the files before editing. Keep one untouched original.">
     <p>For a problem during soundcheck or a set, use <a href={href('/night/#fixes')}>Crew’s fault guide</a>.</p>
+    <CrewLinks />
   </PageHeader>
   <div class="flow page-body">
     <Contents entries={contents} rows={contents.length + 1} />

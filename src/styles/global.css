@@ -131,6 +131,23 @@
     text-underline-offset: 0.16em;
     cursor: help;
   }
+
+  /* Disclosures are controls too: the whole title row is a comfortable touch target. */
+  summary {
+    min-height: 2.75rem;
+    padding-block: 0.6rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  summary:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.16em;
+  }
+
+  details[open] > summary {
+    margin-block-end: 0.5rem;
+  }
 }
 
 @layer layout {
@@ -290,6 +307,43 @@
     min-height: 2.75rem;
   }
 
+  /* Page actions share one size and shape; hardware keys keep their own panel treatment. */
+  .page-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: 0.55rem 1rem;
+    border: 1px solid var(--ink);
+    border-radius: var(--radius-control);
+    background: var(--ink);
+    color: var(--paper);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: center;
+    cursor: pointer;
+  }
+
+  .page-button:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--ink) 86%, var(--paper));
+  }
+
+  .page-button--secondary {
+    border-color: var(--action);
+    background: var(--paper);
+    color: var(--action);
+  }
+
+  .page-button--secondary:hover:not(:disabled) {
+    background: var(--paper-2);
+  }
+
+  .page-button:disabled {
+    opacity: 0.65;
+    cursor: default;
+  }
+
   /* A list of names and what each means or holds: ruled rows under a heavy rule, the name beside
      its text where there is room. */
   .deflist {
@@ -436,6 +490,12 @@
   }
 }
 
+@media (forced-colors: active) {
+  .page-button {
+    border-color: ButtonText;
+  }
+}
+
 /* Printing an ordinary page (the crew guide, say): drop the chrome, keep the content, show where links go. */
 @media print {
   :root {
@@ -458,6 +518,11 @@
   .site-footer,
   .skip {
     display: none;
+  }
+
+  summary {
+    min-height: 0;
+    padding-block: 0;
   }
 
   .panel,

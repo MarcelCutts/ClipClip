@@ -7,6 +7,7 @@
  * Printed dbx page N is PDF page N+2. Other manual page references keep their published numbering.
  */
 import Contents, { type ContentsEntry } from '../../components/Contents.astro';
+import CrewLinks from '../../components/CrewLinks.astro';
 import LegacyAnchors from '../../components/LegacyAnchors.astro';
 import PageHeader from '../../components/PageHeader.astro';
 import Procedure from '../../components/Procedure.astro';
@@ -226,6 +227,7 @@ const moved = {
 >
   <PageHeader title="Rig reference" lede="What feeds what, and how each unit is set.">
     <p>To prepare for an event, use <a href={href('/night/#doors')}>Before doors (C1)</a>. Come here if a lead or a setting looks wrong.</p>
+    <CrewLinks />
   </PageHeader>
 
   <div class="flow page-body">

@@ -8,6 +8,7 @@
  * handed to the island as slots (checklists.ts names them).
  */
 import Contents, { type ContentsEntry } from '../../components/Contents.astro';
+import CrewLinks from '../../components/CrewLinks.astro';
 import DrillCard from '../../components/DrillCard.astro';
 import BoothFigure from '../../components/figures/BoothFigure.astro';
 import MixerRearFigure from '../../components/figures/MixerRearFigure.astro';
@@ -62,12 +63,7 @@ const ROWS = 6;
 >
   <PageHeader title="Crew on the night" lede="Build the booth, set the levels and keep the recording running.">
     <p>For a problem during a set, go straight to <a href="#fixes">Something’s wrong</a>.</p>
-    <ul class="link-row">
-      <li><a href={href('/setup/')}>Rig reference</a></li>
-      <li><a href={href('/recordings/')}>Recordings</a></li>
-      <li><a href={href('/print/')}>Print kit</a></li>
-      <li class="offline-link"><a href="#offline-guide">Save offline</a></li>
-    </ul>
+    <CrewLinks saveOffline />
   </PageHeader>
 
   <!-- Thumb tabs, as on the edge of a printed handbook: they stay at the top of the screen, and the one
@@ -154,10 +150,6 @@ const ROWS = 6;
 </script>
 
 <style>
-  @media print {
-    .offline-link { display: none; }
-  }
-
   /* On the night a jump is instant: nobody in a hurry should watch the page glide past. Where it
      lands is the page's scroll padding, clear of the tabs. */
   :global(html) {
@@ -178,6 +170,7 @@ const ROWS = 6;
 
   .drills-title {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.6rem;
   }

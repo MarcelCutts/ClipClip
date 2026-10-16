@@ -78,7 +78,7 @@ const contents: ContentsEntry[] = [
   <Tabs label="Parts" tabs={LEARNING_TABS} rail data-tabs />
 
   <div class="guide flow">
-    <Contents entries={contents} rows={contents.length + 1} />
+    <Contents entries={contents} rows={contents.length + 1} collapsible />
 
     <Part id="why" number={1} title="Why it matters">
       <p>
@@ -420,10 +420,14 @@ const contents: ContentsEntry[] = [
 </Base>
 
 <style>
-  /* The parts set their own distance, the section gap. The index follows the opening on phones;
-     on wide screens it moves into the rail, and the first part starts level with it. */
+  /* The first part follows the compact topic index by one block gap. Later parts use the section
+     gap. On wide screens the index moves into the rail, level with the first part. */
   .guide {
     row-gap: 0;
+  }
+
+  .guide > :global(.part:first-of-type) {
+    margin-block-start: var(--gap-block);
   }
 
   @media (min-width: 80rem) {
@@ -602,6 +606,7 @@ const contents: ContentsEntry[] = [
 
   .sources {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.7rem;
     list-style: none;
     padding: 0 0 1rem;
@@ -610,7 +615,9 @@ const contents: ContentsEntry[] = [
 
   .sources li {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.1rem;
+    overflow-wrap: anywhere;
   }
 
   .publisher,

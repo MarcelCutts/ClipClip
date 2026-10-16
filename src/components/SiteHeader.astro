@@ -1,4 +1,5 @@
 ---
+import { CREW_LINKS, SITE_LINKS } from '../lib/navigation';
 import { href } from '../lib/url';
 
 const here = Astro.url.pathname.replace(/\/+$/, '');
@@ -7,20 +8,16 @@ const isCurrent = (path: string) => here === href(path).replace(/\/+$/, '');
 // names the page. Three entrances, by what a reader came to do: play a set, run the night, or learn
 // why. The crew's other pages (the rig reference, the recordings, the print kit) are one step from
 // Crew, and every page is in the footer. Three fit one line beside the name on a 360-pixel phone.
-const links = [
-  { path: '/', label: 'Playing' },
-  { path: '/night/', label: 'Crew' },
-  { path: '/learn/', label: 'Learn' },
-];
+const inCrew = CREW_LINKS.some(({ path }) => isCurrent(path));
 ---
 
 <header class="site-header">
   <a class="mark" href={href('/')}>Out of the red</a>
   <nav aria-label="Site">
     <ul>
-      {links.map((l) => (
+      {SITE_LINKS.map((l) => (
   <li>
-    <a href={href(l.path)} aria-current={isCurrent(l.path) ? 'page' : undefined}>
+    <a href={href(l.path)} aria-current={isCurrent(l.path) ? 'page' : l.path === '/night/' && inCrew ? 'location' : undefined}>
       {l.label}
     </a>
   </li>
@@ -44,7 +41,9 @@ const links = [
   }
 
   .mark {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
     padding-block: 0.7rem;
     font-family: var(--font-display);
     font-weight: 700;
@@ -65,12 +64,12 @@ const links = [
   }
 
   nav a {
-    white-space: nowrap;
-  }
-
-  nav a {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    white-space: nowrap;
     /* At least 44px tall for thumbs. */
     padding-block: 0.75rem;
     font-size: var(--text-sm);
@@ -83,7 +82,7 @@ const links = [
   }
 
   /* The page you're on is underlined. Lit colours are kept for signal levels. */
-  nav a[aria-current='page'] {
+  nav a[aria-current] {
     color: var(--ink-bright);
     font-weight: 700;
     text-decoration: underline;

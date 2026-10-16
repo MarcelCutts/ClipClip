@@ -1,11 +1,11 @@
 ---
 /**
  * The guide's index, set like a quick reference handbook's: each part a row with its thumb tab,
- * number, title and reading time. On phones and laptops it's a list near the top; on wide screens
- * it sits in the rail left of the text, stays in view, and opens the part you're in. The thumb tab
- * of the part you're in is filled.
+ * number, title and reading time. On phones and laptops it's a list near the top. Learn folds its
+ * detailed topics into a native disclosure beside its tab strip. On wide screens the index sits
+ * in the rail left of the text, stays in view, and opens the part you're in. Its thumb tab is filled.
  *
- * Without JavaScript it's a plain list of links. With it, the part and section you're in are
+ * The links and disclosure work without JavaScript. With it, the part and section you're in are
  * marked here and on the phone's tab strip (Tabs.astro).
  */
 export interface ContentsEntry {
@@ -23,13 +23,22 @@ interface Props {
   entries: ContentsEntry[];
   /** How many rows of the guide's grid the rail runs beside. */
   rows: number;
+  /** Keep a detailed topic list available without repeating the phone's tab strip. */
+  collapsible?: boolean;
 }
 
-const { entries, rows } = Astro.props;
+const { entries, rows, collapsible = false } = Astro.props;
+const Index = collapsible ? 'details' : 'div';
 ---
 
-<nav class="toc" aria-labelledby="toc-title" data-toc style={`--toc-rows: ${rows}`}>
-  <p class="toc-title" id="toc-title">Index</p>
+<nav class="toc" aria-labelledby="toc-title" data-toc data-collapsible={collapsible ? '' : undefined} style={`--toc-rows: ${rows}`}>
+  <Index class="contents-list">
+  {collapsible ? (
+    <Fragment>
+      <summary class="toc-title" id="toc-title">All learning topics</summary>
+      <p class="rail-title" aria-hidden="true">Index</p>
+    </Fragment>
+  ) : <p class="toc-title" id="toc-title">Index</p>}
   <ol class="parts">
     {entries.map((e) => (
   <li class="part" data-part={e.id}>
@@ -55,11 +64,19 @@ const { entries, rows } = Astro.props;
   </li>
 ))}
   </ol>
+  </Index>
 </nav>
 
 <script>
   const nav = document.querySelector<HTMLElement>('[data-toc]');
   if (nav) {
+    const disclosure = nav.querySelector<HTMLDetailsElement>('details');
+    if (disclosure) {
+      const wide = window.matchMedia('(min-width: 80rem)');
+      const layout = () => { disclosure.open = wide.matches; };
+      wide.addEventListener('change', layout);
+      layout();
+    }
     const links = [...nav.querySelectorAll<HTMLAnchorElement>('a[data-target]')];
     const targets = links.map((a) => document.getElementById(a.dataset.target ?? ''));
     const parts = [...nav.querySelectorAll<HTMLElement>('li[data-part]')];
@@ -108,6 +125,25 @@ const { entries, rows } = Astro.props;
   }
 
   .toc-title {
+    font-weight: 700;
+  }
+
+  .contents-list:not(details) {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  summary.toc-title {
+    border-block: 1px solid var(--rule);
+  }
+
+  details[open] > summary {
+    border-block-end: 0;
+  }
+
+  .rail-title {
+    display: none;
+    margin-block-end: 0.5rem;
     font-weight: 700;
   }
 
@@ -200,6 +236,36 @@ const { entries, rows } = Astro.props;
 
   .subs {
     display: none;
+    padding-block-end: 0.4rem;
+  }
+
+  .subs a {
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding-block: 0.5rem;
+    /* In line with the titles: tab, gap, number, gap. */
+    padding-inline-start: calc(0.625rem + 0.55rem + var(--no) + 0.55rem);
+    font-size: var(--text-sm);
+    line-height: 1.3;
+    color: var(--ink-2);
+    text-decoration: none;
+  }
+
+  .subs a:hover {
+    color: var(--ink-bright);
+    text-decoration: underline;
+  }
+
+  .subs a[aria-current] {
+    color: var(--ink-bright);
+    font-weight: 700;
+  }
+
+  @media (max-width: 79.999rem) {
+    .toc[data-collapsible] .subs {
+      display: grid;
+    }
   }
 
   /* Wide screens: the index in a rail beside the text that stays in view, opening the part
@@ -219,7 +285,7 @@ const { entries, rows } = Astro.props;
     }
 
     .part > a {
-      min-height: 2.5rem;
+      min-height: 2.75rem;
       gap: 0.55rem;
       font-size: var(--text-sm);
     }
@@ -230,28 +296,14 @@ const { entries, rows } = Astro.props;
 
     .part[data-open] > .subs {
       display: grid;
-      padding-block-end: 0.4rem;
     }
 
-    .subs a {
+    details[open] > summary {
+      display: none;
+    }
+
+    .rail-title {
       display: block;
-      padding-block: 0.3rem;
-      /* In line with the titles: tab, gap, number, gap. */
-      padding-inline-start: calc(0.625rem + 0.55rem + var(--no) + 0.55rem);
-      font-size: var(--text-sm);
-      line-height: 1.3;
-      color: var(--ink-2);
-      text-decoration: none;
-    }
-
-    .subs a:hover {
-      color: var(--ink-bright);
-      text-decoration: underline;
-    }
-
-    .subs a[aria-current] {
-      color: var(--ink-bright);
-      font-weight: 700;
     }
   }
 
@@ -260,6 +312,13 @@ const { entries, rows } = Astro.props;
     .lamp {
       forced-color-adjust: none;
       background: CanvasText;
+    }
+  }
+
+  /* Without scroll tracking, keep every topic available in the expanded index. */
+  @media (scripting: none) {
+    .toc[data-collapsible] .subs {
+      display: grid;
     }
   }
 

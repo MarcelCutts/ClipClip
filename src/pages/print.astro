@@ -8,6 +8,7 @@
  * The two views are separate trees, so each can be laid out for its own medium. Its sections are
  * left unnamed, so they aren't landmarks: the headings are how to move round.
  */
+import CrewLinks from '../components/CrewLinks.astro';
 import PageHeader from '../components/PageHeader.astro';
 import BoothCard from '../components/print/BoothCard.astro';
 import ChecklistCard from '../components/print/ChecklistCard.astro';
@@ -53,7 +54,7 @@ const trim = section('trim');
       </ol>
       <p class="actions">
         <span class="print">
-          <button type="button" class="print-button" data-print hidden>Print this page</button>
+          <button type="button" class="page-button" data-print hidden>Print this page</button>
           <span class="print-hint">For just the booth card, print page 1.</span>
         </span>
         <a href="#messages">Messages for the group chat</a>
@@ -62,6 +63,7 @@ const trim = section('trim');
         Every card carries the date its words last changed, and a code made from them: {REVISED}. If a card in the booth
         says anything else, print a new one.
       </p>
+      <CrewLinks />
     </PageHeader>
 
     <section class="block flow">
@@ -269,27 +271,6 @@ const trim = section('trim');
   .revised {
     font-size: var(--text-sm);
     color: var(--ink-2);
-  }
-
-  .print-button {
-    min-height: 2.75rem;
-    padding: 0.55rem 1.15rem;
-    border: 0;
-    border-radius: var(--radius-control);
-    background: var(--ink);
-    color: var(--paper);
-    font-weight: 700;
-    cursor: pointer;
-  }
-
-  .print-button:hover {
-    background: color-mix(in oklab, var(--ink) 86%, var(--paper));
-  }
-
-  @media (forced-colors: active) {
-    .print-button {
-      border: 1px solid ButtonText;
-    }
   }
 
   /* Each printable is a section: the first follows the title block, the rest take the section gap. */

@@ -1,0 +1,53 @@
+---
+import { CREW_LINKS } from '../lib/navigation';
+import { href } from '../lib/url';
+
+interface Props {
+  saveOffline?: boolean;
+}
+
+const { saveOffline = false } = Astro.props;
+const here = Astro.url.pathname.replace(/\/+$/, '');
+---
+
+<nav class="crew-links" aria-label="Crew pages">
+  <ul class:list={['link-row', { 'with-offline': saveOffline }]}>
+    {CREW_LINKS.map(({ path, label }) => (
+      <li><a href={href(path)} aria-current={here === href(path).replace(/\/+$/, '') ? 'page' : undefined}>{label}</a></li>
+    ))}
+    {saveOffline && <li class="offline-link"><a href="#offline-guide">Save offline</a></li>}
+  </ul>
+</nav>
+
+<style>
+  .crew-links {
+    margin-block: -0.5rem;
+    font-size: var(--text-sm);
+  }
+
+  .link-row {
+    gap: 0 0.75rem;
+    margin: 0;
+  }
+
+  a {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  a[aria-current] {
+    font-weight: 700;
+    text-decoration-thickness: 2px;
+  }
+
+  @media (max-width: 24rem) {
+    .with-offline {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media print {
+    .crew-links { display: none; }
+  }
+</style>

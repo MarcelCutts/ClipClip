@@ -60,27 +60,43 @@ for (const width of [360, 390, 1280]) {
   });
 }
 
-test('larger text and keyboard use keep practical instructions available', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  for (const path of ['', 'setup/', 'recordings/', 'night/#changeover']) {
-    await page.goto(path);
-    await page.addStyleTag({ content: 'html { font-size: 200%; }' });
-    const overflow = await page.evaluate(() =>
-      [...document.querySelectorAll('body *')]
-        .filter((el) => el.getBoundingClientRect().right > innerWidth + 1)
-        .map((el) => ({ tag: el.tagName, cls: String(el.className), text: el.textContent?.slice(0, 70) }))
-        .slice(0, 20),
-    );
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
-      `${path}: ${JSON.stringify(overflow)}`,
-    ).toBeLessThanOrEqual(0);
-  }
-  const list = page.locator('[data-list="changeover"]');
-  await list.getByRole('checkbox').first().focus();
-  await page.keyboard.press('Space');
-  await expect(list.getByRole('checkbox').first()).toBeChecked();
-});
+for (const width of [320, 390]) {
+  test(`200% text and keyboard use keep every page usable at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    for (const path of ['', 'setup/', 'recordings/', 'print/', 'learn/', 'night/#changeover']) {
+      await page.goto(path);
+      await page.evaluate(() => document.fonts.ready);
+      await page.addStyleTag({ content: 'html { font-size: 200%; }' });
+      if (path === 'learn/') {
+        await page.getByRole('navigation', { name: 'All learning topics' }).locator('summary').click();
+        await page.locator('.hear summary').filter({ hasText: 'Listening advice' }).click();
+        await page.locator('.hear summary').filter({ hasText: 'How sure are you?' }).click();
+        for (const deck of [1, 2]) {
+          await expect(
+            page.locator('.blend').getByRole('slider', { name: `Deck ${deck} TRIM`, exact: true }),
+          ).toBeVisible();
+        }
+        const headphones = page.locator('.hear').getByRole('radio', { name: 'Headphones', exact: true });
+        await headphones.check();
+        await expect(headphones).toBeChecked();
+      }
+      const overflow = await page.evaluate(() =>
+        [...document.querySelectorAll('body *')]
+          .filter((el) => el.getBoundingClientRect().right > innerWidth + 1 && !el.closest('.drawing-scroll'))
+          .map((el) => ({ tag: el.tagName, cls: String(el.className), text: el.textContent?.slice(0, 70) }))
+          .slice(0, 20),
+      );
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+        `${path}: ${JSON.stringify(overflow)}`,
+      ).toBeLessThanOrEqual(0);
+    }
+    const list = page.locator('[data-list="changeover"]');
+    await list.getByRole('checkbox').first().focus();
+    await page.keyboard.press('Space');
+    await expect(list.getByRole('checkbox').first()).toBeChecked();
+  });
+}
 
 test('learning allows a prediction without confidence or a reveal without scoring', async ({ page }) => {
   await page.goto('learn/#hear');
