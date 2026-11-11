@@ -161,24 +161,24 @@ const contents: ContentsEntry[] = [
         </thead>
         <tbody>
           <tr>
-            <td>Crunch in the room and the recording</td>
-            <td>In the mixer: a channel or the mix in the red</td>
-            <td>Green or red. It cannot show this crunch.</td>
-            <td>Only the DJ’s TRIM, EQ and faders</td>
+            <th scope="row">Crunch in the room and the recording</th>
+            <td data-label="Where it clipped">In the mixer: a channel or the mix in the red</td>
+            <td data-label="Howler’s LEVEL light">Green or red. It cannot show this crunch.</td>
+            <td data-label="What fixes it">Only the DJ’s TRIM, EQ and faders</td>
           </tr>
           <tr>
-            <td>A clean room, a crunchy recording</td>
-            <td>At the Howler’s input</td>
-            <td>Red</td>
-            <td>
+            <th scope="row">A clean room, a crunchy recording</th>
+            <td data-label="Where it clipped">At the Howler’s input</td>
+            <td data-label="Howler’s LEVEL light">Red</td>
+            <td data-label="What fixes it">
               A lower recording level, set by the crew (<a href={href('/night/#fix-howler-red')}>F1</a>)
             </td>
           </tr>
           <tr>
-            <td>Clean in both</td>
-            <td>Nowhere</td>
-            <td>Green</td>
-            <td>Nothing. Turn the file up afterwards.</td>
+            <th scope="row">Clean in both</th>
+            <td data-label="Where it clipped">Nowhere</td>
+            <td data-label="Howler’s LEVEL light">Green</td>
+            <td data-label="What fixes it">Nothing. Turn the file up afterwards.</td>
           </tr>
         </tbody>
       </table>
@@ -451,19 +451,13 @@ const contents: ContentsEntry[] = [
     line-height: 1.45;
   }
 
-  /* On the narrowest phones, with wider letter spacing, a long word may break rather than push the
-     table off the side of the screen. */
-  .cases :is(th, td) {
-    overflow-wrap: anywhere;
-  }
-
   .cases caption {
     padding-block-end: 0.5rem;
     font-weight: 700;
     text-align: left;
   }
 
-  .cases th {
+  .cases thead th {
     padding: 0.45rem 0.6rem;
     border-top: 2px solid var(--strip-edge);
     background: var(--strip);
@@ -473,10 +467,65 @@ const contents: ContentsEntry[] = [
     vertical-align: bottom;
   }
 
-  .cases td {
+  /* Each row is named by what you hear: its heading, set like the cells beside it. */
+  .cases tbody :is(th, td) {
     padding: 0.55rem 0.6rem;
     border-bottom: 1px solid var(--rule);
+    font-weight: 400;
+    text-align: left;
     vertical-align: top;
+  }
+
+  /* Four columns need about 150px each. On a phone they had 80, and words broke in the middle
+     ("recordin", then "g"). Narrower than 40rem each recording is a block: what you hear as its
+     name, then each column's heading over what that column says. The headings come from the cells
+     (data-label), and the table's own stay for screen readers. */
+  @media (max-width: 40rem) {
+    .cases,
+    .cases caption,
+    .cases tbody,
+    .cases tr,
+    .cases tbody :is(th, td) {
+      display: block;
+    }
+
+    .cases thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .cases tbody {
+      border-top: 2px solid var(--ink);
+    }
+
+    .cases tr {
+      padding-block: 0.7rem;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .cases tbody :is(th, td) {
+      padding: 0;
+      border: 0;
+    }
+
+    .cases tbody th {
+      font-weight: 700;
+    }
+
+    .cases td {
+      margin-block-start: 0.45rem;
+    }
+
+    .cases td::before {
+      content: attr(data-label);
+      display: block;
+      font-weight: 700;
+      color: var(--ink-2);
+    }
   }
 
   /* Published beside assumed: each row the thing, what the maker says, what we assume. */

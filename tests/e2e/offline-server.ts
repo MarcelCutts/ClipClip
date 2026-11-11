@@ -20,6 +20,7 @@ export async function serveBuiltGuide() {
     '.png': 'image/png',
     '.jpg': 'image/jpeg',
     '.mp4': 'video/mp4',
+    '.webmanifest': 'application/manifest+json',
   };
   const server = createServer(async (request, response) => {
     const pathname = new URL(request.url!, 'http://localhost').pathname;

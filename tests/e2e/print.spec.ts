@@ -82,3 +82,62 @@ for (const path of ['night', 'setup']) {
     }
   });
 }
+
+/**
+ * Paper sizes a reader's print dialogue is likely to give, as the area inside the margins in CSS
+ * pixels: A4 with this file's 12 mm margins, A4 and US Letter with Chromium's default margins.
+ */
+const SHEETS = [
+  { name: 'A4, 12 mm margins', width: 703, height: 1032 },
+  { name: 'A4, default margins', width: 717, height: 1046 },
+  { name: 'US Letter, default margins', width: 739, height: 979 },
+] as const;
+
+for (const path of ['', 'night/', 'setup/', 'recordings/', 'learn/']) {
+  test(`nothing prints over anything else: ${path || 'guide'}`, async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Paper layout is independent of the screen viewport.');
+    for (const sheet of SHEETS) {
+      await page.goto(path);
+      await page.emulateMedia({ media: 'print' });
+      await page.evaluate(() => document.fonts.ready);
+      // A PDF cannot be read back here, so lay the page out in sheet-sized columns: the browser
+      // breaks columns and paper pages the same way. Crew's C3 once printed over F8 like this,
+      // where a grid's rows crossed a page.
+      await page.addStyleTag({
+        content: `html { overflow: auto; } body { height: ${sheet.height}px; column-width: ${sheet.width}px; column-gap: 40px; column-fill: auto; }`,
+      });
+      const shared = await page.evaluate(() => {
+        const blocks = [
+          ...document.querySelectorAll(
+            '.checklist, .drill, .proc, .know, .panel, table, figure, .page-body > *, .page-group > *, .subflow > *',
+          ),
+        ]
+          // A lab's panel is one block on paper. Inside it, parts are laid over each other on purpose
+          // (the listening test's two screens share a place).
+          .filter((el) => !el.parentElement?.closest('.panel'))
+          .map((el) => ({
+            el,
+            name: el.id || el.getAttribute('data-list') || `${el.tagName.toLowerCase()}.${el.classList[0] ?? ''}`,
+            rects: [...el.getClientRects()],
+          }))
+          .filter((block) => block.rects.length > 0);
+        const found = new Set<string>();
+        blocks.forEach((a, i) => {
+          for (const b of blocks.slice(i + 1)) {
+            if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
+            const overlap = a.rects.some((p) =>
+              b.rects.some(
+                (q) =>
+                  Math.min(p.right, q.right) - Math.max(p.left, q.left) > 2 &&
+                  Math.min(p.bottom, q.bottom) - Math.max(p.top, q.top) > 2,
+              ),
+            );
+            if (overlap) found.add(`${a.name} and ${b.name}`);
+          }
+        });
+        return [...found];
+      });
+      expect(shared, `${sheet.name}: blocks sharing paper`).toEqual([]);
+    }
+  });
+}

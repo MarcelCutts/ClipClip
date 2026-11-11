@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { mixStems, normaliseLoop, renderLoop } from '../dsp/synth';
 import { analogue } from './analogue';
 import { ClipCheck, type ClipCheckOptions, type ClipCheckResult } from './analyse';
-import { clock, dbfs, formatReport } from './report';
+import { clock, dbfs, duration, formatReport } from './report';
 import { decodeSamples, encodeWav24, readWavInfo } from './wav';
 
 const SR = 48000;
@@ -31,6 +31,28 @@ const sine = (hz: number, dbfs: number, seconds: number) =>
 /** A 100 Hz sine driven 3 times past a ceiling, turned down so the ceiling sits at `dbfs`. */
 const clippedSine = (dbfs: number, seconds: number) =>
   sine(100, 0, seconds).map((v) => Math.max(-1, Math.min(1, 3 * v)) * db(dbfs));
+
+/**
+ * A sawtooth bass note through a synth's low-pass filter (one or two poles at `cutoff`), peaking at
+ * `dbfs`. It is summed from its harmonics, so its ramp is an exact straight line. Nothing in it is clipped.
+ */
+function saw(hz: number, cutoff: number, poles: 1 | 2, dbfs: number, seconds: number): Float32Array {
+  const out = new Float64Array(Math.round(seconds * SR));
+  for (let k = 1; k * hz < 20000; k++) {
+    const w = (k * hz) / cutoff;
+    const re = poles === 1 ? 1 : 1 - w * w;
+    const im = poles === 1 ? w : w * Math.SQRT2;
+    const gain = 1 / (k * Math.hypot(re, im));
+    const phase = -Math.atan2(im, re);
+    const step = (2 * Math.PI * k * hz) / SR;
+    for (let i = 0; i < out.length; i++) out[i] = out[i]! + gain * Math.sin(step * i + phase);
+  }
+  const top = out.reduce((p, v) => Math.max(p, Math.abs(v)), 0);
+  return Float32Array.from(out, (v) => (v / top) * db(dbfs));
+}
+
+/** The same samples in 16 bits, as a 16-bit file holds them. */
+const in16Bits = (x: Float32Array) => x.map((v) => Math.max(-32768, Math.min(32767, Math.round(v * 32768))) / 32768);
 
 function join(...parts: Float32Array[]): Float32Array {
   const out = new Float32Array(parts.reduce((n, p) => n + p.length, 0));
@@ -110,6 +132,66 @@ describe('the clip check', () => {
   it('doesn’t take a sine’s rounded top for a flat one', () => {
     const sine = new Float32Array(20 * SR).map((_, i) => db(-10) * Math.sin((2 * Math.PI * 25 * i) / SR));
     expect(check(analogue(sine)).flatTops.count).toBe(0);
+  });
+
+  it('does not take a sawtooth’s ramp for a flat top', () => {
+    // A bass note alone, as a breakdown has it: a straight ramp up to every peak, and nothing clipped.
+    const notes = [
+      [41.2, 1000, 2],
+      [55, 2000, 2],
+      [82.4, 4000, 1],
+      [110, 1000, 2],
+    ] as const;
+    for (const [hz, cutoff, poles] of notes) {
+      const r = check(analogue(saw(hz, cutoff, poles, -8, 2)));
+      expect(r.verdict).toBe('none');
+      expect(r.piles).toEqual([]);
+    }
+    // The same note backwards: its ramp now falls away from each peak, as a sagging top does, only far faster.
+    expect(check(analogue(saw(55, 2000, 2, -8, 2).reverse())).verdict).toBe('none');
+  });
+
+  it('finds no clipping in a clean set with a bass-only breakdown', () => {
+    const clean = scaled(set.subarray(0, 10 * SR), db(-12) / top);
+    const r = check(analogue(join(clean, saw(55, 2000, 2, -18, 4), clean)));
+    expect(r.verdict).toBe('none');
+    expect(report(r)).toContain('Verdict: no clipping found.');
+  });
+
+  it('still finds flattened tops whatever the corner of the analogue stages’ coupling', () => {
+    // The corner sets how fast a flat top sags: 2, 10 and 20 Hz, with 3.7 Hz above.
+    for (const hz of [2, 10, 20]) {
+      const r = check(analogue(scaled(scaled(set, db(4) / top, 1), db(-8)), { hz }));
+      expect(r.verdict).toBe('pile');
+      const [pile] = r.piles;
+      expect(pile?.atTop).toBe(true);
+      expect(Math.abs((pile?.levelDb ?? 0) + 8)).toBeLessThan(0.75);
+    }
+  });
+
+  it('does not take the rounding in a 16-bit file for clipping', () => {
+    // In 16 bits a clean bass note's top rounds to one value for several samples in a row, more of them the
+    // lower the note and the lower its level.
+    const tones = [
+      [30, -0.05],
+      [30, -12],
+      [20, -6],
+    ] as const;
+    for (const [hz, level] of tones) {
+      const r = check(in16Bits(sine(hz, level, 2)));
+      expect(r.verdict).toBe('none');
+      expect(r.runs.count).toBe(0);
+    }
+  });
+
+  it('still finds a 16-bit file that clipped, and says how long a run it looked for', () => {
+    // A converter that clipped holds its value far longer than rounding can.
+    const r = check(in16Bits(sine(100, 0, 2).map((v) => Math.max(-1, Math.min(1, 3 * v)))));
+    expect(r.verdict).toBe('runs');
+    expect(r.runs.minSamples).toBe(7);
+    expect(report(r)).toContain('7 or more samples in a row sit at full scale');
+    // A 24-bit file's steps are 256 times finer: three in a row is still a run.
+    expect(check(analogue(scaled(set, db(3) / top))).runs.minSamples).toBe(3);
   });
 
   it('finds no clipping in a clean sine just under full scale', () => {
@@ -248,6 +330,24 @@ describe('the report', () => {
     expect(dbfs(-7.94)).toBe('−7.9 dBFS');
     expect(clock(3725)).toBe('1:02:05');
     expect(clock(754)).toBe('12:34');
+  });
+
+  it('rounds a length to whole minutes, and never writes 60 of them', () => {
+    expect(duration(45)).toBe('45 s');
+    expect(duration(59)).toBe('59 s');
+    expect(duration(59.7)).toBe('1 min');
+    expect(duration(89)).toBe('1 min');
+    expect(duration(3569)).toBe('59 min');
+    expect(duration(3599)).toBe('1 h 0 min');
+    expect(duration(7199)).toBe('2 h 0 min');
+    expect(duration(11_520)).toBe('3 h 12 min');
+    expect(duration(14_913)).toBe('4 h 9 min');
+  });
+
+  it('does not call a sample past every level silence', () => {
+    // Only a float file can hold an infinite sample.
+    expect(dbfs(Number.POSITIVE_INFINITY)).toBe('infinite');
+    expect(dbfs(Number.NEGATIVE_INFINITY)).toBe('silence');
   });
 
   it('leads with the verdict', () => {

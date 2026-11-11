@@ -158,7 +158,16 @@ const { label, tabs, rail = false, ...attrs } = Astro.props;
     border-radius: 0;
   }
 
+  /* Most phones are 360 to 384 pixels wide. They keep one row: a second row takes 52 pixels more of a
+     short screen, and on Learn it pushed a lab's readout under the Stop bar. The label goes down a
+     size there, so the longest word (Changeover, 72px at the usual size, in a tab with 72px of room at
+     360) keeps to one line in every browser. */
   @media (max-width: 24rem) {
+    .label { font-size: 0.75rem; }
+  }
+
+  /* Narrower than that, or with much larger text: two rows of two, the code beside its label. */
+  @media (max-width: 22rem) {
     ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .tab { flex-direction: row; gap: 0.4rem; padding: 0.4rem; }
     .label { font-size: var(--text-sm); }
@@ -169,7 +178,7 @@ const { label, tabs, rail = false, ...attrs } = Astro.props;
     --sticky-top: 3.5rem;
   }
 
-  @media (max-width: 24rem) {
+  @media (max-width: 22rem) {
     :global(:root:has([data-tab-strip])) { --sticky-top: 6.75rem; }
   }
 

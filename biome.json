@@ -10,7 +10,7 @@
       "**",
       "!!**/dist",
       "!!**/.astro",
-      "!!**/.claude/worktrees",
+      "!!.claude/worktrees",
       "!!**/.vscode",
       "!!**/playwright-report",
       "!!**/test-results",

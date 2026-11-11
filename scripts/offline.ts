@@ -5,6 +5,12 @@ import { fileURLToPath } from 'node:url';
 import type { AstroIntegration } from 'astro';
 import { OFFLINE_WORKER } from '../src/lib/offline-worker';
 
+/** Every kind of file the site ships. A file of another kind stops the build (below). */
+const SAVED_TYPES = /\.(html|js|css|woff2?|svg|png|jpg|ico|mp4|webmanifest)$/;
+
+/** Built files the saved guide leaves out: the worker itself, and what only crawlers read. */
+const notSaved = (file: string) => file === 'sw.js' || file === 'robots.txt' || /^sitemap-[\w-]+\.xml$/.test(file);
+
 /** Build the saved package from the actual output, including every island and local font. */
 export function offlineGuide(base: string): AstroIntegration {
   return {
@@ -17,11 +23,15 @@ export function offlineGuide(base: string): AstroIntegration {
         const files = entries
           .filter((entry) => entry.isFile())
           .map((entry) => relative(root, join(entry.parentPath, entry.name)))
-          .filter(
-            (file) =>
-              !file.startsWith('dev/') && /\.(html|js|css|woff2?|svg|png|jpg|ico|mp4)$/.test(file) && file !== 'sw.js',
-          )
+          .filter((file) => !file.startsWith('dev/') && !notSaved(file))
           .sort();
+        // A new kind of file must be a decision, not a silent gap in the saved guide.
+        const unknown = files.filter((file) => !SAVED_TYPES.test(file));
+        if (unknown.length) {
+          throw new Error(
+            `The offline package does not know these files: ${unknown.join(', ')}. Add their type to SAVED_TYPES, or leave them out in notSaved (scripts/offline.ts).`,
+          );
+        }
         const hash = createHash('sha256');
         const integrity: Record<string, string> = {};
         const address = (file: string) => `${prefix}${file.replace(/(^|\/)index\.html$/, '$1')}`;

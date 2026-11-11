@@ -59,7 +59,9 @@
 
 @layer base {
   body {
-    background: repeating-linear-gradient(0deg, var(--paper-grain) 0 1px, transparent 1px 3px), var(--paper);
+    /* A plain colour, never a gradient: the contrast audit cannot judge text over a gradient, and
+       skips it (tests/e2e/a11y.spec.ts). */
+    background: var(--paper);
     color: var(--ink);
     font-family: var(--font-body);
     font-size: var(--text-base);
@@ -452,6 +454,31 @@
 
   body {
     background: #fff;
+  }
+
+  /* Paper breaks block flow cleanly. Where a grid's rows cross a page, Chromium prints the block
+     after the grid over its last card: Crew's C3 landed on F8, and Rig reference's S4 on S2. On
+     paper the page's wrappers are block flow, and their gaps are margins. tests/e2e/print.spec.ts
+     lays each page out in page-sized columns and fails if two blocks share any paper. These rules
+     come before the ones that hide the site's chrome: the footer is a .flow too. */
+  .flow,
+  .subflow,
+  .page-body,
+  .page-section,
+  .page-group {
+    display: block;
+  }
+
+  :is(.flow, .subflow, .page-section) > * + * {
+    margin-block-start: var(--gap-text);
+  }
+
+  :is(.page-body, .page-group) > * + * {
+    margin-block-start: var(--gap-block);
+  }
+
+  .page-body > .section-start {
+    margin-block-start: var(--space-section);
   }
 
   .site-header nav,

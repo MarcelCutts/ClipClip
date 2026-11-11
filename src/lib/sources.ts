@@ -205,8 +205,10 @@ export const SOURCES: SourceGroup[] = [
       },
       {
         title: 'A club designer sounds off',
-        publisher: 'DJ Times, 2020',
-        url: 'https://www.djtimes.com/2020/03/dj-sound-redlining-booth-levels/',
+        // DJ Times took the article down (404 in November 2026). This is the Internet Archive's copy of
+        // 12 June 2025, at the address the site linked to.
+        publisher: 'DJ Times, 2020 (archived copy)',
+        url: 'https://web.archive.org/web/20250612193050/https://www.djtimes.com/2020/03/dj-sound-redlining-booth-levels/',
         note: 'Monitoring, ear fatigue and why DJs push levels.',
       },
     ],

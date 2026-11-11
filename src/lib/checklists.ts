@@ -117,8 +117,10 @@ export interface Checklist {
  * How the recording comes down when the Howler blinks red with the MASTER meters below red (F1): MASTER
  * LEVEL, a little at a time, until the LEVEL light is green. It sets MASTER 1 and MASTER 2 together
  * (Pioneer p.27), so the room comes down too, and the amps bring it back. The MASTER meters read after
- * it (p.31), so from then on they read low. Pioneer's own fix for distorted sound is to turn MASTER
- * LEVEL down (p.34). No card changes MASTER ATT: Pioneer does not say which sockets it reaches.
+ * it (p.31), so from then on they read low. Pioneer's fix for distorted sound starts there: MASTER
+ * LEVEL until the MASTER meters read about 0 dB at the peak, and then the attenuator at −6 or −12 dB
+ * (p.34; the Quick Start Guide gives the values on p.17). No card changes MASTER ATT: Pioneer does
+ * not say which sockets it reaches.
  */
 export const RECORDING_DOWN = {
   /** As a step: the control, and what to do with it. */

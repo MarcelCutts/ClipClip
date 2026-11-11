@@ -16,7 +16,8 @@ export const GLOSSARY = {
   },
   att: {
     term: 'ATT',
-    gloss: 'An attenuator in UTILITY. MASTER ATT and BOOTH ATT each turn an output down.',
+    gloss:
+      'An attenuator in UTILITY. MASTER ATT and BOOTH ATT each turn an output down. The manual’s list prints the first as MASTER ATTENUATOR.',
   },
   balanced: {
     term: 'Balanced lead',
