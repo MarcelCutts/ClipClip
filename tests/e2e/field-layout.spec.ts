@@ -60,6 +60,48 @@ for (const width of [360, 390, 1280]) {
   });
 }
 
+for (const width of [320, 360, 390, 1280]) {
+  test(`the three recordings table keeps every word whole at ${width}px`, async ({ page }) => {
+    // Four columns on a phone once broke "recording" after its n. Narrow screens get a block for
+    // each recording, with each column's heading over what it says.
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto('learn/#record-level');
+    const table = page.locator('table.cases');
+    await table.scrollIntoViewIfNeeded();
+    const broken = await table.evaluate((el) => {
+      const words: string[] = [];
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      while (walker.nextNode()) {
+        const node = walker.currentNode;
+        let at = 0;
+        for (const piece of (node.textContent ?? '').split(/(\s+)/)) {
+          if (piece.trim()) {
+            const range = document.createRange();
+            range.setStart(node, at);
+            range.setEnd(node, at + piece.length);
+            // A word on one line has one box. The headings hidden from sight have none to break.
+            if (range.getClientRects().length > 1) words.push(piece);
+          }
+          at += piece.length;
+        }
+      }
+      return words;
+    });
+    expect(broken).toEqual([]);
+    const caption = await table.locator('caption').boundingBox();
+    const whole = await table.boundingBox();
+    expect(caption && whole && caption.width >= whole.width - 1).toBe(true);
+    // It is still a table to a screen reader: three recordings, each named by what you hear.
+    await expect(table.getByRole('rowheader')).toHaveText([
+      'Crunch in the room and the recording',
+      'A clean room, a crunchy recording',
+      'Clean in both',
+    ]);
+    if (width < 640) await expect(table.locator('td').first()).toHaveCSS('display', 'block');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+  });
+}
+
 test('larger text and keyboard use keep practical instructions available', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   for (const path of ['', 'setup/', 'recordings/', 'night/#changeover']) {

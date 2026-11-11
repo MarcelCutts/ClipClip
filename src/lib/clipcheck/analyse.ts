@@ -5,11 +5,13 @@
  *   several samples in a row, at the highest (or lowest) value in the file. In the file as the
  *   recorder wrote it, that is full scale. A copy turned up or down keeps the runs, at its new peak.
  *   The analogue stages add noise, so clipping that happened before them never repeats a value.
+ *   Rounding repeats one too, at the top of a clean bass note, so a run has to be longer than
+ *   rounding can make it: three samples in a 24-bit file, more where the steps are coarser.
  * - **Flat tops piled up at one level.** Something before the recorder clipped, such as the mixer
  *   past its red, and the tops were turned down on the way. The analogue stages in between tilt them
  *   and add noise, so this looks for tops that are straight lines rather than curves, then for many
- *   of them at the same level. A flat top and its neighbour of the other polarity are averaged,
- *   which cancels the drift the stages add.
+ *   of them at the same level. A line that travels as far as a sawtooth's ramp is left out. A flat
+ *   top and its neighbour of the other polarity are averaged, which cancels the drift the stages add.
  *
  * Tracks clipped in their own mastering have flat tops too, at whatever level the DJ played them,
  * and many tracks have a sound with flat tops of its own under louder drums. Samples alone cannot
@@ -22,7 +24,8 @@ export interface ClipCheckOptions {
   /**
    * Identical samples in a row, at the file's peak, that count as clipping. Audacity 3's Find Clipping
    * defaults to 3 in a row, but only at full scale, where a copy turned down has none. Audacity 4
-   * does not ship it (its manual, October 2026).
+   * does not ship it (its manual, October 2026). This is the fewest: where the file's steps are
+   * coarser than 24 bits, or its peak is very low, a run has to be longer (LOWEST_NOTE_HZ).
    */
   runSamples?: number;
   /** Tops quieter than this aren't checked, in dBFS: below it, noise hides them. */
@@ -56,6 +59,27 @@ export const CLIPCHECK_DEFAULTS: Required<ClipCheckOptions> = {
 const TOP_DB = 0.5;
 /** The share of a top, from its middle, that the straight-line test uses (away from the edges). */
 const MIDDLE = 0.4;
+/**
+ * A straight line is not yet a flat top: a sawtooth's ramp is one too. The two part on how far the
+ * line goes. A top that a ceiling flattened sags on its way to the file, as the analogue stages'
+ * coupling lets it drift back towards zero. It sags at 2π times the coupling's corner, about 1.3% a
+ * millisecond at 2 Hz, which is a small part of its level over one half-wave, and it never rises. A
+ * ramp travels the whole height of the wave within its half-wave. So the line is followed from one
+ * end of the half-wave to the other, as a share of the top's level. One that rises by more than
+ * `rise` (noise tips a flat top less than that), or falls by more than `fall`, is a ramp and is not
+ * counted. A sawtooth's ramp measures about 1 either way, and clipped music still piles up with the
+ * coupling's corner as high as 20 Hz (clipcheck.test.ts).
+ */
+const RAMP = { rise: 0.05, fall: 0.85 } as const;
+/**
+ * The lowest note a recording is taken to hold, in Hz. Rounding makes the top of a clean note hold
+ * one value for a few samples in a row: more of them the lower the note, the coarser the file's
+ * steps and the lower its peak. At 20 Hz and 48 kHz that is up to 6 samples at full scale in a
+ * 16-bit file, and 1 in a 24-bit one. A run counts only if it is longer than that (#runFloor).
+ */
+const LOWEST_NOTE_HZ = 20;
+/** Sample values are held as shares of full scale. Times this, they are a 24-bit file's whole numbers. */
+const CODES_24_BIT = 8388608;
 /** Half-waves longer than this, in seconds, are too slow to be sound and aren't checked. */
 const LONGEST_HALF_WAVE = 0.1;
 /** Seconds whose peak is below this, in dBFS, are silence or a gap between sets. */
@@ -183,7 +207,7 @@ export interface ClipCheckResult {
   /** Samples beyond full scale, which only a float file can hold. */
   overs: number;
   runs: {
-    /** The fewest samples in a row that count. */
+    /** The fewest samples in a row that count, at this file's peak and with its steps. */
     minSamples: number;
     count: number;
     samples: number;
@@ -297,6 +321,11 @@ export class ClipCheck {
   #peakAt = 0;
   #peakChannel = 0;
   #overs = 0;
+  /**
+   * Every sample so far as a 24-bit whole number, with their bits OR'd together. The lowest bit set
+   * is the size of the file's steps: bit 8 where 16-bit sound sits in a file of any sample size.
+   */
+  #grid = 0;
   readonly #high: Side;
   readonly #low: Side;
   #flat: FlatTop[] = [];
@@ -373,6 +402,7 @@ export class ClipCheck {
         }
         if (a > this.#secondPeak) this.#secondPeak = a;
         if (a > 1) this.#overs++;
+        this.#grid |= x * CODES_24_BIT;
         if (x > st.up) st.up = x;
         else if (-x > st.down) st.down = -x;
 
@@ -435,6 +465,20 @@ export class ClipCheck {
     this.#swingFill = 0;
   }
 
+  /**
+   * The fewest samples in a row that count as a run at `value`: more than rounding can hold there at
+   * the top of a clean note (LOWEST_NOTE_HZ), and never fewer than `runSamples`. The steps are the
+   * file's own, read from its samples so far, so 16-bit sound saved in a 24-bit file is treated as
+   * the 16-bit sound it is.
+   */
+  #runFloor(value: number): number {
+    // Nothing but silence so far has no steps to read: take the coarsest, which no run gets past.
+    const step = this.#grid === 0 ? 1 : ((this.#grid & -this.#grid) >>> 0) / CODES_24_BIT;
+    // A tone's top stays within one step of its peak for this many samples, and so can round to one value.
+    const width = (this.sampleRate / (Math.PI * LOWEST_NOTE_HZ)) * Math.sqrt((2 * step) / Math.abs(value));
+    return Math.max(this.#options.runSamples, Math.floor(width) + 2);
+  }
+
   /** Counts a run that just ended, if it sat at the file's highest or lowest value so far. */
   #closeRun(channel: number, st: ChannelState): void {
     const v = st.value;
@@ -444,7 +488,7 @@ export class ClipCheck {
         : v === this.#low.value && v < -this.#gate
           ? this.#low
           : undefined;
-    if (!side) return;
+    if (!side || st.run < this.#runFloor(v)) return;
     side.count++;
     side.samples += st.run;
     if (st.run > side.longest) side.longest = st.run;
@@ -513,6 +557,9 @@ export class ClipCheck {
     }
     const mean = sy / m;
     if (Math.sqrt(squares / m) > this.#options.flatness * mean) return;
+    // A straight line that goes too far across the half-wave, or goes up, is a ramp (RAMP).
+    const travel = (slope * n) / mean;
+    if (travel > RAMP.rise || travel < -RAMP.fall) return;
     // A flat top sags as the analogue stages' coupling lets it drift back towards zero, so its
     // level is where it starts: the line, followed back to the first sample of the top.
     const level = Math.min(st.peak, Math.max(mean, intercept + slope * (bestStart - first)));
@@ -665,8 +712,10 @@ export class ClipCheck {
       .flatMap((s) => s.events)
       .sort((a, b) => a.at - b.at || a.channel - b.channel)
       .slice(0, this.#options.maxEvents);
+    // The runs sit at the sides' values. With no runs, the file's peak is where one would have sat.
+    const level = sides.reduce((v, s) => Math.max(v, Math.abs(s.value)), 0) || this.#peak;
     return {
-      minSamples: this.#options.runSamples,
+      minSamples: level > 0 ? this.#runFloor(level) : this.#options.runSamples,
       count: sides.reduce((n, s) => n + s.count, 0),
       samples: sides.reduce((n, s) => n + s.samples, 0),
       longest: sides.reduce((n, s) => Math.max(n, s.longest), 0),

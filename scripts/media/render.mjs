@@ -1,9 +1,9 @@
 // Renders the share image (public/og.png), the ten-second chat clip (public/media/*) and the home-screen
-// icon (public/apple-touch-icon.png) from the HTML pages in this folder, using the site's own fonts and
-// tokens (src/styles/tokens.css). The pages are drawn as the cockpit display, so they render in the dark
-// scheme. The icon is public/favicon.svg drawn at 180 px on the hardware black, without its rounded
-// corners, because iOS rounds them itself. Needs Chromium (pnpm exec playwright install chromium) and
-// ffmpeg on the PATH.
+// icons (public/apple-touch-icon.png and the web app manifest's icon-*.png) from the HTML pages in this
+// folder, using the site's own fonts and tokens (src/styles/tokens.css). The pages are drawn as the
+// cockpit display, so they render in the dark scheme. An icon is public/favicon.svg on the hardware
+// black, without its rounded corners, because the phone rounds them itself. Needs Chromium (pnpm exec
+// playwright install chromium), and ffmpeg on the PATH for the clip.
 //
 //   node scripts/media/render.mjs          # all three
 //   node scripts/media/render.mjs og       # just the share image (or clip, or icon)
@@ -50,9 +50,18 @@ if (!only || only === 'og') {
 }
 
 if (!only || only === 'icon') {
-  const page = await open('icon.html', 180, 180);
-  await page.screenshot({ path: join(root, 'public', 'apple-touch-icon.png') });
-  console.log('wrote public/apple-touch-icon.png');
+  // One drawing at each size a phone asks for: iOS's own, and the web app manifest's three
+  // (src/pages/manifest.webmanifest.ts).
+  for (const [file, size, query] of [
+    ['apple-touch-icon.png', 180, ''],
+    ['icon-192.png', 192, ''],
+    ['icon-512.png', 512, ''],
+    ['icon-maskable-512.png', 512, '?maskable'],
+  ]) {
+    const page = await open(`icon.html${query}`, size, size);
+    await page.screenshot({ path: join(root, 'public', file) });
+    console.log(`wrote public/${file}`);
+  }
 }
 
 if (!only || only === 'clip') {

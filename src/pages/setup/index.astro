@@ -528,7 +528,9 @@ const moved = {
   }
 
   @media print {
-    /* Block flow fragments reliably across paper pages; a tall grid can overlap its following note. */
+    /* Block flow fragments reliably across paper pages; a tall grid can overlap its following note.
+       Paper gets the list alone, however wide the sheet: the table's cells cannot break. */
+    .rig-table { display: none; }
     .rig-list { display: block; }
     .rig-list > li { break-inside: avoid-page; }
     /* Keep the linked manual/page labels; repeated long URLs overwhelm this compact reference. */

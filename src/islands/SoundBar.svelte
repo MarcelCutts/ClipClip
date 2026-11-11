@@ -167,6 +167,33 @@
     outline-offset: 2px;
   }
 
+  /* On a phone the bar is two rows, and a lab has to fit between it and the tabs with its meters and
+     its controls all in view. So the bar is as low as its controls allow: what is playing in a
+     smaller line, close above a slider that takes the row's spare width. */
+  @media (max-width: 30rem) {
+    .sound-bar {
+      gap: 0.125rem 0.75rem;
+      padding-block: 0.4rem calc(0.4rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    .what {
+      flex-basis: 100%;
+      font-size: var(--text-sm);
+      line-height: 1.25;
+    }
+
+    .volume {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .volume input {
+      flex: 1;
+      width: auto;
+      min-width: 0;
+    }
+  }
+
   .notice {
     position: fixed;
     inset: auto var(--gutter) calc(1rem + env(safe-area-inset-bottom, 0px));

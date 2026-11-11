@@ -38,6 +38,8 @@ const ogImage = new URL(href('/og.png'), Astro.site);
     <meta name="theme-color" content="#0a0c0e" media="(prefers-color-scheme: dark)" />
     <link rel="icon" href={href('/favicon.svg')} type="image/svg+xml" />
     <link rel="apple-touch-icon" href={href('/apple-touch-icon.png')} />
+    <!-- Kept on a Home Screen, the guide is an app of its own, and its saved copy lasts (manifest.webmanifest.ts). -->
+    <link rel="manifest" href={href('/manifest.webmanifest')} />
     <meta property="og:type" content="website" />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />

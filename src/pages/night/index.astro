@@ -156,6 +156,12 @@ const ROWS = 6;
 <style>
   @media print {
     .offline-link { display: none; }
+
+    /* Block flow on paper, like the page's other wrappers (global.css): a grid this tall prints the
+       card after it over its last drill. */
+    .drills { display: block; }
+    .drills > :global(* + *) { margin-block-start: var(--gap-text); }
+    .drills > .page-group { margin-block-start: var(--gap-block); }
   }
 
   /* On the night a jump is instant: nobody in a hurry should watch the page glide past. Where it

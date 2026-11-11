@@ -234,3 +234,33 @@ test('nothing moves while a control is in use, and the result appears under ever
   expect(goal && knobs).toBeTruthy();
   if (goal && knobs) expect(goal.y).toBeGreaterThanOrEqual(knobs.y + knobs.height);
 });
+
+for (const screen of [
+  { width: 360, height: 640 },
+  { width: 375, height: 667 },
+]) {
+  test(`with sound playing, the mixer fits a ${screen.width}×${screen.height} phone between the tabs and the Stop bar`, async ({
+    page,
+  }) => {
+    // A thumb on a fader hides what is under it, so the meters and the Mix reading must be in view
+    // with every fader. Two rows of tabs and a tall Stop bar once left too little room for them.
+    await page.setViewportSize(screen);
+    const lab = await openLab(page);
+    await lab.getByRole('button', { name: /^Listen/ }).click();
+    const bar = page.locator('.sound-bar');
+    await expect(bar).toBeVisible();
+    const tabs = page.getByRole('navigation', { name: 'Parts' });
+    // One row of tabs at these widths.
+    expect(
+      new Set(await tabs.locator('a').evaluateAll((all) => all.map((a) => a.getBoundingClientRect().top))).size,
+    ).toBe(1);
+    const [strip, stop, mixer] = [
+      await tabs.boundingBox(),
+      await bar.boundingBox(),
+      await lab.locator('.mixer').boundingBox(),
+    ];
+    expect(strip && stop && mixer).toBeTruthy();
+    if (strip && stop && mixer) expect(mixer.height).toBeLessThanOrEqual(screen.height - strip.height - stop.height);
+    await bar.getByRole('button', { name: 'Stop' }).click();
+  });
+}

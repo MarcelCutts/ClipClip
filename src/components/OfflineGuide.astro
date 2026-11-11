@@ -4,7 +4,11 @@ import { href } from '../lib/url';
 
 <div id="offline-guide" class="offline" data-offline data-base={href('/')} data-worker={href('/sw.js')} data-published={import.meta.env.PROD}>
   <p><strong>Taking this guide to the night?</strong></p>
-  <p>Save it before leaving, then reopen it in airplane mode to check. The saved guide includes all pages, diagrams and demos. External manuals need a connection.</p>
+  <p>Save it on the day you leave, then reopen it in airplane mode to check. The saved guide includes all pages, diagrams and demos. External manuals need a connection.</p>
+  <!-- A browser keeps a saved copy apart from every other browser and app, and Safari removes a tab's copy
+       after seven days of use without a visit to the site. A Home Screen web app is exempt from that
+       (webkit.org/tracking-prevention), and has storage of its own, so the copy must be saved from the icon. -->
+  <p>The copy stays in the browser or app that saved it. On an iPhone, add the guide to your Home Screen first (Share, then Add to Home Screen), open it from that icon and save it there. Safari removes a copy saved in a tab after a week without a visit.</p>
   <button type="button" data-save hidden>Save for offline use</button>
   <p data-status role="status" aria-live="polite"></p>
   <noscript><p>Turn on JavaScript to save the guide offline.</p></noscript>
@@ -12,7 +16,7 @@ import { href } from '../lib/url';
 </div>
 
 <script>
-  type Saved = { ready: boolean; version: string };
+  type Saved = { ready: boolean; version: string; savedAt?: number | null };
   const panel = document.querySelector<HTMLElement>('[data-offline]');
   const button = panel?.querySelector<HTMLButtonElement>('[data-save]');
   const status = panel?.querySelector<HTMLElement>('[data-status]');
@@ -21,6 +25,15 @@ import { href } from '../lib/url';
     const base = panel.dataset.base ?? '/';
     const workerURL = panel.dataset.worker ?? '/sw.js';
     const say = (text: string) => { status.textContent = text; };
+    const day = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long' });
+    const time = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' });
+    /** "on 10 November", when the worker knows when the copy was completed. */
+    const when = (saved: Saved) => (typeof saved.savedAt === 'number' ? ` on ${day.format(saved.savedAt)}` : '');
+    /** This guide's own registration. Another site on the same host may hold a wider scope. */
+    const registration = async () => {
+      const reg = await navigator.serviceWorker.getRegistration(base);
+      return reg?.scope === new URL(base, location.href).href ? reg : undefined;
+    };
     const ask = (worker: ServiceWorker | null, command = 'OFFLINE_STATUS'): Promise<Saved | null> => new Promise((resolve) => {
       if (!worker) return resolve(null);
       const channel = new MessageChannel();
@@ -32,21 +45,22 @@ import { href } from '../lib/url';
       };
       worker.postMessage(command, [channel.port2]);
     });
-    const report = async (registration?: ServiceWorkerRegistration) => {
-      const reg = registration ?? await navigator.serviceWorker.getRegistration(base);
+    /** Says what is saved. `checked` is set after a look for a newer version that found none. */
+    const report = async (reg?: ServiceWorkerRegistration, checked = false) => {
+      reg ??= await registration();
       const [active, waiting] = await Promise.all([ask(reg?.active ?? null), ask(reg?.waiting ?? null)]);
       if (waiting?.ready) {
-        say(`Update saved (${waiting.version}). Close all guide tabs and reopen between events to use it.${active?.ready ? ' Your current saved version remains available.' : ''}`);
+        say(`Update saved (${waiting.version}). Close the guide everywhere it is open, then reopen it between events to use it.${active?.ready ? ' Your current saved version remains available.' : ''}`);
       } else if (active?.ready) {
-        say(`Saved on this device (${active.version}). Check it in airplane mode before leaving.`);
+        say(`Saved on this device${when(active)} (${active.version}). ${checked ? `No newer version at ${time.format(Date.now())}. ` : ''}Check it in airplane mode before leaving.`);
       } else {
         say('No complete offline copy found. Save while you have a connection.');
       }
       button.textContent = active?.ready || waiting?.ready ? 'Check for an update' : 'Save for offline use';
       return Boolean(active?.ready || waiting?.ready);
     };
-    const installed = (registration: ServiceWorkerRegistration): Promise<void> => new Promise((resolve, reject) => {
-      const worker = registration.installing;
+    const installed = (reg: ServiceWorkerRegistration): Promise<void> => new Promise((resolve, reject) => {
+      const worker = reg.installing;
       if (!worker) return resolve();
       const timeout = window.setTimeout(() => { worker.removeEventListener('statechange', changed); reject(new Error('Download timed out')); }, 120000);
       const changed = () => {
@@ -60,7 +74,8 @@ import { href } from '../lib/url';
       changed();
     });
     if (!('serviceWorker' in navigator) || !window.isSecureContext) {
-      say('Offline saving is unavailable in this browser. Use the PDF backup.');
+      // A chat app's own browser often has no service workers: the reader's real browser does.
+      say('This browser cannot save the guide. Open this page in Safari or Chrome, and save it there.');
     } else if (panel.dataset.published !== 'true') {
       say('Offline saving is available on the published guide.');
     } else {
@@ -71,7 +86,8 @@ import { href } from '../lib/url';
         button.disabled = true;
         say('Saving all pages and their files… Keep this page open.');
         try {
-          let reg = await navigator.serviceWorker.getRegistration(base);
+          let reg = await registration();
+          const had = Boolean(reg?.active);
           if (reg) await reg.update();
           else reg = await navigator.serviceWorker.register(workerURL, { scope: base, updateViaCache: 'none' });
           await installed(reg);
@@ -79,9 +95,12 @@ import { href } from '../lib/url';
           if (!reg.active) await navigator.serviceWorker.ready;
           const ready = await ask(reg.waiting ?? reg.active);
           if (!ready?.ready) await ask(reg.waiting ?? reg.active, 'OFFLINE_REPAIR');
-          if (!(await report(reg))) throw new Error('Package incomplete');
+          if (!(await report(reg, had && !reg.waiting && Boolean(ready?.ready)))) throw new Error('Package incomplete');
+          // Ask the browser to keep the copy when it runs short of space. It may say no, and Safari
+          // answers for a Home Screen web app, not a tab: the backup below still stands.
+          void navigator.storage?.persist?.()?.catch(() => false);
         } catch {
-          const reg = await navigator.serviceWorker.getRegistration(base).catch(() => undefined);
+          const reg = await registration().catch(() => undefined);
           const old = await ask(reg?.active ?? null).catch(() => null);
           say(old?.ready
             ? 'The update could not be saved. Your previous complete guide is still available. Try again while connected.'

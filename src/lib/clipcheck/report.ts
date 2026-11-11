@@ -10,9 +10,11 @@ import type { WavInfo } from './wav';
 const MINUS = '−';
 const NBSP = ' ';
 
-/** −7.9 dBFS, with a real minus sign. */
-export const dbfs = (db: number, decimals = 1): string =>
-  Number.isFinite(db) ? `${db < 0 ? MINUS : ''}${Math.abs(db).toFixed(decimals)}${NBSP}dBFS` : 'silence';
+/** −7.9 dBFS, with a real minus sign. No level at all is silence; a float file's infinite sample is not. */
+export const dbfs = (db: number, decimals = 1): string => {
+  if (!Number.isFinite(db)) return db > 0 ? 'infinite' : 'silence';
+  return `${db < 0 ? MINUS : ''}${Math.abs(db).toFixed(decimals)}${NBSP}dBFS`;
+};
 
 /** 1:02:13 from an hour up, 12:40 below it. */
 export function clock(seconds: number): string {
@@ -23,13 +25,16 @@ export function clock(seconds: number): string {
   return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
 }
 
-/** 3 h 12 min, 14 min, 45 s. */
+/**
+ * 3 h 12 min, 14 min, 45 s. The whole length is rounded to minutes before the hours come out of it,
+ * so the last half-minute of an hour reads as the hour, never as 60 min.
+ */
 export function duration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.round((seconds % 3600) / 60);
-  if (h > 0) return `${h}${NBSP}h ${m}${NBSP}min`;
-  if (m > 0) return `${m}${NBSP}min`;
-  return `${Math.round(seconds)}${NBSP}s`;
+  if (seconds < 59.5) return `${Math.round(seconds)}${NBSP}s`;
+  const minutes = Math.round(seconds / 60);
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h > 0 ? `${h}${NBSP}h ${m}${NBSP}min` : `${m}${NBSP}min`;
 }
 
 const count = (n: number): string => n.toLocaleString('en-GB');
